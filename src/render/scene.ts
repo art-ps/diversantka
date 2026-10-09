@@ -8,7 +8,7 @@ import { TRANSITION_TIME, type Game } from '../game';
 import { fireCells, heatColor, type Fire } from '../fx/fires';
 import { HEAT_RAMP } from '../fx/heat';
 import { flamerPhase } from '../sim/flamer';
-import { formatTime } from '../sim/mission';
+import { formatTime, missionResult } from '../sim/mission';
 import { floaterView, type Floater } from '../sim/floaters';
 import type { Item, Projectile } from '../sim/items';
 import { particleAlpha, type Particle } from '../sim/particles';
@@ -17,7 +17,7 @@ import type { Point, TerminalSpawn } from '../world/spawns';
 import { drawFigure } from './figure';
 import type { Color, GlyphBatch } from './glyphs';
 import { PAL } from './palette';
-import { drawScreen } from './screens';
+import { drawFailed, drawOutro, drawResult, drawScreen } from './screens';
 
 const WALL_GLYPHS = '#%&8';
 const hash = (c: number, r: number) => ((c * 73856093) ^ (r * 19349663)) >>> 0;
@@ -96,6 +96,25 @@ export function drawTerminals(b: Pick<GlyphBatch, 'push'>, ts: TerminalSpawn[], 
       const x = t.x - (w - 1) / 2 + i - 0.5 + ox;
       b.push(x, t.bottom - 2 + oy, '▒', PAL.hud);
       b.push(x, t.bottom - 1 + oy, '█', PAL.wallInner);
+    }
+  }
+}
+
+// Щиток (горит красным, пока забор под током), мотоцикл, забор.
+export function drawFenceParts(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number, time: number): void {
+  const on = !g.mission.fenceOff;
+  if (g.panel) b.push(g.panel.x - 0.5 + ox, g.panel.bottom - 2.5 + oy, '▓', on ? PAL.danger : PAL.hud);
+  if (g.bike) {
+    const { x, bottom } = g.bike;
+    b.push(x - 1.5 + ox, bottom - 1 + oy, 'o', PAL.item);
+    b.push(x - 0.5 + ox, bottom - 1 + oy, '=', PAL.item);
+    b.push(x + 0.5 + ox, bottom - 1 + oy, 'o', PAL.item);
+    b.push(x + 0.5 + ox, bottom - 2 + oy, '/', PAL.item);
+  }
+  if (g.fence) {
+    for (let y = g.fence.top; y <= g.fence.bottom; y++) {
+      const flick = on && Math.floor(time * 15 + y * 7) % 3 === 0;
+      b.push(g.fence.x + ox, y + oy, y === g.fence.top ? '+' : '|', on ? (flick ? PAL.fireHot : PAL.danger) : PAL.hudDim);
     }
   }
 }
@@ -199,7 +218,7 @@ function drawHud(b: GlyphBatch, g: Game, time: number): void {
   const mx = (ROOM_W - hudWidth(tapes + clock)) / 2;
   b.text(mx, 0, tapes, PAL.hud, HUD_STEP);
   b.text(mx + hudWidth(tapes), 0, clock, g.mission.timeLeft < MISSION.lowTime ? PAL.danger : PAL.hud, HUD_STEP);
-  if (g.nina.dead) {
+  if (g.nina.dead && !g.mission.result) {
     const msg = 'ПОГИБЛА · ПРЫЖОК — ЗАНОВО';
     b.text((ROOM_W - hudWidth(msg)) / 2, 12, msg, PAL.danger, HUD_STEP);
   }
@@ -222,6 +241,7 @@ function drawWorld(b: GlyphBatch, g: Game, ox: number, oy: number, time: number)
   drawFires(b, g.fires, ox, oy);
   drawFlamers(b, g, ox, oy);
   drawTerminals(b, g.terminals, ox, oy);
+  drawFenceParts(b, g, ox, oy, time);
   drawItems(b, g.items, ox, oy);
   drawTapes(b, g.tapes, ox, oy);
   drawAndroids(b, g, ox, oy, time);
@@ -233,6 +253,11 @@ function drawWorld(b: GlyphBatch, g: Game, ox: number, oy: number, time: number)
 }
 
 export function drawGame(b: GlyphBatch, g: Game, time: number): void {
+  if (g.mission.result === 'won') {
+    if (g.endT < MISSION.outroTime) drawOutro(b, g.endT);
+    else drawResult(b, missionResult(g.mission), g.copied);
+    return;
+  }
   if (g.screen) {
     // Экран ЭВМ на весь кадр: при сложении яркостей мир под рамкой мешал бы читать.
     drawScreen(b, g.screen);
@@ -252,6 +277,8 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     drawRoom(b, cur, 0, 0, time, g.roomId);
     drawWorld(b, g, 0, 0, time);
   }
-  if (g.nina.dead) drawStatic(b, g.nina.deadT, time);
+  const failed = g.mission.result === 'failed';
+  if (g.nina.dead || failed) drawStatic(b, failed ? FX.staticIn : g.nina.deadT, time);
   drawHud(b, g, time);
+  if (failed) drawFailed(b);
 }

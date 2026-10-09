@@ -8,6 +8,7 @@ import { Bloom } from './render/bloom';
 import { GlyphBatch } from './render/glyphs';
 import { PAL } from './render/palette';
 import { drawGame } from './render/scene';
+import { saveResult, storage } from './save';
 import { loadWorld } from './world';
 
 const START = { room: 'lab-1', x: 4, bottom: 22 };
@@ -56,6 +57,7 @@ async function boot() {
   let acc = 0;
   let last = performance.now();
   let missed = IDLE; // нажатия из кадров без шага симуляции (120 Гц)
+  let saved = false; // итог этой миссии уже записан в localStorage
   const frame = (now: number) => {
     const plan = planSteps(acc, (now - last) / 1000, DT);
     acc = plan.acc;
@@ -65,6 +67,16 @@ async function boot() {
     for (let i = 0; i < plan.steps; i++) {
       stepGame(game, it, DT);
       it = clearPressed(it);
+    }
+    if (game.mission.result === 'won' && !saved) {
+      saved = true;
+      saveResult(storage(), game.mission.secret);
+    }
+    if (!game.mission.result) saved = false;
+    if (game.clip) {
+      // Буфер обмена может отказать (нет фокуса, нажатие с геймпада) — тогда «СКОПИРОВАНО» не показываем.
+      navigator.clipboard?.writeText(game.clip).then(() => { game.copied = true; }, () => {});
+      game.clip = null;
     }
     bloom.begin(PAL.bg);
     drawGame(batch, game, now / 1000);

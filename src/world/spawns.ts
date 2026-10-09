@@ -30,6 +30,17 @@ export function parsePoints(s: string | undefined, file: string, what: string): 
   });
 }
 
+export interface Fence { x: number; top: number; bottom: number }
+
+// «x,верх..низ» — столбец забора в клетках.
+export function parseFence(s: string | undefined, file: string): Fence | null {
+  const v = (s ?? '').trim();
+  if (!v) return null;
+  const m = /^(\d+),(\d+)\.\.(\d+)$/.exec(v);
+  if (!m || Number(m[2]) > Number(m[3])) throw new Error(`${file}: плохая запись забора «${v}»`);
+  return { x: Number(m[1]), top: Number(m[2]), bottom: Number(m[3]) };
+}
+
 export interface TerminalSpawn { x: number; bottom: number; controls: string[]; main: boolean }
 
 // «x,низ controls=a,b» — гасит огнемёты комнат a, b; «x,низ main» — главная ЭВМ.

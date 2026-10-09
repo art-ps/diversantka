@@ -1,4 +1,5 @@
-import { MISSION } from '../config';
+import { MISSION, ROOM_W } from '../config';
+import type { MissionResult } from '../sim/mission';
 import { bootLines, menuItems, type Screen } from '../sim/terminal';
 import type { Color, GlyphBatch } from './glyphs';
 import { PAL } from './palette';
@@ -29,4 +30,54 @@ export function drawScreen(b: Pick<GlyphBatch, 'push' | 'text'>, s: Screen): voi
   });
   if (s.msg) b.text(X0 + 2, Y1 - 3, s.msg, PAL.item, STEP);
   b.text(X0 + 2, Y1 - 1, 'СТРЕЛКИ — ВЫБОР · ПРЫЖОК/E — ДА', PAL.hudDim, STEP);
+}
+
+// Перенос по словам: строка итога шире рамки.
+export function wrap(s: string, n: number): string[] {
+  const out: string[] = [];
+  let cur = '';
+  for (const w of s.split(' ')) {
+    if (cur && cur.length + 1 + w.length > n) {
+      out.push(cur);
+      cur = w;
+    } else cur = cur ? `${cur} ${w}` : w;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+const WIDE = Math.floor((X1 - X0 - 3) / STEP); // букв в строке внутри рамки
+
+export function drawResult(b: Pick<GlyphBatch, 'push' | 'text'>, r: MissionResult, copied: boolean): void {
+  drawFrame(b, PAL.hudDim);
+  const rows = ['МИССИЯ ВЫПОЛНЕНА', '', `ВРЕМЯ   ${r.time}`, `ЛЕНТЫ   ${r.tapes}`, `УДАРОВ  ${r.hits}`, `ИСТОЧНИК НАЙДЕН: ${r.secret ? 'ДА' : 'НЕТ'}`];
+  rows.forEach((s, i) => b.text(X0 + 2, Y0 + 2 + i, s, i === 0 ? PAL.item : PAL.hud, STEP));
+  wrap(r.line, WIDE).forEach((s, i) => b.text(X0 + 2, Y0 + 10 + i, s, PAL.hudDim, STEP));
+  b.text(X0 + 2, Y1 - 1, copied ? 'СКОПИРОВАНО · ПРЫЖОК — ЗАНОВО' : 'E/Y — СКОПИРОВАТЬ · ПРЫЖОК — ЗАНОВО', PAL.hudDim, STEP);
+}
+
+export function drawFailed(b: Pick<GlyphBatch, 'text'>): void {
+  const title = 'МИССИЯ ПРОВАЛЕНА', hint = 'ПРЫЖОК — ЗАНОВО';
+  b.text((ROOM_W - title.length * STEP) / 2, 11, title, PAL.danger, STEP);
+  b.text((ROOM_W - hint.length * STEP) / 2, 13, hint, PAL.hudDim, STEP);
+}
+
+// Выезд: ночная дорога, ворота позади, мотоцикл разгоняется вправо и уходит за край.
+export function drawOutro(b: Pick<GlyphBatch, 'push'>, t: number): void {
+  for (let i = 0; i < 40; i++) {
+    const h = (i * 2654435761) >>> 0;
+    b.push(h % ROOM_W, (h >>> 8) % 12, '.', PAL.hudDim, 0.5);
+  }
+  const shift = Math.floor(t * 20);
+  for (let x = 0; x < ROOM_W; x++) {
+    b.push(x, 18, '_', PAL.hudDim);
+    if ((x + shift) % 4 === 0) b.push(x, 19, '-', PAL.hudDim, 0.5);
+  }
+  for (let y = 14; y <= 17; y++) b.push(8, y, '|', PAL.wall);
+  const k = Math.min(1, t / MISSION.outroTime);
+  const x = 4 + k * k * (ROOM_W + 4);
+  b.push(x - 1, 17, 'o', PAL.item);
+  b.push(x, 17, '=', PAL.item);
+  b.push(x + 1, 17, 'o', PAL.item);
+  b.push(x + 0.5, 16, '/', PAL.nina);
 }
