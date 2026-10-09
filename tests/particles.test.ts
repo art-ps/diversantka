@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FX } from '../src/config';
-import { crumble, particleAlpha, sparks, stepParticles, type Particle } from '../src/sim/particles';
+import { PAL } from '../src/render/palette';
+import { crumble, particleAlpha, smoke, sparks, stepParticles, type Particle } from '../src/sim/particles';
 
 const rng = () => 0.5;
 const C = [1, 1, 1, 1] as const;
@@ -30,4 +31,16 @@ describe('частицы', () => {
     ps = stepParticles(ps, FX.crumbleLife * 2);
     expect(ps).toHaveLength(0);
   });
+});
+
+it('дым: серые `. , ~`, поднимается и сносится, гаснет к концу жизни', () => {
+  const ps: Particle[] = [];
+  smoke(ps, 10, 20, 5, () => 0.5);
+  expect(ps).toHaveLength(5);
+  for (const p of ps) {
+    expect('.,~').toContain(p.ch);
+    expect(p.color).toEqual(PAL.smoke);
+    expect(p.vy).toBeLessThan(0);
+    expect(p.life).toBeCloseTo(FX.smokeLife, 1);
+  }
 });

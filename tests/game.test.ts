@@ -1,8 +1,9 @@
 import { expect, it } from 'vitest';
-import { ANDROID, DT, FLAMER, NINA } from '../src/config';
+import { ANDROID, DT, FLAMER, FX, NINA } from '../src/config';
 import { pitFires } from '../src/fx/fires';
 import { createGame, enterRoom, stepGame } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
+import { PAL } from '../src/render/palette';
 import { hurtNina } from '../src/sim/nina';
 import { loadRoomsFs } from './helpers';
 
@@ -182,7 +183,7 @@ it('добитый андроид рассыпается: частицы ест�
   expect(a.gone).toBe(true);
   expect(g.particles.length).toBeGreaterThan(10);
   for (let i = 0; i < 120; i++) stepGame(g, I(), DT);
-  expect(g.particles).toHaveLength(0);
+  expect(g.particles.filter(p => p.color !== PAL.smoke)).toHaveLength(0); // дым живёт дольше обломков
 });
 
 it('попадание даёт искры; смена комнаты чистит частицы', () => {
@@ -227,4 +228,15 @@ it('огни: строятся при входе в комнату заново'
   enterRoom(g, 'lab-2');
   expect(g.fires.some(f => f.kind === 'jet')).toBe(true);
   expect(g.fires.every(f => f.kind === 'jet' || pitFires(g.rooms.get('lab-2')!).some(p => p.x === f.x && p.y === f.y))).toBe(true);
+});
+
+it('дым над ямой: есть, выше огня, и его число ограничено', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
+  for (let i = 0; i < Math.round(10 / DT); i++) stepGame(g, IDLE, DT);
+  const smokeP = g.particles.filter(p => p.color === PAL.smoke);
+  expect(smokeP.length).toBeGreaterThan(0);
+  const pit = g.fires.find(f => f.kind === 'pit')!;
+  for (const p of smokeP) expect(p.y).toBeLessThan(pit.y - 1);
+  const width = pit.field.w / 2;
+  expect(smokeP.length).toBeLessThanOrEqual(Math.ceil(FX.smokePerSec * width * FX.smokeLife * 2));
 });

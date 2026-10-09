@@ -1,4 +1,4 @@
-import { FLAMER, FX, NINA, TRANSITION_TIME } from './config';
+import { FIRE, FLAMER, FX, NINA, TRANSITION_TIME } from './config';
 import { jetFire, pitFires, stepFires, type Fire } from './fx/fires';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { dogGlyphs } from './anim/dog';
@@ -12,7 +12,7 @@ import { resolveCombat, resolveDogs, type HitEvent } from './sim/fight';
 import { spawnFloater, stepFloaters, type Floater } from './sim/floaters';
 import { stepProjectiles, useThrowButton, type Item, type Projectile } from './sim/items';
 import { burnNina, createNina, updateNina, type Nina } from './sim/nina';
-import { crumble, sparks, stepParticles, type Particle } from './sim/particles';
+import { crumble, smoke, sparks, stepParticles, type Particle } from './sim/particles';
 import { bodyRect, overlap } from './sim/rect';
 import { touchHazards } from './sim/hazards';
 import { exitFor } from './sim/transition';
@@ -145,6 +145,16 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     }
   }
   stepFires(g.fires, g.flamers, dt);
+  // Дым: над ямами — всегда, над концом струи — пока она горит.
+  for (const fire of g.fires) {
+    if (fire.kind === 'pit') {
+      const width = fire.field.w / 2;
+      const n = Math.floor(FX.smokePerSec * width * dt + Math.random());
+      if (n) smoke(g.particles, fire.x + Math.random() * width, fire.y - 1 - FIRE.pitRise, n);
+    } else if (fire.field.on && Math.random() < FX.smokePerSec * dt) {
+      smoke(g.particles, fire.x + fire.dir * FLAMER.length, fire.y - FIRE.jetLift * FLAMER.length - 0.5, 1);
+    }
+  }
   const lost = e0 - g.nina.energy;
   const nb = g.nina.body;
   if (lost > 0) {
@@ -172,9 +182,11 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
       if (a) {
         // андроид смотрит на ударившего — разлёт от него
         crumble(g.particles, figureGlyphs(simplePose(a.anim, CLIPS), cx, a.body.y + a.body.h, a.facing, PAL.android, false, '@'), -a.facing as 1 | -1);
+        smoke(g.particles, cx, body.y + body.h / 2, FX.smokePuff);
         a.gone = true;
       } else if (d) {
         crumble(g.particles, dogGlyphs(d, PAL.dog), -d.facing as 1 | -1);
+        smoke(g.particles, cx, body.y + body.h / 2, FX.smokePuff);
         d.gone = true;
       }
     }

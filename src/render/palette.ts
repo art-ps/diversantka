@@ -19,6 +19,7 @@ export const PAL = {
   projectile: [1.0, 0.95, 0.75, 1] as Color,
   spark: [1.0, 0.95, 0.7, 1] as Color,
   fire: [1.0, 0.5, 0.15, 1] as Color,
+  smoke: [0.6, 0.62, 0.68, 0.55] as Color,
   fireHot: [1.0, 0.85, 0.35, 1] as Color,
   danger: [1.0, 0.3, 0.2, 1] as Color,
   dog: [0.85, 0.6, 1.0, 1] as Color,

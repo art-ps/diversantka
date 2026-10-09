@@ -1,4 +1,5 @@
 import { FX } from '../config';
+import { PAL } from '../render/palette';
 
 export type RGBA = readonly [number, number, number, number];
 
@@ -43,6 +44,19 @@ export function crumble(ps: Particle[], glyphs: { x: number; y: number; ch: stri
       vy: -2 - 5 * rng(),
       t: 0, life: FX.crumbleLife * (0.75 + 0.5 * rng()),
       gravity: FX.crumbleGravity, size: g.size, color: g.color,
+    });
+  }
+}
+
+const SMOKE = '.,~';
+
+// Дым: поднимается, медленно сносится вбок, тает (по мотивам smoke из ascii.rest).
+export function smoke(ps: Particle[], x: number, y: number, n: number, rng = Math.random): void {
+  for (let i = 0; i < n; i++) {
+    ps.push({
+      ch: SMOKE[Math.floor(rng() * SMOKE.length)], x: x + (rng() - 0.5) * 0.6, y,
+      vx: (rng() - 0.5) * 0.8, vy: -FX.smokeRise * (0.7 + 0.6 * rng()),
+      t: 0, life: FX.smokeLife * (0.8 + 0.4 * rng()), gravity: -0.3, size: 0.5, color: PAL.smoke,
     });
   }
 }
