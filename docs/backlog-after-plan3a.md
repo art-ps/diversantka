@@ -9,3 +9,5 @@
 - Task 6: minor (deferred): scene test doesn't cover knife direction glyphs / held item / blink
 - Final review: deferred (reviewer triage): T1–T6 minors as listed in ledger; throw with down always diagonal-down (spec-consistent, playtest)
 - Финальная правка: толчок ногой возвращает центр андроида в участок; толкается и убитый (без эффекта); край тела андроида у x 15.4 касается колонки шипов (урона андроидам от тайлов нет).
+
+- План 3а.1: допуск 1e-9 в isActive без комментария; нет теста, что в CLIPS есть crouchkick; не покрыта ветка «правая нога впереди» в makeCrouchKick.
