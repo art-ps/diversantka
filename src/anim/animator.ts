@@ -4,7 +4,7 @@ import type { Nina, NinaState } from '../sim/nina';
 import type { Clip, Pose } from './clip';
 import { lerpPose, sampleClip } from './pose';
 
-export const ANIM_NAMES = ['idle', 'walk', 'run', 'jump', 'fall', 'land', 'crouch', 'climb', 'punch', 'kick', 'flykick', 'hit', 'death'] as const;
+export const ANIM_NAMES = ['idle', 'walk', 'run', 'jump', 'fall', 'land', 'crouch', 'climb', 'punch', 'kick', 'flykick', 'hit', 'death', 'throw'] as const;
 export type AnimName = (typeof ANIM_NAMES)[number];
 
 export interface Animator {
@@ -27,6 +27,7 @@ export function chooseClip(n: Nina, a: Animator): AnimName {
   if (n.state === 'ladder') return 'climb';
   if (n.hurtT > 0) return 'hit';
   if (n.attack) return n.attack.kind;
+  if (n.throwT > 0) return 'throw';
   if (n.state === 'air') return n.body.vy < 0 ? 'jump' : 'fall';
   if (n.crouching) return 'crouch';
   const s = Math.abs(n.body.vx);
@@ -73,6 +74,8 @@ export function updateAnimator(a: Animator, n: Nina, clips: Map<string, Clip>, d
     a.t = (n.attack.t / attackTotal(n.attack.kind)) * ((c.frames.length - 1) / c.fps);
   } else if (a.clip === 'hit') {
     a.t += (dt * ((c.frames.length - 1) / c.fps)) / COMBAT.hurtStun;
+  } else if (a.clip === 'throw') {
+    a.t += (dt * ((c.frames.length - 1) / c.fps)) / COMBAT.throwTime;
   } else {
     a.t += dt;
   }

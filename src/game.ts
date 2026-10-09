@@ -2,9 +2,11 @@ import { TRANSITION_TIME } from './config';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { CLIPS } from './anim/clips';
 import type { Intent } from './input/intent';
+import { stepProjectiles, useThrowButton, type Item, type Projectile } from './sim/items';
 import { createNina, updateNina, type Nina } from './sim/nina';
 import { exitFor } from './sim/transition';
 import type { Dir, Room } from './world/room';
+import { parseItems } from './world/spawns';
 
 export { TRANSITION_TIME };
 
@@ -17,10 +19,28 @@ export interface Game {
   anim: Animator;
   start: Start;
   transition: { from: string; dir: Dir; t: number } | null;
+  items: Item[];
+  projectiles: Projectile[];
+  taken: Set<string>; // подобранные предметы — не появляются снова до смерти
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
-  return { rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null };
+  const g: Game = {
+    rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
+    items: [], projectiles: [], taken: new Set(),
+  };
+  enterRoom(g, start.room);
+  return g;
+}
+
+// Состояние комнаты при входе: предметы (кроме подобранных), без снарядов.
+export function enterRoom(g: Game, id: string): void {
+  g.roomId = id;
+  const room = g.rooms.get(id)!;
+  g.items = parseItems(room.meta.items, id)
+    .map((s, i) => ({ id: `${id}#i${i}`, ...s }))
+    .filter(i => !g.taken.has(i.id));
+  g.projectiles = [];
 }
 
 export function stepGame(g: Game, it: Intent, dt: number): void {
@@ -33,7 +53,8 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     // ponytail: в плане 1 смерть — возврат на старт; чекпоинты на терминалах — план 4.
     updateAnimator(g.anim, g.nina, CLIPS, dt);
     if (it.jumpPressed) {
-      g.roomId = g.start.room;
+      g.taken.clear();
+      enterRoom(g, g.start.room);
       g.nina = createNina(g.start.x, g.start.bottom);
       g.anim = createAnimator();
     }
@@ -41,6 +62,14 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   }
   const room = g.rooms.get(g.roomId)!;
   updateNina(g.nina, it, room, dt);
+  const { picked, thrown } = useThrowButton(g.nina, it, g.items);
+  if (picked) {
+    g.taken.add(picked.id);
+    g.items = g.items.filter(i => i !== picked);
+  }
+  if (thrown) g.projectiles.push(thrown);
+  stepProjectiles(g.projectiles, room, dt);
+  g.projectiles = g.projectiles.filter(p => p.alive);
   updateAnimator(g.anim, g.nina, CLIPS, dt);
   const ex = exitFor(g.nina.body, room);
   if (ex) {
@@ -50,6 +79,6 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     g.anim.peakY += ex.dy;
     g.anim.lastY += ex.dy;
     g.transition = { from: g.roomId, dir: ex.dir, t: 0 };
-    g.roomId = ex.to;
+    enterRoom(g, ex.to);
   }
 }

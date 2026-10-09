@@ -50,4 +50,11 @@ export const COMBAT = {
   hurtStun: 0.35, // оглушение после попадания — ввод не слушается
   hurtInvuln: 0.8, // неуязвимость после попадания
   hurtPush: 5, // отбрасывание, клеток/с
+  throwTime: 0.3, // сколько играет бросок
+  throwAngle: 30, // градусов вверх/вниз при броске по диагонали
+  items: {
+    knife: { speed: 24, gravity: 0, damage: 1 },
+    stone: { speed: 16, gravity: 30, damage: 1 },
+    wrench: { speed: 18, gravity: 30, damage: 1 },
+  },
 };

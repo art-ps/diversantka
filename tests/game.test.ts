@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { DT, NINA } from '../src/config';
-import { createGame, stepGame } from '../src/game';
+import { createGame, enterRoom, stepGame } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
 import { loadRoomsFs } from './helpers';
 
@@ -65,4 +65,24 @@ it('после гибели играет клип смерти', () => {
   g.nina.dead = true;
   stepGame(g, I(), DT);
   expect(g.anim.clip).toBe('death');
+});
+
+it('предмет подбирается и после смены комнаты не появляется снова', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 5.4, bottom: 22 });
+  for (let i = 0; i < 3; i++) stepGame(g, I(), DT);
+  stepGame(g, I({ throwPressed: true }), DT);
+  expect(g.nina.held).toBe('knife');
+  enterRoom(g, 'lab-2');
+  enterRoom(g, 'lab-1');
+  expect(g.items).toHaveLength(0);
+});
+
+it('бросок создаёт снаряд, смена комнаты их убирает', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 10, bottom: 22 });
+  g.nina.held = 'knife';
+  for (let i = 0; i < 3; i++) stepGame(g, I(), DT);
+  stepGame(g, I({ throwPressed: true }), DT);
+  expect(g.projectiles).toHaveLength(1);
+  enterRoom(g, 'lab-2');
+  expect(g.projectiles).toHaveLength(0);
 });

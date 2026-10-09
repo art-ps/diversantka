@@ -2,6 +2,7 @@ import { COMBAT, NINA, type NinaConfig } from '../config';
 import { IDLE, type Intent } from '../input/intent';
 import { attackTotal, type Attack } from './combat';
 import { tileAt, type Room } from '../world/room';
+import type { ItemKind } from '../world/spawns';
 import { isLadder, isSolid, moveX, moveY, type Body } from './physics';
 
 export type NinaState = 'ground' | 'air' | 'ladder';
@@ -21,6 +22,8 @@ export interface Nina {
   jumpHeld: boolean;
   skid: boolean; // тормозной шаг после приземления без ввода
   peakY: number; // самая высокая точка текущего полёта — для урона от падения
+  held: ItemKind | null; // предмет в руках
+  throwT: number; // сколько ещё играет бросок
 }
 
 const EPS = 1e-6;
@@ -31,7 +34,7 @@ export function createNina(x: number, bottom: number, cfg: NinaConfig = NINA): N
     body: { x, y, w: cfg.w, h: cfg.h, vx: 0, vy: 0, onGround: false },
     state: 'air', facing: 1, crouching: false,
     energy: cfg.energyMax, dead: false, attack: null, hurtT: 0, invulnT: 0,
-    coyoteT: 0, bufferT: 0, jumpHeld: false, skid: false, peakY: y,
+    coyoteT: 0, bufferT: 0, jumpHeld: false, skid: false, peakY: y, held: null, throwT: 0,
   };
 }
 
@@ -70,6 +73,7 @@ export function updateNina(n: Nina, it: Intent, room: Room, dt: number, cfg: Nin
     return;
   }
   n.invulnT = Math.max(0, n.invulnT - dt);
+  n.throwT = Math.max(0, n.throwT - dt);
   if (n.hurtT > 0) {
     n.hurtT = Math.max(0, n.hurtT - dt);
     it = IDLE; // оглушена — ввод не слушается
