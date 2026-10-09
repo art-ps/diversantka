@@ -1,6 +1,7 @@
-import { MISSION } from '../config';
-import { parseRoom, validateWorld, type Room } from './room';
-import { parseEnemies, parseFence, parseItems, parsePoints, parseTerminals } from './spawns';
+import { MISSION, NINA, ROOM_H } from '../config';
+import { LIFT_W, shaftRooms } from '../sim/lift';
+import { parseRoom, tileAt, validateWorld, type Room } from './room';
+import { parseEnemies, parseFence, parseItems, parseLift, parsePoints, parseTerminals } from './spawns';
 
 const files = import.meta.glob('./rooms/*.txt', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
@@ -13,7 +14,7 @@ export function loadWorld(): Map<string, Room> {
     if (rooms.has(room.id)) throw new Error(`${path}: повтор id ${room.id}`);
     rooms.set(room.id, room);
   }
-  const errors = [...validateWorld(rooms), ...validateMission(rooms)];
+  const errors = [...validateWorld(rooms), ...validateMission(rooms), ...validateLifts(rooms)];
   if (errors.length) throw new Error(errors.join('\n'));
   return rooms;
 }
@@ -38,5 +39,31 @@ export function validateMission(rooms: Map<string, Room>): string[] {
   if (panels !== 1) errors.push(`щитков на карте ${panels}, нужен один`);
   if (bikes !== 1) errors.push(`мотоциклов на карте ${bikes}, нужен один`);
   if (sources !== 1) errors.push(`источников на карте ${sources}, нужен один`);
+  return errors;
+}
+
+// Лифты: шахта идёт вниз по выходам down; от головы героини над верхним этажом до нижнего этажа — только фон «.».
+export function validateLifts(rooms: Map<string, Room>): string[] {
+  const errors: string[] = [];
+  for (const r of rooms.values()) {
+    const s = parseLift(r.meta.lift, r.id);
+    if (!s) continue;
+    const top = s.stops[0], bottom = s.stops[s.stops.length - 1];
+    const shaft = shaftRooms(rooms, r.id, bottom);
+    if (!shaft) {
+      errors.push(`${r.id}: шахта лифта уходит вниз в комнату, которой нет`);
+      continue;
+    }
+    if (top < NINA.h) {
+      errors.push(`${r.id}: над верхним этажом лифта нет места для героини`);
+      continue;
+    }
+    for (let y = top - NINA.h; y < bottom; y++) {
+      const room = rooms.get(shaft[Math.floor(y / ROOM_H)])!;
+      for (let c = s.x; c < s.x + LIFT_W; c++) {
+        if (tileAt(room, c, y % ROOM_H) !== '.') errors.push(`${room.id}: в шахте лифта ${r.id} клетка ${c},${y % ROOM_H} не пустая`);
+      }
+    }
+  }
   return errors;
 }

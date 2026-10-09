@@ -30,6 +30,13 @@ export const NINA = {
 
 export const TRANSITION_TIME = 0.3;
 
+// Лифт: скорость — клеток/с, время — с, расстояние — клетки.
+export const LIFT = {
+  speed: 8,
+  dwell: 0.5, // после остановки стоит, прежде чем по удержанию вверх/вниз ехать дальше
+  callRange: 3, // E вызывает лифт, если центр героини ближе к середине шахты по X
+};
+
 export type NinaConfig = typeof NINA;
 
 // Анимация: числа «ощущения».

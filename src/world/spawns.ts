@@ -1,3 +1,5 @@
+import { ROOM_W } from '../config';
+
 export type ItemKind = 'knife' | 'stone' | 'wrench';
 export const ITEM_KINDS: ItemKind[] = ['knife', 'stone', 'wrench'];
 
@@ -39,6 +41,20 @@ export function parseFence(s: string | undefined, file: string): Fence | null {
   const m = /^(\d+),(\d+)\.\.(\d+)$/.exec(v);
   if (!m || Number(m[2]) > Number(m[3])) throw new Error(`${file}: плохая запись забора «${v}»`);
   return { x: Number(m[1]), top: Number(m[2]), bottom: Number(m[3]) };
+}
+
+export interface LiftSpawn { x: number; stops: number[] }
+
+// «x верх..низ floors=a,b» — лифт: платформа в колонках x..x+2; этажи (верх платформы) — верх, низ и floors между ними,
+// по возрастанию. Строки больше 24 — в комнатах ниже по выходам down (25 — строка 0 следующей).
+export function parseLift(s: string | undefined, file: string): LiftSpawn | null {
+  const v = (s ?? '').trim();
+  if (!v) return null;
+  const m = /^(\d+)\s+(\d+)\.\.(\d+)(?:\s+floors=(\d+(?:,\d+)*))?$/.exec(v);
+  const x = m ? Number(m[1]) : NaN, top = m ? Number(m[2]) : NaN, bottom = m ? Number(m[3]) : NaN;
+  const floors = m?.[4] ? m[4].split(',').map(Number) : [];
+  if (!m || x > ROOM_W - 3 || !(top < bottom) || floors.some(f => f <= top || f >= bottom)) throw new Error(`${file}: плохая запись лифта «${v}»`);
+  return { x, stops: [...new Set([top, ...floors, bottom])].sort((a, b) => a - b) };
 }
 
 export interface TerminalSpawn { x: number; bottom: number; controls: string[]; main: boolean }
