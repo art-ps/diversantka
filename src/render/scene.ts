@@ -1,6 +1,7 @@
 import { currentPose } from '../anim/animator';
 import { CLIPS } from '../anim/clips';
 import { J } from '../anim/clip';
+import { dogGlyphs } from '../anim/dog';
 import { simplePose } from '../anim/simple';
 import { NINA, ROOM_H, ROOM_W } from '../config';
 import { TRANSITION_TIME, type Game } from '../game';
@@ -106,6 +107,13 @@ function drawAndroids(b: GlyphBatch, g: Game, ox: number, oy: number, time: numb
   }
 }
 
+function drawDogs(b: GlyphBatch, g: Game, ox: number, oy: number): void {
+  for (const d of g.dogs) {
+    if (d.gone) continue;
+    for (const s of dogGlyphs(d, PAL.dog)) b.push(s.x - 0.5 + ox, s.y - 0.5 + oy, s.ch, s.color, s.size);
+  }
+}
+
 function drawNina(b: GlyphBatch, g: Game, ox: number, oy: number, time: number): void {
   const { body, facing } = g.nina;
   if (!g.nina.dead && blinkOff(g.nina.invulnT, time)) return;
@@ -162,6 +170,7 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     drawFlamers(b, g, ox, oy);
     drawItems(b, g.items, ox, oy);
     drawAndroids(b, g, ox, oy, time);
+    drawDogs(b, g, ox, oy);
     drawProjectiles(b, g.projectiles, ox, oy);
     drawParticles(b, g.particles, ox, oy);
     drawNina(b, g, ox, oy, time);
@@ -171,6 +180,7 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     drawFlamers(b, g, 0, 0);
     drawItems(b, g.items, 0, 0);
     drawAndroids(b, g, 0, 0, time);
+    drawDogs(b, g, 0, 0);
     drawProjectiles(b, g.projectiles, 0, 0);
     drawParticles(b, g.particles, 0, 0);
     drawNina(b, g, 0, 0, time);

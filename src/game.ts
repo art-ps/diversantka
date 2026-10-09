@@ -1,5 +1,6 @@
 import { FLAMER, FX, NINA, TRANSITION_TIME } from './config';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
+import { dogGlyphs } from './anim/dog';
 import { CLIPS } from './anim/clips';
 import { androidClip, playClip, simplePose } from './anim/simple';
 import { IDLE, type Intent } from './input/intent';
@@ -165,8 +166,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
         crumble(g.particles, figureGlyphs(simplePose(a.anim, CLIPS), cx, a.body.y + a.body.h, a.facing, PAL.android, false, '@'), -a.facing as 1 | -1);
         a.gone = true;
       } else if (d) {
-        // ponytail: символьный распад собаки — Task 5 (dogGlyphs); пока искры.
-        sparks(g.particles, cx, d.body.y + 0.7, PAL.danger, 14);
+        crumble(g.particles, dogGlyphs(d, PAL.dog), -d.facing as 1 | -1);
         d.gone = true;
       }
     }
