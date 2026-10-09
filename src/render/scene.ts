@@ -28,9 +28,15 @@ function isWall(room: Room, c: number, r: number) {
 // Клетки строки 0 под HUD (с полем в одну клетку) комната не рисует: свечение складывается, подложки нет.
 const CREDIT = 'движения: mocap.cs.cmu.edu';
 
+const HUD_STEP = 0.6; // шаг символов HUD — буквы уже клетки
+export const hudWidth = (s: string) => s.length * HUD_STEP;
+const ENERGY_LABEL = 'ЭНЕРГИЯ ';
+const LEFT_END = 1 + hudWidth(ENERGY_LABEL) + 10 * HUD_STEP;
+
 export const hudCell = (x: number, y: number, hudId: string, time: number) =>
-  (Math.round(y) === 0 && (Math.round(x) <= 19 || Math.round(x) >= ROOM_W - hudId.length - 2)) ||
-  (time < 8 && Math.round(y) === ROOM_H - 1 && Math.round(x) >= ROOM_W - CREDIT.length - 1);
+  (Math.round(y) === 0 &&
+    (Math.round(x) <= Math.ceil(LEFT_END) || Math.round(x) >= Math.floor(ROOM_W - 1 - hudWidth(hudId)) - 1)) ||
+  (time < 8 && Math.round(y) === ROOM_H - 1 && Math.round(x) >= Math.floor(ROOM_W - 0.5 - hudWidth(CREDIT)) - 1);
 
 export function drawRoom(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy: number, time: number, hudId: string): void {
   for (let r = 0; r < ROOM_H; r++) {
@@ -115,12 +121,16 @@ export function drawFloaters(b: Pick<GlyphBatch, 'push'>, list: Floater[], ox: n
 
 function drawHud(b: GlyphBatch, g: Game, time: number): void {
   const filled = Math.round((g.nina.energy / NINA.energyMax) * 10);
-  b.text(1, 0, 'ЭНЕРГИЯ ', PAL.hud);
-  b.text(9, 0, '█'.repeat(filled), g.nina.energy < NINA.lowEnergy ? PAL.danger : PAL.hud);
-  b.text(9 + filled, 0, '░'.repeat(10 - filled), PAL.hudDim);
-  b.text(ROOM_W - g.roomId.length - 1, 0, g.roomId, PAL.hudDim);
-  if (g.nina.dead) b.text(9, 12, 'ПОГИБЛА · ПРЫЖОК — ЗАНОВО', PAL.danger);
-  if (time < 8) b.text(ROOM_W - CREDIT.length, ROOM_H - 1, CREDIT, PAL.hudDim);
+  const barX = 1 + hudWidth(ENERGY_LABEL);
+  b.text(1, 0, ENERGY_LABEL, PAL.hud, HUD_STEP);
+  b.text(barX, 0, '█'.repeat(filled), g.nina.energy < NINA.lowEnergy ? PAL.danger : PAL.hud, HUD_STEP);
+  b.text(barX + hudWidth('█'.repeat(filled)), 0, '░'.repeat(10 - filled), PAL.hudDim, HUD_STEP);
+  b.text(ROOM_W - 1 - hudWidth(g.roomId), 0, g.roomId, PAL.hudDim, HUD_STEP);
+  if (g.nina.dead) {
+    const msg = 'ПОГИБЛА · ПРЫЖОК — ЗАНОВО';
+    b.text((ROOM_W - hudWidth(msg)) / 2, 12, msg, PAL.danger, HUD_STEP);
+  }
+  if (time < 8) b.text(ROOM_W - 0.5 - hudWidth(CREDIT), ROOM_H - 1, CREDIT, PAL.hudDim, HUD_STEP);
 }
 
 export function drawGame(b: GlyphBatch, g: Game, time: number): void {

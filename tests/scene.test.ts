@@ -39,7 +39,7 @@ describe('drawRoom в полклетки', () => {
 
   it('под надписями HUD в верхнем ряду ничего не рисуется', () => {
     const g = draw({ 0: '#'.repeat(40) });
-    expect(g.filter(p => cellOf(p)[1] === 0 && cellOf(p)[0] <= 19)).toHaveLength(0);
+    expect(g.filter(p => cellOf(p)[1] === 0 && cellOf(p)[0] <= 12)).toHaveLength(0);
   });
 });
 

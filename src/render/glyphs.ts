@@ -95,8 +95,8 @@ export class GlyphBatch {
     d[o + 7] = scale;
   }
 
-  text(x: number, y: number, s: string, c: Color): void {
-    [...s].forEach((ch, i) => this.push(x + i, y, ch, c));
+  text(x: number, y: number, s: string, c: Color, step = 1): void {
+    [...s].forEach((ch, i) => this.push(x + i * step, y, ch, c));
   }
 
   draw(gridW: number, gridH: number): void {
