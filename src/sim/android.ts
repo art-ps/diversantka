@@ -120,11 +120,16 @@ export function androidPunchBox(a: Android): Rect | null {
   return { x: a.facing > 0 ? b.x + b.w : b.x - p.reach, y: b.y + p.top * b.h, w: p.reach, h: (p.bottom - p.top) * b.h };
 }
 
-export function hitAndroid(a: Android, damage: number, dir: 1 | -1): void {
-  if (a.state === 'dead' || a.invulnT > 0) return;
+export type HitResult = 'none' | 'blocked' | 'hit' | 'killed';
+
+export function hitAndroid(a: Android, damage: number, dir: 1 | -1): HitResult {
+  if (a.state === 'dead') return 'none';
+  if (a.invulnT > 0) return 'blocked';
   a.invulnT = ANDROID.hitInvuln;
   a.hp -= damage;
-  setState(a, a.hp <= 0 ? 'dead' : 'hurt');
+  const killed = a.hp <= 0;
+  setState(a, killed ? 'dead' : 'hurt');
   if (a.hp < 0) a.hp = 0;
   a.facing = dir > 0 ? -1 : 1; // разворачивается к ударившему
+  return killed ? 'killed' : 'hit';
 }

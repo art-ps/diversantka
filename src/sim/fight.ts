@@ -1,11 +1,13 @@
 import { ANDROID, COMBAT } from '../config';
-import { androidPunchBox, hitAndroid, type Android } from './android';
+import { androidPunchBox, hitAndroid, type Android, type HitResult } from './android';
 import { attackBox } from './combat';
 import { projectileHit, type Projectile } from './items';
 import { hurtNina, type Nina } from './nina';
 import type { Room } from '../world/room';
 import { moveX } from './physics';
 import { bodyRect, overlap } from './rect';
+
+export interface HitEvent { id: string; result: HitResult }
 
 const isDead = (a: Android) => a.state === 'dead'; // функция — чтобы TS не сужал state после hitAndroid
 const dirOf = (vx: number): 1 | -1 => (vx >= 0 ? 1 : -1);
@@ -17,7 +19,7 @@ function push(a: Android, dir: 1 | -1, dist: number, room: Room): void {
 }
 
 // Все попадания одного шага. Возвращает id андроидов, убитых в этом шаге.
-export function resolveCombat(n: Nina, androids: Android[], projectiles: Projectile[], room: Room): string[] {
+export function resolveCombat(n: Nina, androids: Android[], projectiles: Projectile[], room: Room, events: HitEvent[] = []): string[] {
   const killed: string[] = [];
   const box = attackBox(n.body, n.facing, n.attack);
   const nr = bodyRect(n.body);
@@ -26,14 +28,15 @@ export function resolveCombat(n: Nina, androids: Android[], projectiles: Project
     const ar = bodyRect(a.body);
     if (box && n.attack && !n.attack.hits.includes(a.id) && overlap(box, ar)) {
       n.attack.hits.push(a.id);
-      const counted = a.invulnT <= 0;
-      hitAndroid(a, COMBAT[n.attack.kind].damage, n.facing);
-      if (counted && n.attack.kind === 'kick') push(a, n.facing, COMBAT.kick.push, room);
+      const r = hitAndroid(a, COMBAT[n.attack.kind].damage, n.facing);
+      if (r !== 'none') events.push({ id: a.id, result: r });
+      if ((r === 'hit' || r === 'killed') && n.attack.kind === 'kick') push(a, n.facing, COMBAT.kick.push, room);
     }
     for (const p of projectiles) {
       if (p.from === 'nina' && !isDead(a) && projectileHit(p, ar)) {
         p.alive = false;
-        hitAndroid(a, p.damage, dirOf(p.vx));
+        const r = hitAndroid(a, p.damage, dirOf(p.vx));
+        if (r !== 'none') events.push({ id: a.id, result: r });
       }
     }
     const pb = androidPunchBox(a);

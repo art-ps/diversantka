@@ -4,6 +4,7 @@ import { J } from '../anim/clip';
 import { simplePose } from '../anim/simple';
 import { NINA, ROOM_H, ROOM_W } from '../config';
 import { TRANSITION_TIME, type Game } from '../game';
+import { floaterView, type Floater } from '../sim/floaters';
 import type { Item, Projectile } from '../sim/items';
 import type { Room } from '../world/room';
 import { drawFigure } from './figure';
@@ -98,6 +99,17 @@ function drawNina(b: GlyphBatch, g: Game, ox: number, oy: number, time: number):
   if (g.nina.held) b.push(x + facing * pose[2 * J.rHand] - 0.5, y - pose[2 * J.rHand + 1] - 0.5, ITEM_GLYPH[g.nina.held], PAL.item, 0.5);
 }
 
+const FLOAT_COLOR = { damage: PAL.danger, enemy: PAL.item, blocked: PAL.hudDim } as const;
+
+export function drawFloaters(b: Pick<GlyphBatch, 'push'>, list: Floater[], ox: number, oy: number): void {
+  for (const f of list) {
+    const v = floaterView(f);
+    const c = FLOAT_COLOR[f.kind];
+    const color: Color = [c[0], c[1], c[2], c[3] * v.alpha];
+    [...f.text].forEach((ch, i) => b.push(v.x - f.text.length / 2 + i + ox, v.y - 0.5 + oy, ch, color));
+  }
+}
+
 function drawHud(b: GlyphBatch, g: Game, time: number): void {
   const filled = Math.round((g.nina.energy / NINA.energyMax) * 10);
   b.text(1, 0, 'ЭНЕРГИЯ ', PAL.hud);
@@ -121,12 +133,14 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     drawAndroids(b, g, ox, oy, time);
     drawProjectiles(b, g.projectiles, ox, oy);
     drawNina(b, g, ox, oy, time);
+    drawFloaters(b, g.floaters, ox, oy);
   } else {
     drawRoom(b, cur, 0, 0, time, g.roomId);
     drawItems(b, g.items, 0, 0);
     drawAndroids(b, g, 0, 0, time);
     drawProjectiles(b, g.projectiles, 0, 0);
     drawNina(b, g, 0, 0, time);
+    drawFloaters(b, g.floaters, 0, 0);
   }
   drawHud(b, g, time);
 }

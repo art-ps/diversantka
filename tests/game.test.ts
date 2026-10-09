@@ -135,3 +135,39 @@ it('убитый андроид не возвращается после сме�
   enterRoom(g, 'lab-1');
   expect(g.androids).toHaveLength(0);
 });
+
+it('потеря энергии от падения всплывает числом над героиней', () => {
+  const g = createGame(loadRoomsFs(), { room: 'cave-1', x: 30, bottom: 2 }); // высоко над полом пещеры
+  for (let i = 0; i < 120 && g.floaters.length === 0; i++) stepGame(g, I(), DT); // число живёт 0.8 с — смотрим сразу после приземления
+  const dmg = g.floaters.filter(f => f.kind === 'damage');
+  expect(dmg).toHaveLength(1);
+  expect(dmg[0].text).toMatch(/^-\d+$/);
+});
+
+it('восстановление энергии не рождает чисел', () => {
+  const g = createGame(loadRoomsFs(), { room: 'cave-1', x: 30, bottom: 23 });
+  g.nina.energy = 50;
+  for (let i = 0; i < 60; i++) stepGame(g, I(), DT);
+  expect(g.floaters).toHaveLength(0);
+});
+
+it('попадание по андроиду — «-1» над ним, добивание — «ВЫВЕДЕН»', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
+  const a = g.androids[0];
+  const stone = () => ({ kind: 'stone' as const, x: a.body.x + 0.5, y: a.body.y + 1, vx: 0.1, vy: 0, from: 'nina' as const, damage: 1, alive: true });
+  g.projectiles.push(stone());
+  stepGame(g, I(), DT);
+  expect(g.floaters.map(f => f.text)).toContain('-1');
+  a.invulnT = 0;
+  a.hp = 1;
+  g.projectiles.push(stone());
+  stepGame(g, I(), DT);
+  expect(g.floaters.map(f => f.text)).toContain('ВЫВЕДЕН');
+});
+
+it('смена комнаты убирает числа', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
+  g.floaters.push({ text: '-5', x: 5, y: 18, t: 0, kind: 'damage' });
+  enterRoom(g, 'lab-2');
+  expect(g.floaters).toHaveLength(0);
+});

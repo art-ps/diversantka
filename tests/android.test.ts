@@ -50,6 +50,16 @@ describe('андроид: патруль', () => {
 });
 
 describe('андроид: атаки', () => {
+  it('hitAndroid сообщает результат: попадание, блок, вывод из строя', () => {
+    const a = android();
+    expect(hitAndroid(a, 1, 1)).toBe('hit');
+    expect(hitAndroid(a, 1, 1)).toBe('blocked');
+    a.invulnT = 0;
+    a.hp = 1;
+    expect(hitAndroid(a, 1, 1)).toBe('killed');
+    expect(hitAndroid(a, 1, 1)).toBe('none');
+  });
+
   it('издалека бросает нож на уровне головы после замаха', () => {
     const a = android(20);
     const n = ninaAt(30);
