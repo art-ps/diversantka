@@ -53,6 +53,7 @@ export interface Game {
   dmgAcc: number; // накопленный непоказанный урон
   dmgT: number; // сколько он копится, с
   inWater: boolean;
+  splashAcc: number; // накопленные брызги при ходьбе по воде
   mission: Mission;
   tapes: Tape[]; // ленты комнаты, ещё не подобранные
   terminals: TerminalSpawn[]; // терминалы комнаты
@@ -74,7 +75,7 @@ export interface Game {
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
-    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
+    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
     lifts: createLifts(rooms), paused: false, seen: new Set(),
   };
   enterRoom(g, start.room);
@@ -359,7 +360,13 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   const wet = touchesTile(g.nina, room, '~');
   const feet = g.nina.body;
   if (wet && !g.inWater) splash(g.particles, feet.x + feet.w / 2, feet.y + feet.h - 0.3, FX.splashBurst);
-  else if (wet && Math.abs(feet.vx) > 1 && Math.random() < FX.splashPerSec * dt) splash(g.particles, feet.x + feet.w / 2, feet.y + feet.h - 0.3, 1);
+  else if (wet && Math.abs(feet.vx) > 1) {
+    g.splashAcc += FX.splashPerSec * dt;
+    if (g.splashAcc >= 1) {
+      g.splashAcc -= 1;
+      splash(g.particles, feet.x + feet.w / 2, feet.y + feet.h - 0.3, 1);
+    }
+  } else g.splashAcc = 0;
   g.inWater = wet;
   const { picked, thrown } = useThrowButton(g.nina, it, g.items);
   if (picked) {
