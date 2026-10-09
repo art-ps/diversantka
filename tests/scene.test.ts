@@ -16,6 +16,17 @@ const cellOf = (g: G) => [Math.floor(g.x + 0.5), Math.floor(g.y + 0.5)];
 const inCell = (c: number, r: number) => (g: G) => cellOf(g)[0] === c && cellOf(g)[1] === r;
 
 describe('drawRoom в полклетки', () => {
+  it('вода: рябь бежит — символы клетки меняются со временем', () => {
+    const at = (time: number) => {
+      const out: string[] = [];
+      drawRoom({ push: (x, y, ch) => { if (Math.floor(x + 0.5) === 5 && Math.floor(y + 0.5) === 10) out.push(ch); } }, roomOf({ 10: '.....~' }), 0, 0, time, 'test');
+      return out.join('');
+    };
+    const frames = new Set([0, 0.2, 0.4, 0.6, 0.8, 1.0].map(at));
+    expect(frames.size).toBeGreaterThan(1);
+    for (const f of frames) for (const ch of f) expect('~-.').toContain(ch);
+  });
+
   it('стена — четыре мелких символа на клетку', () => {
     const g = draw({ 10: '..........#' }).filter(inCell(10, 10));
     expect(g).toHaveLength(4);

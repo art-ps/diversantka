@@ -12,9 +12,9 @@ import { resolveCombat, resolveDogs, type HitEvent } from './sim/fight';
 import { spawnFloater, stepFloaters, type Floater } from './sim/floaters';
 import { stepProjectiles, useThrowButton, type Item, type Projectile } from './sim/items';
 import { burnNina, createNina, updateNina, type Nina } from './sim/nina';
-import { crumble, smoke, sparks, stepParticles, type Particle } from './sim/particles';
+import { crumble, smoke, sparks, splash, stepParticles, type Particle } from './sim/particles';
 import { bodyRect, overlap } from './sim/rect';
-import { touchHazards } from './sim/hazards';
+import { touchesTile, touchHazards } from './sim/hazards';
 import { exitFor } from './sim/transition';
 import type { Dir, Room } from './world/room';
 import { figureGlyphs } from './render/figure';
@@ -44,12 +44,13 @@ export interface Game {
   dogs: Dog[];
   dmgAcc: number; // накопленный непоказанный урон
   dmgT: number; // сколько он копится, с
+  inWater: boolean;
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
-    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0,
+    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false,
   };
   enterRoom(g, start.room);
   return g;
@@ -80,6 +81,7 @@ export function enterRoom(g: Game, id: string): void {
   g.particles = [];
   g.dmgAcc = 0;
   g.dmgT = 0;
+  g.inWater = false;
 }
 
 export function stepGame(g: Game, it: Intent, dt: number): void {
@@ -114,6 +116,11 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   const e0 = g.nina.energy;
   updateNina(g.nina, it, room, dt);
   touchHazards(g.nina, room, dt);
+  const wet = touchesTile(g.nina, room, '~');
+  const feet = g.nina.body;
+  if (wet && !g.inWater) splash(g.particles, feet.x + feet.w / 2, feet.y + feet.h - 0.3, FX.splashBurst);
+  else if (wet && Math.abs(feet.vx) > 1 && Math.random() < FX.splashPerSec * dt) splash(g.particles, feet.x + feet.w / 2, feet.y + feet.h - 0.3, 1);
+  g.inWater = wet;
   const { picked, thrown } = useThrowButton(g.nina, it, g.items);
   if (picked) {
     g.taken.add(picked.id);

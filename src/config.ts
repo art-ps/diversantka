@@ -98,6 +98,9 @@ export const FX = {
   smokeLife: 2.2,
   smokeRise: 1.6, // клеток/с вверх
   smokePuff: 6, // клуб дыма на месте рассыпавшегося врага
+  splashBurst: 8, // капель при входе в воду
+  splashPerSec: 12, // при ходьбе по воде
+  splashLife: 0.5,
   staticIn: 1, // помехи при смерти нарастают за, с
   staticDensity: 0.5, // доля полклеток со «снегом»
 };

@@ -65,7 +65,9 @@ export function drawRoom(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy
           } else if (t === 'H') {
             sub(b, x, y, i, j, '|', PAL.ladder);
           } else if (t === '~') {
-            sub(b, x, y, i, j, '~', dim(PAL.water, 0.7 + 0.3 * Math.sin(time * 3 + 2 * c + i)));
+            // Рябь (по мотивам pond-ripples из ascii.rest): волна бежит вдоль воды, на гребне — блик.
+            const w = Math.sin(time * 3 - (2 * c + i) * 0.9 + (2 * r + j) * 1.3);
+            sub(b, x, y, i, j, w > 0.3 ? '~' : w > -0.5 ? '-' : '.', dim(PAL.water, w > 0.85 ? 1 : 0.55 + 0.25 * (w + 1) / 2));
           }
         }
       }

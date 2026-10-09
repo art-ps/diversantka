@@ -5,7 +5,7 @@ import { createGame, enterRoom, stepGame } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
 import { PAL } from '../src/render/palette';
 import { hurtNina } from '../src/sim/nina';
-import { loadRoomsFs } from './helpers';
+import { loadRoomsFs, roomOf } from './helpers';
 
 const I = (p: Partial<Intent> = {}): Intent => ({ ...IDLE, ...p });
 
@@ -239,4 +239,20 @@ it('дым над ямой: есть, выше огня, и его число о
   for (const p of smokeP) expect(p.y).toBeLessThan(pit.y - 1);
   const width = pit.field.w / 2;
   expect(smokeP.length).toBeLessThanOrEqual(Math.ceil(FX.smokePerSec * width * FX.smokeLife * 2));
+});
+
+it('брызги: при входе в воду — всплеск, стоишь — новых нет, идёшь — есть', () => {
+  const FLOOR = '#'.repeat(40);
+  const rooms = new Map([['w', roomOf({ 21: '.'.repeat(10) + '~~~~~~', 22: FLOOR })]]);
+  const g = createGame(rooms, { room: 'w', x: 6, bottom: 22 });
+  const blue = () => g.particles.filter(p => p.color === PAL.water).length;
+  for (let i = 0; i < 10; i++) stepGame(g, IDLE, DT);
+  expect(blue()).toBe(0);
+  for (let i = 0; i < 40 && !g.inWater; i++) stepGame(g, { ...IDLE, moveX: 1 }, DT);
+  expect(g.inWater).toBe(true);
+  expect(blue()).toBeGreaterThanOrEqual(FX.splashBurst);
+  for (let i = 0; i < Math.round(1 / DT); i++) stepGame(g, IDLE, DT);
+  expect(blue()).toBe(0); // постояла секунду — старые упали, новых нет
+  for (let i = 0; i < 20; i++) stepGame(g, { ...IDLE, moveX: i % 10 < 5 ? 1 : -1 }, DT); // ходит туда-сюда, не выходя из воды
+  expect(blue()).toBeGreaterThan(0);
 });

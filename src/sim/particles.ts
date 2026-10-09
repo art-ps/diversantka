@@ -60,3 +60,14 @@ export function smoke(ps: Particle[], x: number, y: number, n: number, rng = Mat
     });
   }
 }
+
+// Брызги: капли вверх и в стороны, падают.
+export function splash(ps: Particle[], x: number, y: number, n: number, rng = Math.random): void {
+  for (let i = 0; i < n; i++) {
+    ps.push({
+      ch: rng() < 0.5 ? '.' : ',', x: x + (rng() - 0.5) * 1.2, y,
+      vx: (rng() - 0.5) * 5, vy: -4 - 4 * rng(),
+      t: 0, life: FX.splashLife * (0.7 + 0.6 * rng()), gravity: 30, size: 0.5, color: PAL.water,
+    });
+  }
+}

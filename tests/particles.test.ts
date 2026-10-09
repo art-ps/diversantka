@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FX } from '../src/config';
 import { PAL } from '../src/render/palette';
-import { crumble, particleAlpha, smoke, sparks, stepParticles, type Particle } from '../src/sim/particles';
+import { crumble, particleAlpha, smoke, sparks, splash, stepParticles, type Particle } from '../src/sim/particles';
 
 const rng = () => 0.5;
 const C = [1, 1, 1, 1] as const;
@@ -43,4 +43,11 @@ it('дым: серые `. , ~`, поднимается и сносится, га
     expect(p.vy).toBeLessThan(0);
     expect(p.life).toBeCloseTo(FX.smokeLife, 1);
   }
+});
+
+it('брызги: синие капли вверх, падают', () => {
+  const ps: Particle[] = [];
+  splash(ps, 5, 22, 4, () => 0.5);
+  expect(ps).toHaveLength(4);
+  for (const p of ps) { expect(p.color).toEqual(PAL.water); expect(p.vy).toBeLessThan(0); expect(p.gravity).toBeGreaterThan(0); }
 });
