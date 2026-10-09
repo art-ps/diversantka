@@ -313,7 +313,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   }
   g.floaters = stepFloaters(g.floaters, dt);
   g.particles = stepParticles(g.particles, dt);
-  const ex = exitFor(g.nina.body, room);
+  const ex = exitFor(g.nina.body, room, id => g.rooms.get(id));
   if (ex) {
     g.nina.body.x += ex.dx;
     g.nina.body.y += ex.dy;

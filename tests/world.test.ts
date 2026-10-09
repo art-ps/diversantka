@@ -17,7 +17,7 @@ const bottomOf = (g: Game) => g.nina.body.y + g.nina.body.h;
 
 it('комнаты демо-карты читаются и связаны взаимно', () => {
   const rooms = loadRoomsFs();
-  expect([...rooms.keys()].sort()).toEqual(['cave-1', 'evm-1', 'garage-1', 'lab-1', 'lab-2', 'power-1', 'secret-1']);
+  expect([...rooms.keys()].sort()).toEqual(['cave-1', 'evm-1', 'garage-1', 'lab-1', 'lab-2', 'power-1', 'roof-1', 'sea-1', 'sea-2', 'secret-1', 'slope-1']);
   expect(validateWorld(rooms)).toEqual([]);
   expect(validateMission(rooms)).toEqual([]);
   expect(() => loadWorld()).not.toThrow();
@@ -158,4 +158,38 @@ it('cave-1 → secret-1 сквозь фальш-стену, к источник�
   expect(g.roomId).toBe('cave-1');
   expect(bottomOf(g)).toBeCloseTo(23);
   expect(g.nina.energy).toBe(NINA.energyMax);
+});
+
+it('slope-1: со скалы вниз по уступам и в дверь lab-1 — без урона', () => {
+  const g = createGame(loadRoomsFs(), { room: 'slope-1', x: 2, bottom: 14 });
+  run(g, {}, 5);
+  run(g, { moveX: 1 }, 600, () => g.roomId === 'lab-1');
+  run(g, {}, 30);
+  expect(g.roomId).toBe('lab-1');
+  expect(bottomOf(g)).toBeCloseTo(22);
+  expect(g.nina.energy).toBe(NINA.energyMax);
+  run(g, { moveX: -1 }, 300, () => g.roomId === 'slope-1');
+  run(g, {}, 30);
+  expect(g.roomId).toBe('slope-1');
+  expect(bottomOf(g)).toBeCloseTo(22);
+});
+
+it('slope-1: с козырька над дверью вправо не пройти — в lab-1 там стена', () => {
+  const g = createGame(loadRoomsFs(), { room: 'slope-1', x: 37, bottom: 14 });
+  run(g, {}, 5);
+  run(g, { moveX: 1 }, 120);
+  expect(g.roomId).toBe('slope-1');
+  expect(bottomOf(g)).toBeCloseTo(14);
+});
+
+it('roof-1 ↔ lab-1 через люк по лестнице, без урона', () => {
+  const g = createGame(loadRoomsFs(), { room: 'roof-1', x: 2.9, bottom: 22 });
+  run(g, {}, 5);
+  run(g, { down: true }, 900, () => g.roomId === 'lab-1' && g.nina.state === 'ground');
+  expect(g.roomId).toBe('lab-1');
+  expect(bottomOf(g)).toBeCloseTo(22);
+  expect(g.nina.energy).toBe(NINA.energyMax);
+  run(g, { up: true }, 900, () => g.roomId === 'roof-1' && g.nina.state === 'ground');
+  expect(g.roomId).toBe('roof-1');
+  expect(bottomOf(g)).toBeCloseTo(22);
 });

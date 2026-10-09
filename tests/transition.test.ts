@@ -24,3 +24,12 @@ it('выхода нет — тело остаётся в комнате и ос�
 it('внутри комнаты — null', () => {
   expect(exitFor(body(10, 10), roomOf({}, { right: 'b' }))).toBeNull();
 });
+
+it('за краем — стена соседней комнаты: переход не случается, край работает как стена', () => {
+  const wall = roomOf({ 10: '#', 11: '#', 12: '#', 13: '#', 14: '#', 15: '#' });
+  const b = body(39.5, 10);
+  expect(exitFor(b, roomOf({}, { right: 'b' }), () => wall)).toBeNull();
+  expect(b.x + b.w / 2).toBeLessThan(40);
+  expect(b.vx).toBe(0);
+  expect(exitFor(body(39.5, 10), roomOf({}, { right: 'b' }), () => roomOf({}))?.to).toBe('b');
+});
