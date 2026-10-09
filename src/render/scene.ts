@@ -3,7 +3,7 @@ import { CLIPS } from '../anim/clips';
 import { J } from '../anim/clip';
 import { dogGlyphs } from '../anim/dog';
 import { simplePose } from '../anim/simple';
-import { NINA, ROOM_H, ROOM_W } from '../config';
+import { FX, NINA, ROOM_H, ROOM_W } from '../config';
 import { TRANSITION_TIME, type Game } from '../game';
 import { fireCells, heatColor, type Fire } from '../fx/fires';
 import { HEAT_RAMP } from '../fx/heat';
@@ -137,6 +137,25 @@ export function drawFloaters(b: Pick<GlyphBatch, 'push'>, list: Floater[], ox: n
   }
 }
 
+const SNOW = ' .:░▒';
+
+// Помехи старого телевизора (по мотивам tv-static из ascii.rest): снег по полклеткам и бегущая светлая полоса.
+export function drawStatic(b: Pick<GlyphBatch, 'push'>, deadT: number, time: number): void {
+  const k = Math.min(1, deadT / FX.staticIn);
+  if (k <= 0) return;
+  const frame = Math.floor(time * 20);
+  for (let r = 0; r < ROOM_H * 2; r++) {
+    const bar = ((r / (ROOM_H * 2) - time * 0.3) % 1 + 1) % 1 < 0.08;
+    for (let c = 0; c < ROOM_W * 2; c++) {
+      const h = hash(c + frame * 131, r + frame * 71);
+      if ((h % 1000) / 1000 >= k * FX.staticDensity * (bar ? 1.6 : 1)) continue;
+      const ch = SNOW[1 + ((h >>> 10) % (SNOW.length - 1))];
+      const a = PAL.static[3] * k * (bar ? 1.8 : 1);
+      b.push(c / 2 + 0.25 - 0.5, r / 2 + 0.25 - 0.5, ch, [PAL.static[0], PAL.static[1], PAL.static[2], a], 0.5);
+    }
+  }
+}
+
 function drawHud(b: GlyphBatch, g: Game, time: number): void {
   const filled = Math.round((g.nina.energy / NINA.energyMax) * 10);
   const barX = 1 + hudWidth(ENERGY_LABEL);
@@ -192,5 +211,6 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     drawNina(b, g, 0, 0, time);
     drawFloaters(b, g.floaters, 0, 0);
   }
+  if (g.nina.dead) drawStatic(b, g.nina.deadT, time);
   drawHud(b, g, time);
 }

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { drawFloaters, drawItems, drawProjectiles, drawRoom } from '../src/render/scene';
-import { roomOf } from './helpers';
+import { drawFloaters, drawGame, drawItems, drawProjectiles, drawRoom, drawStatic } from '../src/render/scene';
+import { FX, ROOM_H, ROOM_W } from '../src/config';
+import { createGame } from '../src/game';
+import { loadRoomsFs, roomOf } from './helpers';
 
 type G = { x: number; y: number; ch: string; s: number };
 const draw = (rows: Record<number, string>) => {
@@ -75,5 +77,37 @@ describe('всплывающие числа', () => {
   });
   it('огненная яма — drawRoom символов `^` не рисует (их рисует огонь)', () => {
     expect(draw({ 10: '.....^' }).filter(inCell(5, 10)).filter(p => p.ch === '^')).toHaveLength(0);
+  });
+});
+
+describe('помехи при смерти', () => {
+  const collect = (deadT: number, time: number) => {
+    const out: { x: number; y: number; ch: string; a: number }[] = [];
+    drawStatic({ push: (x, y, ch, c) => { out.push({ x, y, ch, a: c[3] }); } }, deadT, time);
+    return out;
+  };
+
+  it('в момент смерти помех нет, через staticIn — много', () => {
+    expect(collect(0, 3)).toHaveLength(0);
+    const full = collect(FX.staticIn, 3);
+    expect(full.length).toBeGreaterThan(ROOM_W * ROOM_H * 4 * FX.staticDensity * 0.6);
+    for (const g of full) expect(' .:░▒').toContain(g.ch);
+  });
+
+  it('снег меняется со временем, но один и тот же кадр — одинаковый', () => {
+    expect(collect(2, 3)).toEqual(collect(2, 3));
+    expect(collect(2, 3)).not.toEqual(collect(2, 3.2));
+  });
+
+  it('HUD поверх помех: надпись рисуется после снега', () => {
+    const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
+    g.nina.dead = true; g.nina.deadT = 2;
+    const seq: string[] = [];
+    const b = { push: (_x: number, _y: number, ch: string) => { seq.push(ch); }, text: (_x: number, _y: number, s: string) => { seq.push(`TEXT:${s}`); } };
+    drawGame(b as never, g, 3);
+    const lastSnow = seq.map((s, i) => ('░▒'.includes(s) ? i : -1)).reduce((a, b) => Math.max(a, b), -1);
+    const msg = seq.findIndex(s => s.startsWith('TEXT:ПОГИБЛА'));
+    expect(lastSnow).toBeGreaterThan(-1);
+    expect(msg).toBeGreaterThan(lastSnow);
   });
 });

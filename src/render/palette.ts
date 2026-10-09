@@ -23,4 +23,5 @@ export const PAL = {
   fireHot: [1.0, 0.85, 0.35, 1] as Color,
   danger: [1.0, 0.3, 0.2, 1] as Color,
   dog: [0.85, 0.6, 1.0, 1] as Color,
+  static: [0.62, 0.68, 0.75, 0.4] as Color,
 };
