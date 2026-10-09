@@ -1,4 +1,5 @@
 import { FLAMER, FX, NINA, TRANSITION_TIME } from './config';
+import { jetFire, pitFires, stepFires, type Fire } from './fx/fires';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { dogGlyphs } from './anim/dog';
 import { CLIPS } from './anim/clips';
@@ -39,6 +40,7 @@ export interface Game {
   floaters: Floater[];
   particles: Particle[];
   flamers: Flamer[];
+  fires: Fire[];
   dogs: Dog[];
   dmgAcc: number; // накопленный непоказанный урон
   dmgT: number; // сколько он копится, с
@@ -47,7 +49,7 @@ export interface Game {
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
-    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], dogs: [], dmgAcc: 0, dmgT: 0,
+    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0,
   };
   enterRoom(g, start.room);
   return g;
@@ -68,6 +70,7 @@ export function enterRoom(g: Game, id: string): void {
   g.flamers = enemies
     .filter((e): e is { s: FlamerSpawn; id: string } => e.s.kind === 'flamer')
     .map(e => createFlamer(e.id, e.s));
+  g.fires = [...pitFires(room), ...g.flamers.map(jetFire)];
   g.dogs = enemies
     .filter((e): e is { s: DogSpawn; id: string } => e.s.kind === 'dog')
     .map(e => createDog(e.id, e.s))
@@ -103,6 +106,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     g.dmgT = 0;
     g.floaters = stepFloaters(g.floaters, dt);
     g.particles = stepParticles(g.particles, dt);
+    stepFires(g.fires, g.flamers, dt);
     return;
   }
   const room = g.rooms.get(g.roomId)!;
@@ -139,6 +143,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
       sparks(g.particles, f.x + f.dir * 0.3, f.y, PAL.fireHot, 2);
     }
   }
+  stepFires(g.fires, g.flamers, dt);
   const lost = e0 - g.nina.energy;
   const nb = g.nina.body;
   if (lost > 0) {

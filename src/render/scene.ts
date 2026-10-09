@@ -5,6 +5,8 @@ import { dogGlyphs } from '../anim/dog';
 import { simplePose } from '../anim/simple';
 import { NINA, ROOM_H, ROOM_W } from '../config';
 import { TRANSITION_TIME, type Game } from '../game';
+import { fireCells, heatColor, type Fire } from '../fx/fires';
+import { HEAT_RAMP } from '../fx/heat';
 import { flamerPhase } from '../sim/flamer';
 import { floaterView, type Floater } from '../sim/floaters';
 import type { Item, Projectile } from '../sim/items';
@@ -64,8 +66,6 @@ export function drawRoom(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy
             sub(b, x, y, i, j, '|', PAL.ladder);
           } else if (t === '~') {
             sub(b, x, y, i, j, '~', dim(PAL.water, 0.7 + 0.3 * Math.sin(time * 3 + 2 * c + i)));
-          } else if (t === '^') {
-            if (j === 1) sub(b, x, y, i, j, '^', dim(PAL.hazard, 0.7 + 0.3 * Math.sin(time * 9 + 2 * c + i)));
           }
         }
       }
@@ -158,6 +158,10 @@ function drawFlamers(b: GlyphBatch, g: Game, ox: number, oy: number): void {
   }
 }
 
+export function drawFires(b: Pick<GlyphBatch, 'push'>, fires: Fire[], ox: number, oy: number): void {
+  for (const fire of fires) for (const c of fireCells(fire)) b.push(c.x - 0.5 + ox, c.y - 0.5 + oy, HEAT_RAMP[c.level], heatColor(c.level), 0.5);
+}
+
 export function drawGame(b: GlyphBatch, g: Game, time: number): void {
   const cur = g.rooms.get(g.roomId)!;
   if (g.transition) {
@@ -167,6 +171,7 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     const ox = v[0] * ROOM_W * (1 - e), oy = v[1] * ROOM_H * (1 - e);
     drawRoom(b, g.rooms.get(g.transition.from)!, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time, g.roomId);
     drawRoom(b, cur, ox, oy, time, g.roomId);
+    drawFires(b, g.fires, ox, oy);
     drawFlamers(b, g, ox, oy);
     drawItems(b, g.items, ox, oy);
     drawAndroids(b, g, ox, oy, time);
@@ -177,6 +182,7 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     drawFloaters(b, g.floaters, ox, oy);
   } else {
     drawRoom(b, cur, 0, 0, time, g.roomId);
+    drawFires(b, g.fires, 0, 0);
     drawFlamers(b, g, 0, 0);
     drawItems(b, g.items, 0, 0);
     drawAndroids(b, g, 0, 0, time);

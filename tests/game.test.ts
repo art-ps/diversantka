@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import { ANDROID, DT, FLAMER, NINA } from '../src/config';
+import { pitFires } from '../src/fx/fires';
 import { createGame, enterRoom, stepGame } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
 import { hurtNina } from '../src/sim/nina';
@@ -218,4 +219,12 @@ it('убитая собака рассыпается и не возвращае�
   enterRoom(g, 'lab-2');
   enterRoom(g, 'cave-1');
   expect(g.dogs).toHaveLength(0);
+});
+
+it('огни: строятся при входе в комнату заново', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
+  expect(g.fires.filter(f => f.kind === 'pit').length).toBeGreaterThan(0);
+  enterRoom(g, 'lab-2');
+  expect(g.fires.some(f => f.kind === 'jet')).toBe(true);
+  expect(g.fires.every(f => f.kind === 'jet' || pitFires(g.rooms.get('lab-2')!).some(p => p.x === f.x && p.y === f.y))).toBe(true);
 });

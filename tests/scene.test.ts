@@ -73,4 +73,7 @@ describe('всплывающие числа', () => {
     expect(out[1].x - out[0].x).toBeCloseTo(0.42, 2);
     expect(out[2].x - out[1].x).toBeCloseTo(0.42, 2);
   });
+  it('огненная яма — drawRoom символов `^` не рисует (их рисует огонь)', () => {
+    expect(draw({ 10: '.....^' }).filter(inCell(5, 10)).filter(p => p.ch === '^')).toHaveLength(0);
+  });
 });
