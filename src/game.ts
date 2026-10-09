@@ -67,13 +67,15 @@ export interface Game {
   prologue: Prologue | null; // идёт пролог — таймер миссии стоит
   withPrologue: boolean; // «заново» начинает с пролога
   lifts: Lift[]; // лифты всей карты: где платформа, сохраняется между комнатами
+  paused: boolean; // пауза с картой: мир и таймер стоят
+  seen: Set<string>; // комнаты, где героиня побывала за миссию (для карты); чекпоинт не откатывает
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
     items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
-    lifts: createLifts(rooms),
+    lifts: createLifts(rooms), paused: false, seen: new Set(),
   };
   enterRoom(g, start.room);
   return g;
@@ -286,6 +288,15 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   if (g.mission.result) {
     stepEnd(g, it, dt);
     return;
+  }
+  if (!g.prologue) {
+    g.seen.add(g.roomId);
+    // Пауза (Esc/Start) — не в прологе и не на экране ЭВМ; нажатие, поставившее или снявшее паузу, в мир не уходит.
+    if (it.pausePressed && !g.screen) {
+      g.paused = !g.paused;
+      return;
+    }
+    if (g.paused) return; // мир и таймер стоят
   }
   if (!g.prologue) tickTimer(g.mission, dt); // таймер идёт всегда: в переходе, после гибели, на экране ЭВМ
   if (g.mission.result) {
