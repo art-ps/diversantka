@@ -1,5 +1,5 @@
 import { DT, ROOM_H, ROOM_W } from './config';
-import { createGame, stepGame } from './game';
+import { createPrologue, stepGame } from './game';
 import { InputDevices } from './input/devices';
 import { IDLE, IntentTracker, clearPressed, orPressed } from './input/intent';
 import { planSteps } from './loop';
@@ -10,8 +10,6 @@ import { PAL } from './render/palette';
 import { drawGame } from './render/scene';
 import { saveResult, storage } from './save';
 import { loadWorld } from './world';
-
-const START = { room: 'lab-1', x: 4, bottom: 22 };
 
 function fail(msg: string) {
   const el = document.getElementById('error')!;
@@ -35,7 +33,7 @@ async function boot() {
   const bloom = new Bloom(gl);
   const input = new InputDevices(window);
   const tracker = new IntentTracker();
-  const game = createGame(rooms, START);
+  const game = createPrologue(rooms);
 
   const fit = () => {
     const cell = Math.max(1, Math.floor(Math.min(innerWidth / ROOM_W, innerHeight / ROOM_H)));

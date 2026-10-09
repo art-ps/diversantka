@@ -1,4 +1,4 @@
-import { FIRE, FLAMER, FX, MISSION, NINA, SOURCE, TRANSITION_TIME } from './config';
+import { FIRE, FLAMER, FX, MISSION, NINA, PROLOGUE, ROOM_W, SOURCE, TRANSITION_TIME } from './config';
 import { jetFire, pitFires, stepFires, type Fire } from './fx/fires';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { dogGlyphs } from './anim/dog';
@@ -11,6 +11,7 @@ import { createFlamer, flamerPhase, flameRect, stepFlamer, type Flamer } from '.
 import { resolveCombat, resolveDogs, type HitEvent } from './sim/fight';
 import { spawnFloater, stepFloaters, type Floater } from './sim/floaters';
 import { stepProjectiles, itemRect, useThrowButton, type Item, type Projectile } from './sim/items';
+import { gliderAt, gliderHits, ROUTE, ROUTE_LEN } from './sim/glider';
 import { createMission, missionResult, restoreCheckpoint, saveCheckpoint, startBike, tickTimer, useSwitch, type Mission } from './sim/mission';
 import { openScreen, stepScreen, type Screen } from './sim/terminal';
 import { burnNina, createNina, updateNina, type Nina } from './sim/nina';
@@ -27,6 +28,8 @@ export { TRANSITION_TIME };
 
 export interface Start { room: string; x: number; bottom: number }
 export interface Tape { id: string; x: number; bottom: number }
+// Пролог: d — путь дельтаплана, t — секунд в текущей фазе.
+export interface Prologue { d: number; phase: 'fly' | 'fall' | 'splash' | 'crash'; t: number }
 
 export interface Game {
   rooms: Map<string, Room>;
@@ -59,15 +62,71 @@ export interface Game {
   endT: number; // секунд с конца миссии: выезд, затем итог
   clip: string | null; // строка итога для буфера обмена — забирает main.ts
   copied: boolean; // буфер обмена принял строку — ставит main.ts
+  prologue: Prologue | null; // идёт пролог — таймер миссии стоит
+  withPrologue: boolean; // «заново» начинает с пролога
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
-    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false,
+    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
   };
   enterRoom(g, start.room);
   return g;
+}
+
+// Новая игра с пролога: дельтаплан над морем, миссия начнётся после посадки.
+export function createPrologue(rooms: Map<string, Room>): Game {
+  const a = gliderAt(PROLOGUE.startD);
+  const g = createGame(rooms, { room: ROUTE[a.screen], x: a.x - NINA.w / 2, bottom: a.bottom });
+  g.prologue = { d: PROLOGUE.startD, phase: 'fly', t: 0 };
+  g.withPrologue = true;
+  return g;
+}
+
+// Посадка: место — стартовый чекпоинт, таймер пошёл.
+function beginMission(g: Game): void {
+  const b = g.nina.body;
+  g.start = { room: g.roomId, x: b.x, bottom: b.y + b.h };
+  g.mission = createMission(g.start);
+  g.prologue = null;
+}
+
+// Полёт: дельтаплан ведёт сам, прыжок — отцепиться; всплеск и удар — пролог заново.
+function stepPrologue(g: Game, p: Prologue, it: Intent, dt: number): void {
+  p.t += dt;
+  g.particles = stepParticles(g.particles, dt);
+  if (p.phase !== 'fly') {
+    if (p.t >= PROLOGUE.retryDelay) Object.assign(g, createPrologue(g.rooms));
+    return;
+  }
+  if (g.transition) {
+    // Смена экрана: мир стоит, прыжок не отцепляет.
+    g.transition.t += dt;
+    if (g.transition.t >= TRANSITION_TIME) g.transition = null;
+    return;
+  }
+  if (it.jumpPressed && p.t >= PROLOGUE.armTime) {
+    p.phase = 'fall'; // дальше — обычная физика героини, вперёд по инерции
+    g.nina.body.vx = PROLOGUE.speed;
+    return;
+  }
+  p.d += PROLOGUE.speed * dt;
+  const a = gliderAt(p.d);
+  const id = ROUTE[a.screen];
+  if (id !== g.roomId) {
+    g.transition = { from: g.roomId, dir: 'right', t: 0 };
+    enterRoom(g, id);
+  }
+  const b = g.nina.body;
+  b.x = a.x - b.w / 2;
+  b.y = a.bottom - b.h;
+  g.nina.peakY = b.y; // урон от падения — с высоты отцепления
+  if (gliderHits(g.rooms.get(id)!, a) || p.d >= ROUTE_LEN) {
+    p.phase = 'crash';
+    p.t = 0;
+    sparks(g.particles, Math.min(a.x + PROLOGUE.span / 2, ROOM_W), a.bottom - PROLOGUE.height / 2, PAL.spark, 12);
+  }
 }
 
 // Состояние комнаты при входе: предметы (кроме подобранных), без снарядов.
@@ -134,7 +193,7 @@ function stepEnd(g: Game, it: Intent, dt: number): void {
   const shown = g.mission.result === 'won' ? MISSION.outroTime : 0;
   if (g.endT < shown) return;
   if (g.mission.result === 'won' && it.usePressed) g.clip = missionResult(g.mission).line;
-  if (it.jumpPressed && g.endT >= shown + MISSION.restartDelay) Object.assign(g, createGame(g.rooms, g.start));
+  if (it.jumpPressed && g.endT >= shown + MISSION.restartDelay) Object.assign(g, g.withPrologue ? createPrologue(g.rooms) : createGame(g.rooms, g.start));
 }
 
 // Источник: касание — энергия больше не убывает до конца миссии; чекпоинт этого не откатывает.
@@ -154,11 +213,25 @@ const near = (n: Nina, p: Point) =>
   n.state === 'ground' && Math.abs(n.body.x + n.body.w / 2 - p.x) <= MISSION.useRange && Math.abs(n.body.y + n.body.h - p.bottom) < 0.5;
 
 export function stepGame(g: Game, it: Intent, dt: number): void {
+  const p = g.prologue;
+  if (p) {
+    // После отцепления: вода — всплеск, опора под ногами — посадка и старт миссии.
+    if (p.phase === 'fall' && !g.transition) {
+      if (g.inWater) {
+        p.phase = 'splash';
+        p.t = 0;
+      } else if (g.nina.state !== 'air') beginMission(g);
+    }
+    if (g.prologue && p.phase !== 'fall') {
+      stepPrologue(g, p, it, dt);
+      return;
+    }
+  }
   if (g.mission.result) {
     stepEnd(g, it, dt);
     return;
   }
-  tickTimer(g.mission, dt); // таймер идёт всегда: в переходе, после гибели, на экране ЭВМ
+  if (!g.prologue) tickTimer(g.mission, dt); // таймер идёт всегда: в переходе, после гибели, на экране ЭВМ
   if (g.mission.result) {
     g.screen = null; // таймер 0 — провал, мир стоит
     return;
