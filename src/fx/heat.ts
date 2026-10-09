@@ -8,7 +8,6 @@
 export const HEAT_MAX = 36;
 export const HEAT_RAMP = ' .:;!+*#%@'; // от холодного к белому
 export const HEAT_RATE = 24; // шагов распространения в секунду
-const DRIFT = 34; // шагов, за которые высота языка «гуляет» через один узел шума
 const FLOOR = 0.16; // ниже — не рисуется
 
 export interface HeatField {
@@ -62,7 +61,7 @@ function step(f: HeatField): void {
       const r = rand(f);
       const to = x + (r < 0.3 ? -1 : r > 0.7 ? 1 : 0);
       if (to < 0 || to >= w) continue;
-      const tongue = 0.6 + 0.8 * noise(x / 4, f.n / DRIFT);
+      const tongue = 0.35 + 1.5 * noise(x / 2.5 + 0.5, f.n / 18);
       const v = heat[y * w + x] - rand(f) * 2 * f.cool * tongue;
       heat[(y - 1) * w + to] = v > 0 ? v : 0;
     }

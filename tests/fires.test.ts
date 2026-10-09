@@ -46,3 +46,7 @@ it('струя горит, только пока огнемёт включён, 
   for (let i = 0; i < 60; i++) { f.t = 0; stepFires([jet], [f], 1 / 60); }
   expect(fireCells(jet)).toHaveLength(0);
 });
+
+it('свежая яма уже горит (прогрета при создании)', () => {
+  for (const pit of pitFires(room)) expect(fireCells(pit).length).toBeGreaterThan(0);
+});

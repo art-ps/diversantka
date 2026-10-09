@@ -86,6 +86,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   if (g.transition) {
     g.transition.t += dt;
     if (g.transition.t >= TRANSITION_TIME) g.transition = null;
+    stepFires(g.fires, g.flamers, dt);
     return;
   }
   if (g.nina.dead) {

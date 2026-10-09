@@ -15,7 +15,10 @@ export function pitFires(room: Room): Fire[] {
       if (row[c] !== '^') continue;
       let len = 1;
       while (row[c + len] === '^') len++;
-      out.push({ field: createHeat(2 * len, 2 * (1 + FIRE.pitRise), FIRE.pitCool, undefined, 1 + r * 64 + c), kind: 'pit', x: c, y: r + 1, dir: 1 });
+      const bed = Array.from({ length: 2 * len }, (_, i) => (i === 0 || i === 2 * len - 1 ? 0.75 : 1));
+      const field = createHeat(2 * len, 2 * (1 + FIRE.pitRise), FIRE.pitCool, bed, 1 + r * 64 + c);
+      for (let i = 0; i < 24; i++) stepHeat(field, 1 / 24); // прогрев: яма не пустая при входе
+      out.push({ field, kind: 'pit', x: c, y: r + 1, dir: 1 });
       c += len - 1;
     }
   });
@@ -23,7 +26,7 @@ export function pitFires(room: Room): Fire[] {
 }
 
 export const jetFire = (f: Flamer): Fire => ({
-  field: createHeat(FIRE.jetWidth, 2 * FLAMER.length, FIRE.jetCool, [0.6, 1, 1, 0.6], 7),
+  field: createHeat(FIRE.jetWidth, 2 * FLAMER.length, FIRE.jetCool, [0.7, 1, 0.7], 7),
   kind: 'jet', x: f.x, y: f.y, dir: f.dir, flamer: f.id,
 });
 
