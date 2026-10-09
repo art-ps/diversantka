@@ -2,11 +2,13 @@ import { TRANSITION_TIME } from './config';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { CLIPS } from './anim/clips';
 import type { Intent } from './input/intent';
+import { createAndroid, updateAndroid, type Android } from './sim/android';
+import { resolveCombat } from './sim/fight';
 import { stepProjectiles, useThrowButton, type Item, type Projectile } from './sim/items';
 import { createNina, updateNina, type Nina } from './sim/nina';
 import { exitFor } from './sim/transition';
 import type { Dir, Room } from './world/room';
-import { parseItems } from './world/spawns';
+import { parseEnemies, parseItems } from './world/spawns';
 
 export { TRANSITION_TIME };
 
@@ -22,12 +24,14 @@ export interface Game {
   items: Item[];
   projectiles: Projectile[];
   taken: Set<string>; // подобранные предметы — не появляются снова до смерти
+  androids: Android[];
+  killed: Set<string>; // убитые андроиды — не возвращаются до конца миссии
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
-    items: [], projectiles: [], taken: new Set(),
+    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(),
   };
   enterRoom(g, start.room);
   return g;
@@ -40,6 +44,9 @@ export function enterRoom(g: Game, id: string): void {
   g.items = parseItems(room.meta.items, id)
     .map((s, i) => ({ id: `${id}#i${i}`, ...s }))
     .filter(i => !g.taken.has(i.id));
+  g.androids = parseEnemies(room.meta.enemies, id)
+    .map((s, i) => createAndroid(`${id}#e${i}`, s))
+    .filter(a => !g.killed.has(a.id));
   g.projectiles = [];
 }
 
@@ -69,6 +76,11 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   }
   if (thrown) g.projectiles.push(thrown);
   stepProjectiles(g.projectiles, room, dt);
+  for (const a of g.androids) {
+    const k = updateAndroid(a, g.nina, room, dt);
+    if (k) g.projectiles.push(k);
+  }
+  for (const id of resolveCombat(g.nina, g.androids, g.projectiles)) g.killed.add(id);
   g.projectiles = g.projectiles.filter(p => p.alive);
   updateAnimator(g.anim, g.nina, CLIPS, dt);
   const ex = exitFor(g.nina.body, room);
