@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { drawFloaters, drawGame, drawItems, drawProjectiles, drawRoom, drawStatic } from '../src/render/scene';
 import { FX, ROOM_H, ROOM_W } from '../src/config';
+import { PAL } from '../src/render/palette';
 import { createGame } from '../src/game';
 import { loadRoomsFs, roomOf } from './helpers';
 
@@ -102,11 +103,14 @@ describe('помехи при смерти', () => {
   it('HUD поверх помех: надпись рисуется после снега', () => {
     const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
     g.nina.dead = true; g.nina.deadT = 2;
-    const seq: string[] = [];
-    const b = { push: (_x: number, _y: number, ch: string) => { seq.push(ch); }, text: (_x: number, _y: number, s: string) => { seq.push(`TEXT:${s}`); } };
+    const seq: { snow: boolean; text?: string }[] = [];
+    const b = {
+      push: (_x: number, _y: number, _ch: string, c: number[]) => { seq.push({ snow: c[0] === PAL.static[0] && c[1] === PAL.static[1] && c[2] === PAL.static[2] }); },
+      text: (_x: number, _y: number, s: string) => { seq.push({ snow: false, text: s }); },
+    };
     drawGame(b as never, g, 3);
-    const lastSnow = seq.map((s, i) => ('░▒'.includes(s) ? i : -1)).reduce((a, b) => Math.max(a, b), -1);
-    const msg = seq.findIndex(s => s.startsWith('TEXT:ПОГИБЛА'));
+    const lastSnow = seq.map((s, i) => (s.snow ? i : -1)).reduce((a, b) => Math.max(a, b), -1);
+    const msg = seq.findIndex(s => s.text?.startsWith('ПОГИБЛА'));
     expect(lastSnow).toBeGreaterThan(-1);
     expect(msg).toBeGreaterThan(lastSnow);
   });

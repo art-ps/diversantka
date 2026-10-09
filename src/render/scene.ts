@@ -139,6 +139,13 @@ export function drawFloaters(b: Pick<GlyphBatch, 'push'>, list: Floater[], ox: n
 
 const SNOW = ' .:░▒';
 
+// Перемешивание для снега: у линейного hash видны повторяющиеся узоры.
+const mix = (h: number) => {
+  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b) >>> 0;
+  h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35) >>> 0;
+  return (h ^ (h >>> 16)) >>> 0;
+};
+
 // Помехи старого телевизора (по мотивам tv-static из ascii.rest): снег по полклеткам и бегущая светлая полоса.
 export function drawStatic(b: Pick<GlyphBatch, 'push'>, deadT: number, time: number): void {
   const k = Math.min(1, deadT / FX.staticIn);
@@ -147,7 +154,7 @@ export function drawStatic(b: Pick<GlyphBatch, 'push'>, deadT: number, time: num
   for (let r = 0; r < ROOM_H * 2; r++) {
     const bar = ((r / (ROOM_H * 2) - time * 0.3) % 1 + 1) % 1 < 0.08;
     for (let c = 0; c < ROOM_W * 2; c++) {
-      const h = hash(c + frame * 131, r + frame * 71);
+      const h = mix(hash(c + frame * 131, r + frame * 71));
       if ((h % 1000) / 1000 >= k * FX.staticDensity * (bar ? 1.6 : 1)) continue;
       const ch = SNOW[1 + ((h >>> 10) % (SNOW.length - 1))];
       const a = PAL.static[3] * k * (bar ? 1.8 : 1);
