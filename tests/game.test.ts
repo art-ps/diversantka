@@ -1,0 +1,41 @@
+import { expect, it } from 'vitest';
+import { DT, NINA } from '../src/config';
+import { createGame, stepGame } from '../src/game';
+import { IDLE, type Intent } from '../src/input/intent';
+import { loadRoomsFs } from './helpers';
+
+const I = (p: Partial<Intent> = {}): Intent => ({ ...IDLE, ...p });
+
+it('бег вправо из lab-1 приводит в lab-2', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 34, bottom: 22 });
+  for (let i = 0; i < 120 && g.roomId === 'lab-1'; i++) stepGame(g, I({ moveX: 1 }), DT);
+  expect(g.roomId).toBe('lab-2');
+  expect(g.nina.body.x).toBeLessThan(2);
+});
+
+it('спуск по лестнице из lab-2 в cave-1 без урона', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-2', x: 18.7, bottom: 22 });
+  for (let i = 0; i < 5; i++) stepGame(g, I(), DT);
+  for (let i = 0; i < 600; i++) stepGame(g, I({ down: true }), DT);
+  expect(g.roomId).toBe('cave-1');
+  expect(g.nina.state).toBe('ground');
+  expect(g.nina.body.y + g.nina.body.h).toBeCloseTo(23);
+  expect(g.nina.energy).toBe(NINA.energyMax);
+});
+
+it('во время перехода симуляция стоит', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 34, bottom: 22 });
+  while (!g.transition) stepGame(g, I({ moveX: 1 }), DT);
+  const x = g.nina.body.x;
+  stepGame(g, I({ moveX: 1 }), DT);
+  expect(g.nina.body.x).toBe(x);
+});
+
+it('после гибели прыжок возвращает на старт', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
+  g.nina.dead = true;
+  g.roomId = 'cave-1';
+  stepGame(g, I({ jump: true, jumpPressed: true }), DT);
+  expect(g.roomId).toBe('lab-1');
+  expect(g.nina.dead).toBe(false);
+});
