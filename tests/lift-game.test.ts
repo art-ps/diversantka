@@ -173,3 +173,35 @@ it('лифт в пути при записи чекпоинта — записа
   die(fresh);
   expect(lift(fresh).y).toBe(10);
 });
+
+it('короткий прыжок на поднимающейся платформе: героиня остаётся на ней', () => {
+  const g = at('a', 22, 19.5, 22);
+  lift(g).target = 10;
+  run(g, {}, 20);
+  expect(lift(g).y).toBeLessThan(22);
+  stepGame(g, I({ jump: true, jumpPressed: true }), DT);
+  run(g, {}, 600, () => lift(g).target === null);
+  run(g, {}, 30);
+  expect(lift(g).y).toBe(10);
+  expect(bottom(g)).toBeCloseTo(10);
+  expect(g.nina.state).toBe('ground');
+  expect(g.nina.energy).toBe(NINA.energyMax);
+});
+
+it('край платформы: героиня с центром у края едет вместе с лифтом, вниз и вверх через комнаты', () => {
+  const g = at('a', 10, 18.2);
+  run(g, { down: true }, 2);
+  run(g, {}, 600, () => lift(g).target === null);
+  run(g, {}, 30);
+  expect(bottom(g)).toBeCloseTo(22);
+  expect(g.nina.state).toBe('ground');
+  const h = at('b', 22, 20.8, 47);
+  expect(h.roomId).toBe('b');
+  run(h, { up: true }, 1500, () => h.roomId === 'a' && lift(h).target === null);
+  run(h, {}, 30);
+  expect(h.roomId).toBe('a');
+  expect(lift(h).y).toBe(22);
+  expect(bottom(h)).toBeCloseTo(22);
+  expect(h.nina.state).toBe('ground');
+  expect(h.nina.energy).toBe(NINA.energyMax);
+});

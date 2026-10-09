@@ -260,8 +260,11 @@ function stepLifts(g: Game, it: Intent, dt: number): void {
     if (before === null || after === null || after === before) continue;
     const feet = b.y + b.h;
     const over = overTop(b, { x: l.x, y: after, w: LIFT_W, h: 1 });
-    const caught = after < before && g.nina.state === 'air' && b.vy >= 0 && feet > after && feet <= before + LIFT_EPS;
-    if (over && (l === under || caught)) b.y = after - b.h;
+    const caught = after < before && g.nina.state === 'air' && feet > after && feet <= before + LIFT_EPS;
+    if (over && (l === under || caught)) {
+      b.y = after - b.h;
+      b.x = Math.min(Math.max(b.x, l.x), l.x + LIFT_W - b.w); // тело целиком в шахте
+    }
     for (const i of g.items) if (i.x >= l.x && i.x <= l.x + LIFT_W && Math.abs(i.bottom - before) < LIFT_EPS) i.bottom = after;
   }
 }
