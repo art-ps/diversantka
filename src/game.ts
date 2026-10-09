@@ -11,7 +11,7 @@ import { createFlamer, flamerPhase, flameRect, stepFlamer, type Flamer } from '.
 import { resolveCombat, resolveDogs, type HitEvent } from './sim/fight';
 import { spawnFloater, stepFloaters, type Floater } from './sim/floaters';
 import { stepProjectiles, itemRect, useThrowButton, type Item, type Projectile } from './sim/items';
-import { createMission, saveCheckpoint, tickTimer, type Mission } from './sim/mission';
+import { createMission, restoreCheckpoint, saveCheckpoint, tickTimer, type Mission } from './sim/mission';
 import { openScreen, stepScreen, type Screen } from './sim/terminal';
 import { burnNina, createNina, updateNina, type Nina } from './sim/nina';
 import { crumble, smoke, sparks, splash, stepParticles, type Particle } from './sim/particles';
@@ -107,6 +107,16 @@ function checkpointAt(g: Game, t: TerminalSpawn): void {
   applyFlamers(g);
 }
 
+// Смерть: к последнему чекпоинту (до первого терминала — старт) с полной энергией.
+// Предметы возвращаются на места, убитые враги — нет (g.killed не трогаем).
+function respawn(g: Game): void {
+  const p = restoreCheckpoint(g.mission);
+  g.taken.clear();
+  enterRoom(g, p.room);
+  g.nina = createNina(p.x, p.bottom);
+  g.anim = createAnimator();
+}
+
 // Рядом с объектом: стоит на его уровне, центр не дальше useRange.
 const near = (n: Nina, p: Point) =>
   n.state === 'ground' && Math.abs(n.body.x + n.body.w / 2 - p.x) <= MISSION.useRange && Math.abs(n.body.y + n.body.h - p.bottom) < 0.5;
@@ -131,15 +141,9 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     return;
   }
   if (g.nina.dead) {
-    // ponytail: в плане 1 смерть — возврат на старт; чекпоинты на терминалах — план 4.
     updateNina(g.nina, IDLE, g.rooms.get(g.roomId)!, dt);
     updateAnimator(g.anim, g.nina, CLIPS, dt);
-    if (it.jumpPressed && g.nina.deadT >= NINA.respawnDelay) {
-      g.taken.clear();
-      enterRoom(g, g.start.room);
-      g.nina = createNina(g.start.x, g.start.bottom);
-      g.anim = createAnimator();
-    }
+    if (it.jumpPressed && g.nina.deadT >= NINA.respawnDelay) respawn(g);
     if (g.dmgAcc >= 0.5) {
       const db = g.nina.body;
       spawnFloater(g.floaters, `-${Math.round(g.dmgAcc)}`, db.x + db.w / 2, db.y - 0.6, 'damage');
