@@ -6,7 +6,10 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "mocap:fetch": "bash tools/mocap/fetch.sh",
+    "mocap:inspect": "node tools/mocap/cli.ts inspect",
+    "mocap:build": "node tools/mocap/cli.ts build"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",

@@ -9,3 +9,9 @@
 
 Управление: стрелки/WASD, Пробел — прыжок, J — удар, K — бросок, E — терминал, Esc — пауза,
 B — свечение вкл/выкл, F — полный экран. Геймпад: стандартная раскладка.
+
+## Движения
+
+Позы героини построены по базе захвата движений CMU. The data used in this project was obtained from mocap.cs.cmu.edu.
+The database was created with funding from NSF EIA-0196217. BVH-конвертация — Bruce Hahne (cgspeed).
+Исходные файлы в репозиторий не входят: `npm run mocap:fetch` скачивает их, `npm run mocap:build` собирает `anim/*.json`.
