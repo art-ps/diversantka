@@ -17,8 +17,9 @@ function isWall(room: Room, c: number, r: number) {
 }
 
 // Клетки строки 0 под HUD (с полем в одну клетку) комната не рисует: свечение складывается, подложки нет.
-const hudCell = (x: number, y: number, hudId: string) =>
-  Math.round(y) === 0 && (Math.round(x) <= 19 || Math.round(x) >= ROOM_W - hudId.length - 2);
+export const hudCell = (x: number, y: number, hudId: string, time: number) =>
+  (Math.round(y) === 0 && (Math.round(x) <= 19 || Math.round(x) >= ROOM_W - hudId.length - 2)) ||
+  (time < 8 && Math.round(y) === ROOM_H - 1 && Math.round(x) >= ROOM_W - 27);
 
 export function drawRoom(b: GlyphBatch, room: Room, ox: number, oy: number, time: number, hudId: string): void {
   for (let r = 0; r < ROOM_H; r++) {
@@ -26,7 +27,7 @@ export function drawRoom(b: GlyphBatch, room: Room, ox: number, oy: number, time
       const t = room.tiles[r][c];
       const x = c + ox, y = r + oy;
       const h = hash(c, r);
-      if (hudCell(x, y, hudId)) continue;
+      if (hudCell(x, y, hudId, time)) continue;
       if (t === '.') {
         // Дышащая фоновая сетка: редкие тусклые символы.
         if (h % 7 === 0) {
