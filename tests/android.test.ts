@@ -119,6 +119,20 @@ describe('нож и присед', () => {
 });
 
 describe('разрешение боя', () => {
+  it('удар сидя попадает по андроиду и не отбрасывает его', () => {
+    const a = android(20);
+    const n = ninaAt(18.4);
+    for (let i = 0; i < 2; i++) updateNina(n, { ...IDLE, down: true }, ROOM, DT);
+    updateNina(n, { ...IDLE, down: true, attackPressed: true }, ROOM, DT);
+    const x0 = a.body.x;
+    for (let i = 0; i < 30; i++) {
+      updateNina(n, { ...IDLE, down: true }, ROOM, DT);
+      resolveCombat(n, [a], [], ROOM);
+    }
+    expect(a.hp).toBe(ANDROID.hp - 1);
+    expect(a.body.x).toBe(x0);
+  });
+
   it('удар героини засчитывается один раз за удар', () => {
     const a = android(20);
     const n = ninaAt(18.2);

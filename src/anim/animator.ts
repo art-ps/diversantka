@@ -4,7 +4,7 @@ import type { Nina, NinaState } from '../sim/nina';
 import type { Clip, Pose } from './clip';
 import { lerpPose, sampleClip } from './pose';
 
-export const ANIM_NAMES = ['idle', 'walk', 'run', 'jump', 'fall', 'land', 'crouch', 'climb', 'punch', 'kick', 'flykick', 'hit', 'death', 'throw'] as const;
+export const ANIM_NAMES = ['idle', 'walk', 'run', 'jump', 'fall', 'land', 'crouch', 'climb', 'punch', 'kick', 'flykick', 'crouchkick', 'hit', 'death', 'throw'] as const;
 export type AnimName = (typeof ANIM_NAMES)[number];
 
 export interface Animator {

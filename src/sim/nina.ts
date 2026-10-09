@@ -84,11 +84,12 @@ export function updateNina(n: Nina, it: Intent, room: Room, dt: number, cfg: Nin
     n.attack.t += dt;
     const landed = n.attack.kind === 'flykick' && n.state !== 'air';
     if (n.attack.t >= attackTotal(n.attack.kind) || landed) n.attack = null;
-  } else if (it.attackPressed && n.state !== 'ladder' && !n.crouching) {
-    n.attack = { kind: n.state === 'air' ? 'flykick' : it.up ? 'kick' : 'punch', t: 0, hits: [] };
+  } else if (it.attackPressed && n.state !== 'ladder') {
+    const kind = n.state === 'air' ? 'flykick' : n.crouching ? 'crouchkick' : it.up ? 'kick' : 'punch';
+    n.attack = { kind, t: 0, hits: [] };
   }
-  // Удар на земле: стоит, не прыгает и не лезет на лестницу.
-  if (n.attack && n.attack.kind !== 'flykick') it = IDLE;
+  // Удар на земле: стоит (или сидит при ударе сидя), не прыгает и не лезет на лестницу.
+  if (n.attack && n.attack.kind !== 'flykick') it = n.attack.kind === 'crouchkick' ? { ...IDLE, down: true } : IDLE;
   const b = n.body;
   const col = Math.floor(b.x + b.w / 2);
 

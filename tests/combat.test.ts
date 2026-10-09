@@ -68,10 +68,49 @@ describe('удары героини', () => {
     expect(n.attack).toBeNull();
   });
 
-  it('в приседе и на лестнице удар не начинается', () => {
+  it('в приседе — удар ногой сидя, героиня не встаёт', () => {
     const n = standing();
     run(n, ROOM, I({ down: true }), 2);
     updateNina(n, I({ down: true, attackPressed: true }), ROOM, DT);
+    expect(n.attack?.kind).toBe('crouchkick');
+    for (let i = 0; i < Math.ceil(attackTotal('crouchkick') / DT); i++) {
+      updateNina(n, I({ down: true }), ROOM, DT);
+      expect(n.crouching).toBe(true);
+      expect(n.body.h).toBe(NINA.crouchH);
+    }
+  });
+
+  it('удар сидя — низкая зона у ног', () => {
+    const n = standing();
+    run(n, ROOM, I({ down: true }), 2);
+    updateNina(n, I({ down: true, attackPressed: true }), ROOM, DT);
+    run(n, ROOM, I({ down: true }), Math.ceil(COMBAT.crouchkick.windup / DT));
+    const box = attackBox(n.body, n.facing, n.attack)!;
+    expect(box.y).toBeGreaterThanOrEqual(n.body.y + 0.5 * n.body.h - 1e-9);
+    expect(box.y + box.h).toBeLessThanOrEqual(n.body.y + n.body.h + 1e-9);
+    expect(box.w).toBeCloseTo(COMBAT.crouchkick.reach);
+  });
+
+  it('после удара сидя: держишь «вниз» — сидит, отпустил — встаёт', () => {
+    const n = standing();
+    run(n, ROOM, I({ down: true }), 2);
+    updateNina(n, I({ down: true, attackPressed: true }), ROOM, DT);
+    run(n, ROOM, I({ down: true }), Math.ceil(attackTotal('crouchkick') / DT) + 2);
+    expect(n.attack).toBeNull();
+    expect(n.crouching).toBe(true);
+    run(n, ROOM, I(), 2);
+    expect(n.crouching).toBe(false);
+  });
+
+  it('на лестнице удар не начинается', () => {
+    const rows: Record<number, string> = { 14: '='.repeat(30) + 'H', 22: FLOOR };
+    for (let r = 15; r <= 21; r++) rows[r] = '.'.repeat(30) + 'H';
+    const room = roomOf(rows);
+    const n = createNina(29.9, 22);
+    run(n, room, I(), 2);
+    run(n, room, I({ up: true }), 10);
+    expect(n.state).toBe('ladder');
+    updateNina(n, I({ up: true, attackPressed: true }), room, DT);
     expect(n.attack).toBeNull();
   });
 });

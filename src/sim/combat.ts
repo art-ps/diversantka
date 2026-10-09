@@ -2,7 +2,7 @@ import { COMBAT } from '../config';
 import type { Body } from './physics';
 import type { Rect } from './rect';
 
-export type AttackKind = 'punch' | 'kick' | 'flykick';
+export type AttackKind = 'punch' | 'kick' | 'flykick' | 'crouchkick';
 
 export interface Attack {
   kind: AttackKind;
