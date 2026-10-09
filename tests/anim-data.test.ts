@@ -19,8 +19,8 @@ describe('клипы anim/*.json', () => {
 
   it('рост в покое около NINA.h', () => {
     const y = load('idle').frames[0][2 * J.head + 1];
-    expect(y).toBeGreaterThan(4.5);
-    expect(y).toBeLessThan(6.5);
+    expect(y).toBeGreaterThan(NINA.h - 1);
+    expect(y).toBeLessThan(NINA.h + 1);
   });
 
   it('присед: голова в конце клипа не выше NINA.crouchH + 0.6', () => {

@@ -113,6 +113,15 @@ const OPTS = { height: 5.5, fps: 10 };
 const pt = (pose: number[], j: number) => [pose[2 * j], pose[2 * j + 1]];
 
 describe('convertClip', () => {
+  it('legScale укорачивает ноги, рост по-прежнему opts.height', () => {
+    const c = convertClip(bvh([frame(0), frame(0), frame(0)]), spec({ to: 2 }), { ...OPTS, legScale: 0.5 });
+    const p = c.frames[0];
+    // таз над стопой 10 ед. → 5, голова над тазом 12 ед.; рост 17 ед. → масштаб 5.5/17
+    expect(pt(p, J.head)[1]).toBeCloseTo(5.5);
+    expect(pt(p, J.pelvis)[1]).toBeCloseTo((5 * 5.5) / 17);
+    expect(pt(p, J.lFoot)[1]).toBeCloseTo(0);
+  });
+
   it('масштаб по росту в покое, якорь — земля, x относительно таза', () => {
     const b = bvh([frame(0), frame(0), frame(2), frame(4), frame(6)]);
     const c = convertClip(b, spec(), OPTS);

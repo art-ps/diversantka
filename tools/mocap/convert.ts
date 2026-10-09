@@ -10,7 +10,7 @@ export interface ClipSpec {
   anchor: 'floor' | 'root'; // floor — высота от земли; root — таз всегда на высоте покоя (прыжки, лестница)
 }
 
-export interface ConvertOpts { height: number; fps: number }
+export interface ConvertOpts { height: number; fps: number; legScale?: number }
 
 export const CONTACT_H = 0.35; // стопа ниже этого (в клетках) — на земле
 export const CONTACT_V = 3; // клеток/с — стопа на земле почти не движется относительно мира
@@ -33,6 +33,20 @@ function points3d(bvh: Bvh, frame: number, idx: number[]): Vec3[] {
   return JOINTS.map((n, i) => (SOURCE[n].end ? p.ends[idx[i]]! : p.joints[idx[i]]));
 }
 
+// Ноги короче: колено ближе к тазу, стопа ближе к колену — с сохранением направлений костей.
+function shortenLegs(p: Vec3[], k: number): Vec3[] {
+  if (k === 1) return p;
+  const out = p.map(v => [...v] as Vec3);
+  for (const [knee, foot] of [[J.lKnee, J.lFoot], [J.rKnee, J.rFoot]]) {
+    for (let a = 0; a < 3; a++) {
+      const k0 = p[J.pelvis][a] + (p[knee][a] - p[J.pelvis][a]) * k;
+      out[foot][a] = k0 + (p[foot][a] - p[knee][a]) * k;
+      out[knee][a] = k0;
+    }
+  }
+  return out;
+}
+
 function lerp3(a: Vec3, b: Vec3, t: number): Vec3 {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 }
@@ -42,15 +56,17 @@ export function convertClip(bvh: Bvh, spec: ClipSpec, opts: ConvertOpts): Clip {
     throw new Error(`${spec.name}: диапазон ${spec.from}..${spec.to} вне файла из ${bvh.frames.length} кадров`);
   }
   const idx = JOINTS.map(n => jointIndex(bvh, SOURCE[n].joint));
+  const legScale = opts.legScale ?? 1;
+  const pts = (frame: number) => shortenLegs(points3d(bvh, frame, idx), legScale);
 
   // Кадр 0 — нулевая поза с прямыми ногами: по ней меряем рост и высоту таза.
-  const rest = points3d(bvh, 0, idx);
+  const rest = pts(0);
   const restFoot = Math.min(rest[J.lFoot][1], rest[J.rFoot][1]);
   const scale = opts.height / (rest[J.head][1] - restFoot);
   const restPelvis = rest[J.pelvis][1] - restFoot;
 
   // Доворот: лицом вперёд (+Z) по линии плеч на первом кадре клипа.
-  const first = points3d(bvh, spec.from, idx);
+  const first = pts(spec.from);
   const lx = first[J.lShoulder][0] - first[J.rShoulder][0], lz = first[J.lShoulder][2] - first[J.rShoulder][2];
   const theta = Math.atan2(-lz, lx); // F = (−Lz, 0, Lx), θ = atan2(F.x, F.z)
   const cos = Math.cos(theta), sin = Math.sin(theta);
@@ -61,7 +77,7 @@ export function convertClip(bvh: Bvh, spec: ClipSpec, opts: ConvertOpts): Clip {
   const raw: Vec3[][] = [];
   for (let s = spec.from; s <= spec.to + 1e-9; s += step) {
     const a = Math.floor(s), t = s - a, b = Math.min(a + 1, spec.to);
-    const pa = points3d(bvh, a, idx).map(turn), pb = points3d(bvh, b, idx).map(turn);
+    const pa = pts(a).map(turn), pb = pts(b).map(turn);
     raw.push(pa.map((p, i) => lerp3(p, pb[i], t)));
   }
 

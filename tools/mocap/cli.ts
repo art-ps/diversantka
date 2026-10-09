@@ -2,7 +2,7 @@
 // node tools/mocap/cli.ts build           — собрать anim/*.json по clips.json
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { validateClip } from '../../src/anim/clip.ts';
-import { NINA } from '../../src/config.ts';
+import { ANIM, NINA } from '../../src/config.ts';
 import { framePositions, jointIndex, parseBvh, type Bvh } from './bvh.ts';
 import { convertClip, type ClipSpec } from './convert.ts';
 
@@ -28,7 +28,7 @@ function build(): void {
   const specs = JSON.parse(readFileSync('tools/mocap/clips.json', 'utf8')) as ClipSpec[];
   mkdirSync('anim', { recursive: true });
   for (const spec of specs) {
-    const clip = convertClip(load(spec.source), spec, { height: NINA.h, fps: FPS });
+    const clip = convertClip(load(spec.source), spec, { height: NINA.h, fps: FPS, legScale: ANIM.legScale });
     const errors = validateClip(clip);
     if (errors.length) throw new Error(errors.join('\n'));
     writeFileSync(`anim/${spec.name}.json`, JSON.stringify(clip) + '\n');

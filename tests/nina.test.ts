@@ -133,7 +133,7 @@ describe('лестница', () => {
 
 describe('присед', () => {
   it('под низким потолком остаётся присевшей', () => {
-    const room = roomOf({ 17: FLOOR, 22: FLOOR });
+    const room = roomOf({ 19: FLOOR, 22: FLOOR });
     const n = createNina(10, 22);
     n.crouching = true;
     n.body.h = NINA.crouchH;
