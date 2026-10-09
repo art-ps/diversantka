@@ -3,7 +3,7 @@ import { CLIPS } from '../anim/clips';
 import { J } from '../anim/clip';
 import { dogGlyphs } from '../anim/dog';
 import { simplePose } from '../anim/simple';
-import { FX, MISSION, NINA, ROOM_H, ROOM_W } from '../config';
+import { FX, MISSION, NINA, ROOM_H, ROOM_W, SOURCE } from '../config';
 import { TRANSITION_TIME, type Game } from '../game';
 import { fireCells, heatColor, type Fire } from '../fx/fires';
 import { HEAT_RAMP } from '../fx/heat';
@@ -116,6 +116,19 @@ export function drawFenceParts(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number,
   }
 }
 
+// Источник: пульсирующая звезда и кольцо точек вокруг неё.
+export function drawSource(b: Pick<GlyphBatch, 'push'>, s: Point, ox: number, oy: number, time: number): void {
+  const k = 0.5 + 0.5 * Math.sin(time * 2 * Math.PI * SOURCE.pulseHz);
+  const cx = s.x + ox, cy = s.bottom - 1 + oy;
+  const c = PAL.source;
+  b.push(cx - 0.5, cy - 0.5, '*', [c[0], c[1], c[2], 0.6 + 0.4 * k], 0.8 + 0.3 * k);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + time;
+    const r = 0.6 + 0.2 * k;
+    b.push(cx + Math.cos(a) * r - 0.5, cy + Math.sin(a) * r * 0.8 - 0.5, '·', [c[0], c[1], c[2], 0.3 + 0.4 * k], 0.5);
+  }
+}
+
 // Перфолента — мелкий блок своего цвета.
 export function drawTapes(b: Pick<GlyphBatch, 'push'>, tapes: Point[], ox: number, oy: number): void {
   for (const t of tapes) b.push(t.x + ox - 0.5, t.bottom - 0.25 + oy - 0.5, '▓', PAL.tape, 0.5);
@@ -207,7 +220,8 @@ function drawHud(b: GlyphBatch, g: Game, time: number): void {
   const filled = Math.round((g.nina.energy / NINA.energyMax) * 10);
   const barX = 1 + hudWidth(ENERGY_LABEL);
   b.text(1, 0, ENERGY_LABEL, PAL.hud, HUD_STEP);
-  b.text(barX, 0, '█'.repeat(filled), g.nina.energy < NINA.lowEnergy ? PAL.danger : PAL.hud, HUD_STEP);
+  const bar = g.mission.secret ? PAL.source : g.nina.energy < NINA.lowEnergy ? PAL.danger : PAL.hud;
+  b.text(barX, 0, '█'.repeat(filled), bar, HUD_STEP);
   b.text(barX + hudWidth('█'.repeat(filled)), 0, '░'.repeat(10 - filled), PAL.hudDim, HUD_STEP);
   b.text(ROOM_W - 1 - hudWidth(g.roomId), 0, g.roomId, PAL.hudDim, HUD_STEP);
   const tapes = `ЛЕНТЫ ${g.mission.tapes.size}/${MISSION.tapes} · `;
@@ -241,6 +255,7 @@ function drawWorld(b: GlyphBatch, g: Game, ox: number, oy: number, time: number)
   drawFenceParts(b, g, ox, oy, time);
   drawItems(b, g.items, ox, oy);
   drawTapes(b, g.tapes, ox, oy);
+  if (g.source) drawSource(b, g.source, ox, oy, time);
   drawAndroids(b, g, ox, oy, time);
   drawDogs(b, g, ox, oy);
   drawProjectiles(b, g.projectiles, ox, oy);

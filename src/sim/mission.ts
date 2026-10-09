@@ -18,7 +18,7 @@ export interface Mission {
   fenceOff: boolean;
   flamersOff: Set<string>; // комнаты, где огнемёты выключены с терминала
   hits: number; // полученные удары за миссию; чекпоинт их не откатывает
-  secret: boolean; // источник найден — секретная комната, план 4в
+  secret: boolean; // источник найден; чекпоинт его не откатывает
   result: 'won' | 'failed' | null;
   checkpoint: Checkpoint;
 }

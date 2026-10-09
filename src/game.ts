@@ -1,4 +1,4 @@
-import { FIRE, FLAMER, FX, MISSION, NINA, TRANSITION_TIME } from './config';
+import { FIRE, FLAMER, FX, MISSION, NINA, SOURCE, TRANSITION_TIME } from './config';
 import { jetFire, pitFires, stepFires, type Fire } from './fx/fires';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { dogGlyphs } from './anim/dog';
@@ -15,7 +15,7 @@ import { createMission, missionResult, restoreCheckpoint, saveCheckpoint, startB
 import { openScreen, stepScreen, type Screen } from './sim/terminal';
 import { burnNina, createNina, updateNina, type Nina } from './sim/nina';
 import { crumble, smoke, sparks, splash, stepParticles, type Particle } from './sim/particles';
-import { bodyRect, overlap } from './sim/rect';
+import { bodyRect, overlap, type Rect } from './sim/rect';
 import { touchesTile, touchHazards } from './sim/hazards';
 import { exitFor } from './sim/transition';
 import type { Dir, Room } from './world/room';
@@ -54,6 +54,7 @@ export interface Game {
   screen: Screen | null; // открытый экран ЭВМ — мир стоит
   panel: Point | null; // щиток забора
   bike: Point | null;
+  source: Point | null; // источник в секретной комнате
   fence: Fence | null;
   endT: number; // секунд с конца миссии: выезд, затем итог
   clip: string | null; // строка итога для буфера обмена — забирает main.ts
@@ -63,7 +64,7 @@ export interface Game {
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
-    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, fence: null, endT: 0, clip: null, copied: false,
+    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false,
   };
   enterRoom(g, start.room);
   return g;
@@ -92,6 +93,7 @@ export function enterRoom(g: Game, id: string): void {
   g.terminals = parseTerminals(room.meta.terminals, id);
   g.panel = parsePoints(room.meta.switch, id, 'щитка')[0] ?? null;
   g.bike = parsePoints(room.meta.bike, id, 'мотоцикла')[0] ?? null;
+  g.source = parsePoints(room.meta.source, id, 'источника')[0] ?? null;
   g.fence = parseFence(room.meta.fence, id);
   g.dogs = enemies
     .filter((e): e is { s: DogSpawn; id: string } => e.s.kind === 'dog')
@@ -133,6 +135,18 @@ function stepEnd(g: Game, it: Intent, dt: number): void {
   if (g.endT < shown) return;
   if (g.mission.result === 'won' && it.usePressed) g.clip = missionResult(g.mission).line;
   if (it.jumpPressed && g.endT >= shown + MISSION.restartDelay) Object.assign(g, createGame(g.rooms, g.start));
+}
+
+// Источник: касание — энергия больше не убывает до конца миссии; чекпоинт этого не откатывает.
+function touchSource(g: Game, s: Point, nr: Rect, dt: number): void {
+  if (!g.mission.secret && overlap({ x: s.x - 0.5, y: s.bottom - 2, w: 1, h: 2 }, nr)) {
+    g.mission.secret = true;
+    g.nina.immortal = true;
+    spawnFloater(g.floaters, 'ИСТОЧНИК НАЙДЕН', s.x, s.bottom - 3, 'enemy');
+  }
+  if (Math.random() < SOURCE.sparksPerSec * dt) {
+    g.particles.push({ ch: Math.random() < 0.5 ? '.' : '*', x: s.x + (Math.random() - 0.5), y: s.bottom - 1, vx: (Math.random() - 0.5) * 0.6, vy: -SOURCE.sparkRise, t: 0, life: SOURCE.sparkLife, gravity: 0, size: 0.5, color: PAL.source });
+  }
 }
 
 // Рядом с объектом: стоит на его уровне, центр не дальше useRange.
@@ -177,6 +191,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     return;
   }
   const room = g.rooms.get(g.roomId)!;
+  g.nina.immortal = g.mission.secret; // и после возрождения: новая Нина узнаёт об источнике здесь
   const e0 = g.nina.energy;
   const inv0 = g.nina.invulnT; // выросла за шаг — получен удар
   if (it.usePressed) {
@@ -216,6 +231,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     spawnFloater(g.floaters, `ЛЕНТА ${g.mission.tapes.size}/${MISSION.tapes}`, t.x, t.bottom - 1.5, 'enemy');
   }
   g.tapes = g.tapes.filter(t => !g.mission.tapes.has(t.id));
+  if (g.source) touchSource(g, g.source, nr, dt);
   stepProjectiles(g.projectiles, room, dt);
   for (const a of g.androids) {
     const k = updateAndroid(a, g.nina, room, dt);

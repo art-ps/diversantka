@@ -170,3 +170,11 @@ export const BIKE = {
   smokeRise: 1.5, // клеток/с вверх
   smokeDrift: 0.6, // клеток/с назад
 };
+
+// Источник в секретной комнате: пульс — Гц, искры — в секунду, клетки/с.
+export const SOURCE = {
+  pulseHz: 1.2,
+  sparksPerSec: 6,
+  sparkLife: 1.2,
+  sparkRise: 1.5,
+};

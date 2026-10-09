@@ -25,6 +25,7 @@ export interface Nina {
   peakY: number; // самая высокая точка текущего полёта — для урона от падения
   held: ItemKind | null; // предмет в руках
   throwT: number; // сколько ещё играет бросок
+  immortal: boolean; // источник найден: урон не отнимает энергию
 }
 
 const EPS = 1e-6;
@@ -35,8 +36,13 @@ export function createNina(x: number, bottom: number, cfg: NinaConfig = NINA): N
     body: { x, y, w: cfg.w, h: cfg.h, vx: 0, vy: 0, onGround: false },
     state: 'air', facing: 1, crouching: false,
     energy: cfg.energyMax, dead: false, deadT: 0, attack: null, hurtT: 0, invulnT: 0,
-    coyoteT: 0, bufferT: 0, jumpHeld: false, skid: false, peakY: y, held: null, throwT: 0,
+    coyoteT: 0, bufferT: 0, jumpHeld: false, skid: false, peakY: y, held: null, throwT: 0, immortal: false,
   };
+}
+
+// Любой урон (удар, огонь, вода, падение) отнимает энергию только здесь; после источника — нет.
+function drain(n: Nina, amount: number): void {
+  if (!n.immortal) n.energy -= amount;
 }
 
 const approach = (v: number, target: number, d: number) => (v < target ? Math.min(v + d, target) : Math.max(v - d, target));
@@ -186,7 +192,7 @@ function walk(n: Nina, it: Intent, room: Room, dt: number, cfg: NinaConfig): voi
   if (b.onGround) {
     if (wasAir) {
       const fall = b.y - n.peakY;
-      if (fall > cfg.safeFall) n.energy -= (fall - cfg.safeFall) * cfg.fallDamagePerCell;
+      if (fall > cfg.safeFall) drain(n, (fall - cfg.safeFall) * cfg.fallDamagePerCell);
       if (it.moveX === 0 && Math.abs(b.vx) > 0) n.skid = true;
     }
     n.state = 'ground';
@@ -200,7 +206,7 @@ function walk(n: Nina, it: Intent, room: Room, dt: number, cfg: NinaConfig): voi
 
 export function hurtNina(n: Nina, amount: number, dir: 1 | -1): boolean {
   if (n.invulnT > 0 || n.dead) return false;
-  n.energy -= amount;
+  drain(n, amount);
   n.hurtT = COMBAT.hurtStun;
   n.invulnT = COMBAT.hurtInvuln;
   n.body.vx = n.state === 'ladder' ? 0 : dir * COMBAT.hurtPush; // на лестнице не толкает
@@ -216,7 +222,7 @@ export function hurtNina(n: Nina, amount: number, dir: 1 | -1): boolean {
 // Непрерывный урон (огонь): без оглушения и неуязвимости.
 export function burnNina(n: Nina, amount: number): void {
   if (n.dead) return;
-  n.energy -= amount;
+  drain(n, amount);
   if (n.energy <= 0) {
     n.energy = 0;
     n.dead = true;
