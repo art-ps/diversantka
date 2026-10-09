@@ -32,3 +32,23 @@ it('символы собаки — над точкой опоры, в пред�
     expect(s.y).toBeGreaterThan(23 - DOG.h - 0.6);
   }
 });
+
+it('поджарая: длинные лапы, голова выше холки', () => {
+  const p = DOG_POSES.stand;
+  const y = (j: number) => p[2 * j + 1];
+  const [head, withers, hips] = [1, 2, 3];
+  for (const paw of [5, 6]) expect(y(withers) - y(paw)).toBeGreaterThanOrEqual(1.2);
+  for (const paw of [7, 8]) expect(y(hips) - y(paw)).toBeGreaterThanOrEqual(1.2);
+  expect(y(head)).toBeGreaterThan(y(withers) + 0.3);
+});
+
+it('спина одной линией: в середине спины символы в узкой полосе', () => {
+  const d = dog();
+  const g = dogGlyphs(d, [1, 1, 1, 1]);
+  const cx = d.body.x + d.body.w / 2;
+  const p = DOG_POSES.stand;
+  const mid = g.filter(s => s.x > cx + p[2 * 3] + 0.3 && s.x < cx + p[2 * 2] - 0.3);
+  expect(mid.length).toBeGreaterThan(0);
+  const ys = mid.map(s => s.y);
+  expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(0.2);
+});
