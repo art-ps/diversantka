@@ -18,7 +18,7 @@ export function touchHazards(n: Nina, room: Room, dt: number): void {
   if (touches(n, room, '^')) {
     const vx = n.body.vx;
     const dir: 1 | -1 = vx > 0.1 ? -1 : vx < -0.1 ? 1 : n.facing === 1 ? -1 : 1;
-    if (hurtNina(n, HAZARD.spikeDamage, dir) && n.state !== 'ladder') {
+    if (hurtNina(n, HAZARD.spikeDamage, dir) && !n.dead && n.state !== 'ladder') {
       n.body.vy = -HAZARD.spikeBounce;
       n.body.onGround = false;
     }

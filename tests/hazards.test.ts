@@ -48,3 +48,27 @@ it('вода: медленный урон без оглушения', () => {
   expect(lost).toBeLessThanOrEqual(HAZARD.waterDps + 0.5);
   expect(n.hurtT).toBe(0);
 });
+
+it('шипы: смертельный удар не подбрасывает тело', () => {
+  const r = room('^');
+  const n = settled(11);
+  n.energy = HAZARD.spikeDamage - 1;
+  touchHazards(n, r, DT);
+  expect(n.dead).toBe(true);
+  expect(n.body.vy).not.toBeLessThan(0);
+});
+
+it('шипы на лестнице: урон есть, толчка и подброса нет', () => {
+  const rows: Record<number, string> = { 14: '='.repeat(30) + 'H', 22: FLOOR };
+  for (let r = 15; r <= 21; r++) rows[r] = '.'.repeat(29) + 'H' + '^';
+  const r = roomOf(rows);
+  const n = createNina(29.7, 22);
+  const climb = roomOf({ ...rows, ...Object.fromEntries(Array.from({ length: 7 }, (_, i) => [15 + i, '.'.repeat(30) + 'H'])) });
+  tick(n, climb, 2);
+  for (let i = 0; i < 30; i++) updateNina(n, { ...IDLE, up: true }, climb, DT);
+  expect(n.state).toBe('ladder');
+  touchHazards(n, r, DT);
+  expect(n.energy).toBe(NINA.energyMax - HAZARD.spikeDamage);
+  expect(n.body.vx).toBe(0);
+  expect(n.body.vy).not.toBeLessThan(0);
+});
