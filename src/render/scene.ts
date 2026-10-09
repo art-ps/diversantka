@@ -14,12 +14,15 @@ import type { Item, Projectile } from '../sim/items';
 import { particleAlpha, type Particle } from '../sim/particles';
 import type { Room } from '../world/room';
 import type { Point, TerminalSpawn } from '../world/spawns';
+import { drawBike, ridePose } from './bike';
 import { drawFigure } from './figure';
 import type { Color, GlyphBatch } from './glyphs';
 import { PAL } from './palette';
 import { drawFailed, drawOutro, drawResult, drawScreen } from './screens';
 
 const WALL_GLYPHS = '#%&8';
+const crouch = CLIPS.get('crouch')!.frames;
+const RIDER = ridePose(crouch[crouch.length - 1]); // Нина в седле в сцене выезда
 const hash = (c: number, r: number) => ((c * 73856093) ^ (r * 19349663)) >>> 0;
 const dim = (c: Color, k: number): Color => [c[0] * k, c[1] * k, c[2] * k, c[3]];
 
@@ -104,13 +107,7 @@ export function drawTerminals(b: Pick<GlyphBatch, 'push'>, ts: TerminalSpawn[], 
 export function drawFenceParts(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number, time: number): void {
   const on = !g.mission.fenceOff;
   if (g.panel) b.push(g.panel.x - 0.5 + ox, g.panel.bottom - 2.5 + oy, '▓', on ? PAL.danger : PAL.hud);
-  if (g.bike) {
-    const { x, bottom } = g.bike;
-    b.push(x - 1.5 + ox, bottom - 1 + oy, 'o', PAL.item);
-    b.push(x - 0.5 + ox, bottom - 1 + oy, '=', PAL.item);
-    b.push(x + 0.5 + ox, bottom - 1 + oy, 'o', PAL.item);
-    b.push(x + 0.5 + ox, bottom - 2 + oy, '/', PAL.item);
-  }
+  if (g.bike) drawBike(b, g.bike.x + ox, g.bike.bottom + oy, 0);
   if (g.fence) {
     for (let y = g.fence.top; y <= g.fence.bottom; y++) {
       const flick = on && Math.floor(time * 15 + y * 7) % 3 === 0;
@@ -254,7 +251,7 @@ function drawWorld(b: GlyphBatch, g: Game, ox: number, oy: number, time: number)
 
 export function drawGame(b: GlyphBatch, g: Game, time: number): void {
   if (g.mission.result === 'won') {
-    if (g.endT < MISSION.outroTime) drawOutro(b, g.endT);
+    if (g.endT < MISSION.outroTime) drawOutro(b, g.endT, RIDER);
     else drawResult(b, missionResult(g.mission), g.copied);
     return;
   }

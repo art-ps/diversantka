@@ -1,6 +1,9 @@
-import { MISSION, ROOM_W } from '../config';
+import { BIKE, MISSION, ROOM_W } from '../config';
+import type { Pose } from '../anim/clip';
 import type { MissionResult } from '../sim/mission';
 import { bootLines, menuItems, type Screen } from '../sim/terminal';
+import { BIKE_PIPE, bikeGlyphs, riderGlyphs } from './bike';
+import type { Glyph } from './figure';
 import type { Color, GlyphBatch } from './glyphs';
 import { PAL } from './palette';
 
@@ -62,8 +65,34 @@ export function drawFailed(b: Pick<GlyphBatch, 'text'>): void {
   b.text((ROOM_W - hint.length * STEP) / 2, 13, hint, PAL.hudDim, STEP);
 }
 
-// Выезд: ночная дорога, ворота позади, мотоцикл разгоняется вправо и уходит за край.
-export function drawOutro(b: Pick<GlyphBatch, 'push'>, t: number): void {
+// Выезд: ночная дорога, ворота позади, Нина на мотоцикле разгоняется вправо и уходит за край.
+export const OUTRO_ROAD = 19; // верх дороги — низ колёс
+export const OUTRO_X0 = 4; // центр мотоцикла в начале сцены
+
+export function outroBikeX(t: number): number {
+  const k = Math.min(1, Math.max(0, t / MISSION.outroTime));
+  return OUTRO_X0 + k * k * (ROOM_W + 4);
+}
+
+// Дым из глушителя: клуб каждые BIKE.smokeEvery с остаётся там, где вышел, поднимается, сносится назад и тает.
+export function outroSmoke(t: number): Glyph[] {
+  const out: Glyph[] = [];
+  const first = Math.max(0, Math.ceil((t - BIKE.smokeLife) / BIKE.smokeEvery));
+  for (let i = first; i * BIKE.smokeEvery <= t; i++) {
+    const age = t - i * BIKE.smokeEvery;
+    if (age >= BIKE.smokeLife) continue;
+    const a = PAL.smoke[3] * (1 - age / BIKE.smokeLife);
+    out.push({
+      x: outroBikeX(i * BIKE.smokeEvery) + BIKE_PIPE.dx - age * BIKE.smokeDrift,
+      y: OUTRO_ROAD + BIKE_PIPE.dy - age * BIKE.smokeRise,
+      ch: '.,~'[i % 3], color: [PAL.smoke[0], PAL.smoke[1], PAL.smoke[2], a], size: 0.5,
+    });
+  }
+  return out;
+}
+
+// rider — поза Нины в седле (ridePose).
+export function drawOutro(b: Pick<GlyphBatch, 'push'>, t: number, rider: Pose): void {
   for (let i = 0; i < 40; i++) {
     const h = (i * 2654435761) >>> 0;
     b.push(h % ROOM_W, (h >>> 8) % 12, '.', PAL.hudDim, 0.5);
@@ -74,10 +103,7 @@ export function drawOutro(b: Pick<GlyphBatch, 'push'>, t: number): void {
     if ((x + shift) % 4 === 0) b.push(x, 19, '-', PAL.hudDim, 0.5);
   }
   for (let y = 14; y <= 17; y++) b.push(8, y, '|', PAL.wall);
-  const k = Math.min(1, t / MISSION.outroTime);
-  const x = 4 + k * k * (ROOM_W + 4);
-  b.push(x - 1, 17, 'o', PAL.item);
-  b.push(x, 17, '=', PAL.item);
-  b.push(x + 1, 17, 'o', PAL.item);
-  b.push(x + 0.5, 16, '/', PAL.nina);
+  const x = outroBikeX(t);
+  const glyphs = [...outroSmoke(t), ...bikeGlyphs(x, OUTRO_ROAD, x - OUTRO_X0), ...riderGlyphs(x, OUTRO_ROAD, rider)];
+  for (const g of glyphs) b.push(g.x - 0.5, g.y - 0.5, g.ch, g.color, g.size);
 }
