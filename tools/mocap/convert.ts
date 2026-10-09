@@ -13,6 +13,7 @@ export interface ClipSpec {
 export interface ConvertOpts { height: number; fps: number }
 
 export const CONTACT_H = 0.35; // стопа ниже этого (в клетках) — на земле
+export const CONTACT_V = 3; // клеток/с — стопа на земле почти не движется относительно мира
 
 // Какие точки BVH (CMU в конвертации cgspeed) соответствуют суставам скелета.
 const SOURCE: Record<JointName, { joint: string; end?: boolean }> = {
@@ -87,12 +88,23 @@ export function convertClip(bvh: Bvh, spec: ClipSpec, opts: ConvertOpts): Clip {
     frames = frames.slice(0, best); // кадр best совпадает с первым — цикл замыкается сам
   }
 
-  const contacts = frames.map(p => {
-    if (spec.anchor !== 'floor') return 0;
-    return (p[2 * J.lFoot + 1] < CONTACT_H ? 1 : 0) | (p[2 * J.rFoot + 1] < CONTACT_H ? 2 : 0);
-  });
   const seconds = end / opts.fps;
   const speed = seconds > 0 ? round((Math.abs(rootZ[end] - rootZ[0]) * scale) / seconds) : 0;
+
+  // Контакт: стопа низко и почти неподвижна относительно мира (таз едет вперёд со скоростью speed).
+  const n = frames.length;
+  const near = (i: number) => (spec.loop ? (i + n) % n : Math.min(n - 1, Math.max(0, i)));
+  const planted = (i: number, j: number) => {
+    if (frames[i][2 * j + 1] >= CONTACT_H) return false;
+    const a = near(i - 1), b = near(i + 1);
+    const span = spec.loop ? 2 : b - a;
+    const relV = span > 0 ? ((frames[b][2 * j] - frames[a][2 * j]) * opts.fps) / span : 0;
+    return Math.abs(relV + speed) < CONTACT_V;
+  };
+  const contacts = frames.map((_, i) => {
+    if (spec.anchor !== 'floor') return 0;
+    return (planted(i, J.lFoot) ? 1 : 0) | (planted(i, J.rFoot) ? 2 : 0);
+  });
 
   return { name: spec.name, fps: opts.fps, loop: spec.loop, speed, frames, contacts };
 }

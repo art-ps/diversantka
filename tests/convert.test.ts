@@ -131,8 +131,13 @@ describe('convertClip', () => {
   });
 
   it('стопы на земле помечены контактом', () => {
-    const c = convertClip(bvh([frame(0), frame(0), frame(2), frame(4), frame(6)]), spec(), OPTS);
+    const c = convertClip(bvh([frame(0), frame(0), frame(0), frame(0), frame(0)]), spec(), OPTS);
     expect(c.contacts).toEqual([3, 3, 3, 3]);
+  });
+
+  it('стопы, скользящие вместе с тазом (5 кл/с), — не контакт', () => {
+    const c = convertClip(bvh([frame(0), frame(0), frame(2), frame(4), frame(6)]), spec(), OPTS);
+    expect(c.contacts).toEqual([0, 0, 0, 0]);
   });
 
   it('боковая проекция: вперёд — это +Z', () => {
