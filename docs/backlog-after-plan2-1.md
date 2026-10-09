@@ -4,3 +4,5 @@
 - Task 2: minor (deferred): facing mirror meaningless on ladder (harmless)
 - Task 3: minor (deferred): crouch timing test bound includes fade slack; stacked comments in figure.ts
 - Финальное ревью: в transition.test/figure.test зашиты w 1.6 / h 5.5 (косметика); facing зеркалит позу на лестнице; на плейтест: темп бега (клип 1.69×), синхронизация рук с перекладинами (фаза лазания по dt, а не по пути), высота прыжка 3.5 против роста 4.
+
+- План 2.2: присед во время тормозного шага тормозит landDecel (дольше обычного); нет тестов на сход с уступа/лестницу во время шага; тест «ввод прерывает шаг» не проверяет разгон.
