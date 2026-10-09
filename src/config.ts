@@ -125,3 +125,10 @@ export const DOG = {
   recoilSpeed: 6,
   cooldown: 1.0,
 };
+
+// Опасные тайлы: шипы бьют как удар врага, вода жжёт медленно.
+export const HAZARD = {
+  spikeDamage: 15,
+  spikeBounce: 12, // подброс вверх, клеток/с
+  waterDps: 10,
+};

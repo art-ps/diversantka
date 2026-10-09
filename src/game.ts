@@ -13,6 +13,7 @@ import { stepProjectiles, useThrowButton, type Item, type Projectile } from './s
 import { burnNina, createNina, updateNina, type Nina } from './sim/nina';
 import { crumble, sparks, stepParticles, type Particle } from './sim/particles';
 import { bodyRect, overlap } from './sim/rect';
+import { touchHazards } from './sim/hazards';
 import { exitFor } from './sim/transition';
 import type { Dir, Room } from './world/room';
 import { figureGlyphs } from './render/figure';
@@ -107,6 +108,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   const room = g.rooms.get(g.roomId)!;
   const e0 = g.nina.energy;
   updateNina(g.nina, it, room, dt);
+  touchHazards(g.nina, room, dt);
   const { picked, thrown } = useThrowButton(g.nina, it, g.items);
   if (picked) {
     g.taken.add(picked.id);
