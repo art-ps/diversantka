@@ -48,12 +48,19 @@ export function convertClip(bvh: Bvh, spec: ClipSpec, opts: ConvertOpts): Clip {
   const scale = opts.height / (rest[J.head][1] - restFoot);
   const restPelvis = rest[J.pelvis][1] - restFoot;
 
+  // Доворот: лицом вперёд (+Z) по линии плеч на первом кадре клипа.
+  const first = points3d(bvh, spec.from, idx);
+  const lx = first[J.lShoulder][0] - first[J.rShoulder][0], lz = first[J.lShoulder][2] - first[J.rShoulder][2];
+  const theta = Math.atan2(-lz, lx); // F = (−Lz, 0, Lx), θ = atan2(F.x, F.z)
+  const cos = Math.cos(theta), sin = Math.sin(theta);
+  const turn = (p: Vec3): Vec3 => [p[0] * cos - p[2] * sin, p[1], p[0] * sin + p[2] * cos];
+
   // Пересэмплирование к opts.fps с линейной интерполяцией между исходными кадрами.
   const step = 1 / opts.fps / bvh.frameTime;
   const raw: Vec3[][] = [];
   for (let s = spec.from; s <= spec.to + 1e-9; s += step) {
     const a = Math.floor(s), t = s - a, b = Math.min(a + 1, spec.to);
-    const pa = points3d(bvh, a, idx), pb = points3d(bvh, b, idx);
+    const pa = points3d(bvh, a, idx).map(turn), pb = points3d(bvh, b, idx).map(turn);
     raw.push(pa.map((p, i) => lerp3(p, pb[i], t)));
   }
 

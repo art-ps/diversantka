@@ -141,6 +141,13 @@ describe('convertClip', () => {
     expect(pt(c.frames[0], J.lKnee)[0]).toBeCloseTo(-1.25);
   });
 
+  it('боковая проекция: клип, повёрнутый вокруг Y, довёрнут лицом вперёд', () => {
+    const turned = (r: string) => { const v = r.split(' '); v[4] = '90'; return v.join(' '); };
+    const rows = [frame(0), turned(frame(0, 90)), turned(frame(0, 90))];
+    const c = convertClip(bvh(rows), spec({ to: 2, anchor: 'root' }), OPTS);
+    expect(pt(c.frames[0], J.lKnee)[0]).toBeCloseTo(-1.25);
+  });
+
   it('якорь root: вертикальное движение таза убрано', () => {
     const rows = [frame(0), frame(0), frame(0), frame(0)];
     const up = rows.map((r, i) => (i === 2 ? r.replace(/^0 10/, '0 14') : r));
