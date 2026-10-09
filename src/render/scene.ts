@@ -16,6 +16,7 @@ import type { Room } from '../world/room';
 import type { Point, TerminalSpawn } from '../world/spawns';
 import { drawBike, ridePose } from './bike';
 import { drawFigure } from './figure';
+import { drawGlider, hangPose } from './glider';
 import type { Color, GlyphBatch } from './glyphs';
 import { PAL } from './palette';
 import { drawFailed, drawOutro, drawResult, drawScreen } from './screens';
@@ -23,6 +24,7 @@ import { drawFailed, drawOutro, drawResult, drawScreen } from './screens';
 const WALL_GLYPHS = '#%&8';
 const crouch = CLIPS.get('crouch')!.frames;
 const RIDER = ridePose(crouch[crouch.length - 1]); // Нина в седле в сцене выезда
+const HANG = hangPose(CLIPS.get('idle')!.frames[0]); // Нина под дельтапланом
 const hash = (c: number, r: number) => ((c * 73856093) ^ (r * 19349663)) >>> 0;
 const dim = (c: Color, k: number): Color => [c[0] * k, c[1] * k, c[2] * k, c[3]];
 
@@ -169,6 +171,11 @@ function drawDogs(b: GlyphBatch, g: Game, ox: number, oy: number): void {
 
 function drawNina(b: GlyphBatch, g: Game, ox: number, oy: number, time: number): void {
   const { body, facing } = g.nina;
+  const p = g.prologue;
+  if (p && (p.phase === 'fly' || p.phase === 'crash')) {
+    drawGlider(b, body.x + body.w / 2 + ox, body.y + body.h + oy, HANG);
+    return;
+  }
   if (!g.nina.dead && blinkOff(g.nina.invulnT, time)) return;
   const pose = currentPose(g.anim, CLIPS);
   const x = body.x + body.w / 2 + ox, y = body.y + body.h + oy;
@@ -216,6 +223,9 @@ export function drawStatic(b: Pick<GlyphBatch, 'push'>, deadT: number, time: num
   }
 }
 
+// Подсказка в полёте и исход пролога.
+const PROLOGUE_TEXT = { fly: 'ПРЫЖОК — ОТЦЕПИТЬСЯ', fall: '', splash: 'В МОРЕ · ЗАНОВО', crash: 'УДАР О МАЧТУ · ЗАНОВО' } as const;
+
 function drawHud(b: GlyphBatch, g: Game, time: number): void {
   const filled = Math.round((g.nina.energy / NINA.energyMax) * 10);
   const barX = 1 + hudWidth(ENERGY_LABEL);
@@ -234,6 +244,11 @@ function drawHud(b: GlyphBatch, g: Game, time: number): void {
     b.text((ROOM_W - hudWidth(msg)) / 2, 12, msg, PAL.danger, HUD_STEP);
   }
   if (time < 8) b.text(ROOM_W - 0.5 - hudWidth(CREDIT), ROOM_H - 1, CREDIT, PAL.hudDim, HUD_STEP);
+  const p = g.prologue;
+  if (p) {
+    const msg = PROLOGUE_TEXT[p.phase];
+    if (msg) b.text((ROOM_W - hudWidth(msg)) / 2, p.phase === 'fly' ? ROOM_H - 2 : 12, msg, p.phase === 'fly' ? PAL.hudDim : PAL.danger, HUD_STEP);
+  }
 }
 
 function drawFlamers(b: GlyphBatch, g: Game, ox: number, oy: number): void {
