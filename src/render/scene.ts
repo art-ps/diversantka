@@ -11,6 +11,11 @@ const WALL_GLYPHS = '#%&8';
 const hash = (c: number, r: number) => ((c * 73856093) ^ (r * 19349663)) >>> 0;
 const dim = (c: Color, k: number): Color => [c[0] * k, c[1] * k, c[2] * k, c[3]];
 
+const SUB = 0.5; // мелкий символ — полклетки
+// Символ размера SUB с центром в подклетке (i, j) клетки (x, y).
+const sub = (b: Pick<GlyphBatch, 'push'>, x: number, y: number, i: number, j: number, ch: string, c: Color) =>
+  b.push(x + 0.25 + i / 2 - 0.5, y + 0.25 + j / 2 - 0.5, ch, c, SUB);
+
 function isWall(room: Room, c: number, r: number) {
   const t = room.tiles[r]?.[c];
   return t === '#' || t === 'S';
@@ -21,29 +26,36 @@ export const hudCell = (x: number, y: number, hudId: string, time: number) =>
   (Math.round(y) === 0 && (Math.round(x) <= 19 || Math.round(x) >= ROOM_W - hudId.length - 2)) ||
   (time < 8 && Math.round(y) === ROOM_H - 1 && Math.round(x) >= ROOM_W - 27);
 
-export function drawRoom(b: GlyphBatch, room: Room, ox: number, oy: number, time: number, hudId: string): void {
+export function drawRoom(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy: number, time: number, hudId: string): void {
   for (let r = 0; r < ROOM_H; r++) {
     for (let c = 0; c < ROOM_W; c++) {
-      const t = room.tiles[r][c];
       const x = c + ox, y = r + oy;
-      const h = hash(c, r);
       if (hudCell(x, y, hudId, time)) continue;
-      if (t === '.') {
-        // Дышащая фоновая сетка: редкие тусклые символы.
-        if (h % 7 === 0) {
-          const k = 0.6 + 0.4 * Math.sin(time * 0.8 + (h % 100));
-          b.push(x, y, h % 3 ? '·' : ':', dim(PAL.grid, k));
+      const t = room.tiles[r][c];
+      for (let j = 0; j < 2; j++) {
+        for (let i = 0; i < 2; i++) {
+          const h = hash(2 * c + i, 2 * r + j);
+          if (t === '.') {
+            // Дышащая фоновая сетка: редкие тусклые точки.
+            if (h % 9 === 0) sub(b, x, y, i, j, h % 3 ? '·' : ':', dim(PAL.grid, 0.6 + 0.4 * Math.sin(time * 0.8 + (h % 100))));
+          } else if (t === '#' || t === 'S') {
+            // Подклетка на открытой стороне — яркая кромка, внутри — тусклее.
+            const edge = (i === 0 && !isWall(room, c - 1, r)) || (i === 1 && !isWall(room, c + 1, r))
+              || (j === 0 && !isWall(room, c, r - 1)) || (j === 1 && !isWall(room, c, r + 1));
+            sub(b, x, y, i, j, WALL_GLYPHS[h % WALL_GLYPHS.length], t === 'S' ? PAL.fake : edge ? PAL.wall : PAL.wallInner);
+          } else if (t === '=') {
+            if (j === 0) sub(b, x, y, i, j, '=', PAL.platform);
+          } else if (t === 'H') {
+            sub(b, x, y, i, j, '|', PAL.ladder);
+          } else if (t === '~') {
+            sub(b, x, y, i, j, '~', dim(PAL.water, 0.7 + 0.3 * Math.sin(time * 3 + 2 * c + i)));
+          } else if (t === '^') {
+            if (j === 1) sub(b, x, y, i, j, '^', dim(PAL.hazard, 0.7 + 0.3 * Math.sin(time * 9 + 2 * c + i)));
+          }
         }
-        continue;
       }
-      if (t === '#' || t === 'S') {
-        const edge = !isWall(room, c - 1, r) || !isWall(room, c + 1, r) || !isWall(room, c, r - 1) || !isWall(room, c, r + 1);
-        const base = t === 'S' ? PAL.fake : edge ? PAL.wall : PAL.wallInner;
-        b.push(x, y, WALL_GLYPHS[h % WALL_GLYPHS.length], base);
-      } else if (t === '=') b.push(x, y, '=', PAL.platform);
-      else if (t === 'H') b.push(x, y, 'H', PAL.ladder);
-      else if (t === '~') b.push(x, y, '~', dim(PAL.water, 0.7 + 0.3 * Math.sin(time * 3 + c)));
-      else if (t === '^') b.push(x, y, '^', dim(PAL.hazard, 0.7 + 0.3 * Math.sin(time * 9 + c * 2)));
+      // Перекладина лестницы — посередине клетки, между рельсами.
+      if (t === 'H') b.push(x, y, '-', PAL.ladder, SUB);
     }
   }
 }
