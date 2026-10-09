@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { DT, MISSION, NINA, PROLOGUE } from '../src/config';
-import { createPrologue, stepGame, type Game } from '../src/game';
+import { createGame, createPrologue, stepGame, type Game } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
 import { gliderAt, ROUTE } from '../src/sim/glider';
 import { isSolid } from '../src/sim/physics';
@@ -155,5 +155,23 @@ it('после итога или провала «заново» — с прол
     run(g, I({ jump: true }), 120);
     expect(g.prologue!.phase).toBe('fly');
     expect(g.mission.timeLeft).toBe(MISSION.time);
+  }
+});
+
+it('отцепление над люком с зажатым «вниз» — старт миссии только стоя на земле; чекпоинт целый, респавн стоя', () => {
+  for (const x of [2.4, 2.6, 3, 3.4]) {
+    const g = fresh();
+    flyTo(g, 'roof-1', x);
+    stepGame(g, JUMP, DT);
+    for (let i = 0; i < 1200 && g.prologue; i++) {
+      const before = g.nina.state;
+      stepGame(g, I({ down: true }), DT);
+      if (!g.prologue) expect(before, `x=${x}`).toBe('ground'); // миссия началась — Нина уже стояла
+    }
+    expect(g.prologue).toBeNull();
+    expect(Number.isInteger(g.mission.checkpoint.bottom), `x=${x}`).toBe(true);
+    const r = createGame(g.rooms, g.start);
+    run(r, IDLE, 5);
+    expect(r.nina.state, `x=${x}`).toBe('ground');
   }
 });

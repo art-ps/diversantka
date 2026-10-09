@@ -220,7 +220,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
       if (g.inWater) {
         p.phase = 'splash';
         p.t = 0;
-      } else if (g.nina.state !== 'air') beginMission(g);
+      } else if (g.nina.state === 'ground') beginMission(g);
     }
     if (g.prologue && p.phase !== 'fall') {
       stepPrologue(g, p, it, dt);
