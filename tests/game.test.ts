@@ -59,3 +59,10 @@ it('подъём по лестнице из cave-1 в lab-2: аниматор с
   for (let i = 0; i < 120; i++) { stepGame(g, I(), DT); clips.push(g.anim.clip); }
   expect(clips).not.toContain('land');
 });
+
+it('после гибели играет клип смерти', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
+  g.nina.dead = true;
+  stepGame(g, I(), DT);
+  expect(g.anim.clip).toBe('death');
+});

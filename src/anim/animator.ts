@@ -1,9 +1,10 @@
-import { ANIM } from '../config';
+import { ANIM, COMBAT } from '../config';
+import { attackTotal } from '../sim/combat';
 import type { Nina, NinaState } from '../sim/nina';
 import type { Clip, Pose } from './clip';
 import { lerpPose, sampleClip } from './pose';
 
-export const ANIM_NAMES = ['idle', 'walk', 'run', 'jump', 'fall', 'land', 'crouch', 'climb'] as const;
+export const ANIM_NAMES = ['idle', 'walk', 'run', 'jump', 'fall', 'land', 'crouch', 'climb', 'punch', 'kick', 'flykick', 'hit', 'death'] as const;
 export type AnimName = (typeof ANIM_NAMES)[number];
 
 export interface Animator {
@@ -22,6 +23,9 @@ export function createAnimator(): Animator {
 }
 
 export function chooseClip(n: Nina, a: Animator): AnimName {
+  if (n.dead) return 'death';
+  if (n.hurtT > 0) return 'hit';
+  if (n.attack) return n.attack.kind;
   if (n.state === 'ladder') return 'climb';
   if (n.state === 'air') return n.body.vy < 0 ? 'jump' : 'fall';
   if (n.crouching) return 'crouch';
@@ -64,6 +68,11 @@ export function updateAnimator(a: Animator, n: Nina, clips: Map<string, Clip>, d
   } else if (a.clip === 'crouch') {
     // Клип записан медленно; сжимаем его до ANIM.crouchTime.
     a.t += (dt * ((c.frames.length - 1) / c.fps)) / ANIM.crouchTime;
+  } else if (n.attack && a.clip === n.attack.kind) {
+    // Клип удара растянут или сжат под время удара из COMBAT.
+    a.t = (n.attack.t / attackTotal(n.attack.kind)) * ((c.frames.length - 1) / c.fps);
+  } else if (a.clip === 'hit') {
+    a.t += (dt * ((c.frames.length - 1) / c.fps)) / COMBAT.hurtStun;
   } else {
     a.t += dt;
   }

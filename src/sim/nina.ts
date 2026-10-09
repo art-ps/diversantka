@@ -1,5 +1,6 @@
-import { NINA, type NinaConfig } from '../config';
-import type { Intent } from '../input/intent';
+import { COMBAT, NINA, type NinaConfig } from '../config';
+import { IDLE, type Intent } from '../input/intent';
+import { attackTotal, type Attack } from './combat';
 import { tileAt, type Room } from '../world/room';
 import { isLadder, isSolid, moveX, moveY, type Body } from './physics';
 
@@ -12,6 +13,9 @@ export interface Nina {
   crouching: boolean;
   energy: number;
   dead: boolean;
+  attack: Attack | null;
+  hurtT: number; // оглушение
+  invulnT: number; // неуязвимость
   coyoteT: number;
   bufferT: number;
   jumpHeld: boolean;
@@ -26,7 +30,7 @@ export function createNina(x: number, bottom: number, cfg: NinaConfig = NINA): N
   return {
     body: { x, y, w: cfg.w, h: cfg.h, vx: 0, vy: 0, onGround: false },
     state: 'air', facing: 1, crouching: false,
-    energy: cfg.energyMax, dead: false,
+    energy: cfg.energyMax, dead: false, attack: null, hurtT: 0, invulnT: 0,
     coyoteT: 0, bufferT: 0, jumpHeld: false, skid: false, peakY: y,
   };
 }
@@ -57,6 +61,20 @@ function headroom(room: Room, b: Body, fullH: number): boolean {
 
 export function updateNina(n: Nina, it: Intent, room: Room, dt: number, cfg: NinaConfig = NINA): void {
   if (n.dead) return;
+  n.invulnT = Math.max(0, n.invulnT - dt);
+  if (n.hurtT > 0) {
+    n.hurtT = Math.max(0, n.hurtT - dt);
+    it = IDLE; // оглушена — ввод не слушается
+  }
+  if (n.attack) {
+    n.attack.t += dt;
+    const landed = n.attack.kind === 'flykick' && n.state !== 'air';
+    if (n.attack.t >= attackTotal(n.attack.kind) || landed) n.attack = null;
+  } else if (it.attackPressed && n.state !== 'ladder' && !n.crouching) {
+    n.attack = { kind: n.state === 'air' ? 'flykick' : it.up ? 'kick' : 'punch', t: 0, hits: [] };
+  }
+  // Удар на земле: стоит, не прыгает и не лезет на лестницу.
+  if (n.attack && n.attack.kind !== 'flykick') it = IDLE;
   const b = n.body;
   const col = Math.floor(b.x + b.w / 2);
 
@@ -163,4 +181,19 @@ function walk(n: Nina, it: Intent, room: Room, dt: number, cfg: NinaConfig): voi
     n.state = 'air';
     n.peakY = Math.min(n.peakY, b.y);
   }
+}
+
+export function hurtNina(n: Nina, amount: number, dir: 1 | -1): boolean {
+  if (n.invulnT > 0 || n.dead) return false;
+  n.energy -= amount;
+  n.hurtT = COMBAT.hurtStun;
+  n.invulnT = COMBAT.hurtInvuln;
+  n.body.vx = dir * COMBAT.hurtPush;
+  n.attack = null;
+  n.skid = false;
+  if (n.energy <= 0) {
+    n.energy = 0;
+    n.dead = true;
+  }
+  return true;
 }

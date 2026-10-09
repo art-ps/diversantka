@@ -31,6 +31,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   }
   if (g.nina.dead) {
     // ponytail: в плане 1 смерть — возврат на старт; чекпоинты на терминалах — план 4.
+    updateAnimator(g.anim, g.nina, CLIPS, dt);
     if (it.jumpPressed) {
       g.roomId = g.start.room;
       g.nina = createNina(g.start.x, g.start.bottom);

@@ -41,3 +41,13 @@ export const ANIM = {
   landMinFall: 1.5, // с какой высоты падения (клетки) играть приземление
   legScale: 0.85, // ноги короче записи — пропорции персонажа игры
 };
+
+// Бой: время — секунды, дальность — клетки; top/bottom — полоса удара по высоте, доли роста от макушки.
+export const COMBAT = {
+  punch: { windup: 0.08, active: 0.1, recover: 0.15, reach: 1.3, top: 0.15, bottom: 0.45, damage: 1 },
+  kick: { windup: 0.15, active: 0.12, recover: 0.25, reach: 1.9, top: 0.35, bottom: 0.75, damage: 1 },
+  flykick: { windup: 0.05, active: 0.3, recover: 0.1, reach: 1.6, top: 0.4, bottom: 0.9, damage: 1 },
+  hurtStun: 0.35, // оглушение после попадания — ввод не слушается
+  hurtInvuln: 0.8, // неуязвимость после попадания
+  hurtPush: 5, // отбрасывание, клеток/с
+};

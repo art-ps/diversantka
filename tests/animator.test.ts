@@ -12,10 +12,10 @@ const clips = (over: Clip[] = []) => {
   for (const c of over) m.set(c.name, c);
   return m;
 };
-const nina = (p: { state?: Nina['state']; vx?: number; vy?: number; y?: number; crouching?: boolean } = {}): Nina => ({
+const nina = (p: { state?: Nina['state']; vx?: number; vy?: number; y?: number; crouching?: boolean; attack?: Nina['attack']; hurtT?: number; dead?: boolean } = {}): Nina => ({
   body: { x: 0, y: p.y ?? 10, w: 1.6, h: 5.5, vx: p.vx ?? 0, vy: p.vy ?? 0, onGround: p.state !== 'air' },
   state: p.state ?? 'ground', facing: 1, crouching: p.crouching ?? false,
-  energy: 100, dead: false, coyoteT: 0, bufferT: 0, jumpHeld: false, skid: false, peakY: p.y ?? 10,
+  energy: 100, dead: p.dead ?? false, attack: p.attack ?? null, hurtT: p.hurtT ?? 0, invulnT: 0, coyoteT: 0, bufferT: 0, jumpHeld: false, skid: false, peakY: p.y ?? 10,
 });
 
 describe('позы', () => {
@@ -151,4 +151,12 @@ describe('аниматор', () => {
     updateAnimator(a, nina({ state: 'ground', y: 10, vx: 10 }), cl, 1 / 60);
     expect(['walk', 'run']).toContain(a.clip);
   });
+});
+
+describe('клипы боя в аниматоре', () => {
+  it.each([
+    [{ dead: true }, 'death'],
+    [{ hurtT: 0.2 }, 'hit'],
+    [{ attack: { kind: 'kick' as const, t: 0, hits: [] } }, 'kick'],
+  ])('%o → %s', (p, name) => expect(chooseClip(nina(p), createAnimator())).toBe(name));
 });
