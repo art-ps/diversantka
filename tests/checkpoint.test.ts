@@ -93,3 +93,24 @@ it('убитые враги после смерти остаются мёртв�
   expect(g.nina.dead).toBe(false);
   expect(g.androids).toHaveLength(0);
 });
+
+it('огнемёт молчит после смерти: флаги берутся из чекпоинта, а не из живого состояния', () => {
+  const rooms = new Map([['c', R('c', { terminals: '10,22 controls=c', enemies: 'flamer@38,19 dir=left' })]]);
+  const g = createGame(rooms, { room: 'c', x: 2, bottom: 22 });
+  standAt(g, 10);
+  disableAndLeave(g);
+  g.mission.flamersOff.clear(); // живое состояние потеряло флаг, чекпоинт его помнит
+  die(g);
+  expect(g.flamers[0].off).toBe(true);
+});
+
+it('флаг огнемёта, выставленный после чекпоинта, откатывается', () => {
+  const rooms = new Map([['c', R('c', { terminals: '10,22 controls=c', enemies: 'flamer@38,19 dir=left' })]]);
+  const g = createGame(rooms, { room: 'c', x: 2, bottom: 22 });
+  standAt(g, 10);
+  press(g, { usePressed: true }); // чекпоинт без отключения
+  g.mission.flamersOff.add('c');
+  g.screen = null;
+  die(g);
+  expect(g.flamers[0].off).toBe(false);
+});
