@@ -5,7 +5,7 @@ import { createGame, enterRoom, stepGame } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
 import { PAL } from '../src/render/palette';
 import { hurtNina } from '../src/sim/nina';
-import { loadRoomsFs, roomOf } from './helpers';
+import { FLOOR, loadRoomsFs, roomOf } from './helpers';
 
 const I = (p: Partial<Intent> = {}): Intent => ({ ...IDLE, ...p });
 
@@ -242,7 +242,6 @@ it('дым над ямой: есть, выше огня, и его число о
 });
 
 it('брызги: при входе в воду — всплеск, стоишь — новых нет, идёшь — есть', () => {
-  const FLOOR = '#'.repeat(40);
   const rooms = new Map([['w', roomOf({ 21: '.'.repeat(10) + '~~~~~~', 22: FLOOR })]]);
   const g = createGame(rooms, { room: 'w', x: 6, bottom: 22 });
   const blue = () => g.particles.filter(p => p.color === PAL.water).length;
