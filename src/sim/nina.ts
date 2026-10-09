@@ -60,7 +60,15 @@ function headroom(room: Room, b: Body, fullH: number): boolean {
 }
 
 export function updateNina(n: Nina, it: Intent, room: Room, dt: number, cfg: NinaConfig = NINA): void {
-  if (n.dead) return;
+  if (n.dead) {
+    // Мёртвое тело падает под гравитацией без ввода, пока не ляжет на пол.
+    if (!n.body.onGround) {
+      if (n.state === 'ladder') n.state = 'air';
+      walk(n, IDLE, room, dt, cfg);
+      n.energy = 0;
+    }
+    return;
+  }
   n.invulnT = Math.max(0, n.invulnT - dt);
   if (n.hurtT > 0) {
     n.hurtT = Math.max(0, n.hurtT - dt);
@@ -188,7 +196,7 @@ export function hurtNina(n: Nina, amount: number, dir: 1 | -1): boolean {
   n.energy -= amount;
   n.hurtT = COMBAT.hurtStun;
   n.invulnT = COMBAT.hurtInvuln;
-  n.body.vx = dir * COMBAT.hurtPush;
+  n.body.vx = n.state === 'ladder' ? 0 : dir * COMBAT.hurtPush; // на лестнице не толкает
   n.attack = null;
   n.skid = false;
   if (n.energy <= 0) {

@@ -157,6 +157,7 @@ describe('клипы боя в аниматоре', () => {
   it.each([
     [{ dead: true }, 'death'],
     [{ hurtT: 0.2 }, 'hit'],
+    [{ state: 'ladder' as const, hurtT: 0.2 }, 'climb'],
     [{ attack: { kind: 'kick' as const, t: 0, hits: [] } }, 'kick'],
   ])('%o → %s', (p, name) => expect(chooseClip(nina(p), createAnimator())).toBe(name));
 });

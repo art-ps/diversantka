@@ -24,9 +24,9 @@ export function createAnimator(): Animator {
 
 export function chooseClip(n: Nina, a: Animator): AnimName {
   if (n.dead) return 'death';
+  if (n.state === 'ladder') return 'climb';
   if (n.hurtT > 0) return 'hit';
   if (n.attack) return n.attack.kind;
-  if (n.state === 'ladder') return 'climb';
   if (n.state === 'air') return n.body.vy < 0 ? 'jump' : 'fall';
   if (n.crouching) return 'crouch';
   const s = Math.abs(n.body.vx);

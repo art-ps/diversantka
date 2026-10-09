@@ -104,3 +104,45 @@ describe('урон по героине', () => {
     expect(n.energy).toBe(0);
   });
 });
+
+describe('гибель и лестница', () => {
+  const bottomOf = (n: Nina) => n.body.y + n.body.h;
+  const ladderRoom = () => {
+    const rows: Record<number, string> = { 14: '='.repeat(30) + 'H', 22: FLOOR };
+    for (let r = 15; r <= 21; r++) rows[r] = '.'.repeat(30) + 'H';
+    return roomOf(rows);
+  };
+
+  it('смерть в прыжке: тело падает на пол', () => {
+    const n = standing();
+    updateNina(n, I({ jump: true, jumpPressed: true }), ROOM, DT);
+    run(n, ROOM, I({ jump: true }), 5);
+    hurtNina(n, NINA.energyMax + 1, 1);
+    run(n, ROOM, I(), 120);
+    expect(bottomOf(n)).toBeCloseTo(22);
+    expect(n.dead).toBe(true);
+  });
+
+  it('смерть на лестнице: тело падает на пол', () => {
+    const room = ladderRoom();
+    const n = createNina(29.7, 22);
+    run(n, room, I(), 2);
+    run(n, room, I({ up: true }), 30);
+    expect(n.state).toBe('ladder');
+    hurtNina(n, NINA.energyMax + 1, 1);
+    run(n, room, I(), 120);
+    expect(bottomOf(n)).toBeCloseTo(22);
+    expect(n.dead).toBe(true);
+  });
+
+  it('удар на лестнице не толкает и не сбрасывает', () => {
+    const room = ladderRoom();
+    const n = createNina(29.7, 22);
+    run(n, room, I(), 2);
+    run(n, room, I({ up: true }), 30);
+    hurtNina(n, 5, 1);
+    expect(n.body.vx).toBe(0);
+    run(n, room, I(), 5);
+    expect(n.state).toBe('ladder');
+  });
+});
