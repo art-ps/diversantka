@@ -1,4 +1,4 @@
-import { BONES, J, type Pose } from '../anim/clip';
+import { BONES, J, JOINTS, type Pose } from '../anim/clip';
 import type { Color, GlyphBatch } from './glyphs';
 
 const STEP = 0.3; // клеток между символами вдоль кости
@@ -16,30 +16,44 @@ export function glyphForAngle(dx: number, dy: number): string {
   return '/';
 }
 
-// symmetric — вид со спины на лестнице: обе стороны на одной глубине, не затемняем.
-// x, y — точка на земле под тазом, в клетках экрана. Камера сбоку: при взгляде вправо дальняя сторона — правая.
-export function drawFigure(b: Pick<GlyphBatch, 'push'>, pose: Pose, x: number, y: number, facing: 1 | -1, color: Color, symmetric = false, head = 'O'): void {
-  const far = facing === 1 ? 'r' : 'l';
+export interface Glyph { x: number; y: number; ch: string; color: Color; size: number } // x, y — центр символа
+
+// Символы вдоль костей: points — экранные точки суставов, bones — пары индексов.
+export function boneGlyphs(points: (readonly [number, number])[], bones: [number, number][], color: Color, dimFor?: (bone: number) => boolean, thick?: (bone: number) => boolean): Glyph[] {
   const dim: Color = [color[0] * FAR, color[1] * FAR, color[2] * FAR, color[3]];
-  const at = (j: number) => [x + facing * pose[2 * j], y - pose[2 * j + 1]] as const;
-  for (const [from, to] of BONES) {
-    const [x0, y0] = at(J[from]);
-    const [x1, y1] = at(J[to]);
+  const out: Glyph[] = [];
+  bones.forEach(([a, b], k) => {
+    const [x0, y0] = points[a], [x1, y1] = points[b];
     const dx = x1 - x0, dy = y1 - y0;
     const steps = Math.max(1, Math.round(Math.hypot(dx, dy) / STEP));
     const ch = glyphForAngle(dx, dy);
-    const c = !symmetric && to.startsWith(far) ? dim : color;
+    const c = dimFor?.(k) ? dim : color;
     // Корпус — три параллельные линии, чтобы читался как тело.
     const len = Math.hypot(dx, dy) || 1;
-    const offs = from === 'neck' && to === 'pelvis' ? [-TORSO, 0, TORSO] : [0];
-    for (const o of offs) {
+    for (const o of thick?.(k) ? [-TORSO, 0, TORSO] : [0]) {
       const px = (-dy / len) * o, py = (dx / len) * o;
       for (let s = 0; s < steps; s++) {
         const t = (s + 0.5) / steps;
-        b.push(x0 + dx * t + px - 0.5, y0 + dy * t + py - 0.5, ch, c, GLYPH);
+        out.push({ x: x0 + dx * t + px, y: y0 + dy * t + py, ch, color: c, size: GLYPH });
       }
     }
-  }
-  const [hx, hy] = at(J.head);
-  b.push(hx - 0.5, hy - 0.5, head, color, 1);
+  });
+  return out;
+}
+
+// symmetric — вид со спины на лестнице: обе стороны на одной глубине, не затемняем.
+// x, y — точка на земле под тазом, в клетках экрана. Камера сбоку: при взгляде вправо дальняя сторона — правая.
+export function figureGlyphs(pose: Pose, x: number, y: number, facing: 1 | -1, color: Color, symmetric = false, head = 'O'): Glyph[] {
+  const far = facing === 1 ? 'r' : 'l';
+  const points = JOINTS.map((_, j) => [x + facing * pose[2 * j], y - pose[2 * j + 1]] as const);
+  const bones = BONES.map(([a, b]) => [J[a], J[b]] as [number, number]);
+  const out = boneGlyphs(points, bones, color,
+    k => !symmetric && BONES[k][1].startsWith(far),
+    k => BONES[k][0] === 'neck' && BONES[k][1] === 'pelvis');
+  out.push({ x: points[J.head][0], y: points[J.head][1], ch: head, color, size: 1 });
+  return out;
+}
+
+export function drawFigure(b: Pick<GlyphBatch, 'push'>, pose: Pose, x: number, y: number, facing: 1 | -1, color: Color, symmetric = false, head = 'O'): void {
+  for (const g of figureGlyphs(pose, x, y, facing, color, symmetric, head)) b.push(g.x - 0.5, g.y - 0.5, g.ch, g.color, g.size);
 }

@@ -49,8 +49,8 @@ describe('предметы и снаряды', () => {
     const b = { push: (_x: number, _y: number, ch: string, _c: unknown, s = 1) => { out.push({ ch, s }); } };
     drawItems(b, [{ id: 'a', kind: 'knife', x: 5, bottom: 22 }, { id: 'b', kind: 'stone', x: 8, bottom: 22 }], 0, 0);
     drawProjectiles(b, [
-      { kind: 'knife', x: 3, y: 3, vx: 1, vy: 0, from: 'nina', damage: 1, alive: true },
-      { kind: 'knife', x: 3, y: 3, vx: 1, vy: 0, from: 'nina', damage: 1, alive: false },
+      { kind: 'knife', x: 3, y: 3, vx: 1, vy: 0, from: 'nina', damage: 1, alive: true, hitWall: false },
+      { kind: 'knife', x: 3, y: 3, vx: 1, vy: 0, from: 'nina', damage: 1, alive: false, hitWall: false },
     ], 0, 0);
     expect(out).toHaveLength(3);
     expect(out.every(g => g.s === 0.5)).toBe(true);

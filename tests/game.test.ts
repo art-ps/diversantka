@@ -128,7 +128,7 @@ it('убитый андроид не возвращается после сме�
   const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
   expect(g.androids).toHaveLength(1);
   g.androids[0].hp = 1;
-  g.projectiles.push({ kind: 'stone', x: g.androids[0].body.x + 0.5, y: g.androids[0].body.y + 1, vx: 0.1, vy: 0, from: 'nina', damage: 1, alive: true });
+  g.projectiles.push({ kind: 'stone', x: g.androids[0].body.x + 0.5, y: g.androids[0].body.y + 1, vx: 0.1, vy: 0, from: 'nina', damage: 1, alive: true, hitWall: false });
   stepGame(g, I(), DT);
   expect(g.killed.has('lab-1#e0')).toBe(true);
   enterRoom(g, 'lab-2');
@@ -154,7 +154,7 @@ it('восстановление энергии не рождает чисел',
 it('попадание по андроиду — «-1» над ним, добивание — «ВЫВЕДЕН»', () => {
   const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
   const a = g.androids[0];
-  const stone = () => ({ kind: 'stone' as const, x: a.body.x + 0.5, y: a.body.y + 1, vx: 0.1, vy: 0, from: 'nina' as const, damage: 1, alive: true });
+  const stone = () => ({ kind: 'stone' as const, x: a.body.x + 0.5, y: a.body.y + 1, vx: 0.1, vy: 0, from: 'nina' as const, damage: 1, alive: true, hitWall: false });
   g.projectiles.push(stone());
   stepGame(g, I(), DT);
   expect(g.floaters.map(f => f.text)).toContain('-1');
@@ -170,4 +170,26 @@ it('смена комнаты убирает числа', () => {
   g.floaters.push({ text: '-5', x: 5, y: 18, t: 0, kind: 'damage' });
   enterRoom(g, 'lab-2');
   expect(g.floaters).toHaveLength(0);
+});
+
+it('добитый андроид рассыпается: частицы есть, сам он больше не рисуется', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
+  const a = g.androids[0];
+  a.hp = 1;
+  g.projectiles.push({ kind: 'stone', x: a.body.x + 0.5, y: a.body.y + 1, vx: 0.1, vy: 0, from: 'nina', damage: 1, alive: true, hitWall: false });
+  stepGame(g, I(), DT);
+  expect(a.gone).toBe(true);
+  expect(g.particles.length).toBeGreaterThan(10);
+  for (let i = 0; i < 120; i++) stepGame(g, I(), DT);
+  expect(g.particles).toHaveLength(0);
+});
+
+it('попадание даёт искры; смена комнаты чистит частицы', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
+  const a = g.androids[0];
+  g.projectiles.push({ kind: 'stone', x: a.body.x + 0.5, y: a.body.y + 1, vx: 0.1, vy: 0, from: 'nina', damage: 1, alive: true, hitWall: false });
+  stepGame(g, I(), DT);
+  expect(g.particles.length).toBeGreaterThan(0);
+  enterRoom(g, 'lab-2');
+  expect(g.particles).toHaveLength(0);
 });

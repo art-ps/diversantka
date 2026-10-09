@@ -42,7 +42,7 @@ describe('подобрать и бросить', () => {
 });
 
 describe('снаряды', () => {
-  const p = (q: Partial<Projectile>): Projectile => ({ kind: 'knife', x: 5, y: 10, vx: 20, vy: 0, from: 'nina', damage: 1, alive: true, ...q });
+  const p = (q: Partial<Projectile>): Projectile => ({ kind: 'knife', x: 5, y: 10, vx: 20, vy: 0, from: 'nina', damage: 1, alive: true, hitWall: false, ...q });
 
   it('нож летит прямо и гибнет о стену', () => {
     const rows: Record<number, string> = {};
@@ -53,6 +53,14 @@ describe('снаряды', () => {
     expect(k.alive).toBe(false);
     expect(k.x).toBeLessThan(16);
     expect(k.y).toBe(10);
+    expect(k.hitWall).toBe(true);
+  });
+
+  it('вылет за край комнаты — не удар о стену', () => {
+    const k = p({ x: 39.9 });
+    stepProjectiles([k], roomOf({}), DT);
+    expect(k.alive).toBe(false);
+    expect(k.hitWall).toBe(false);
   });
 
   it('камень летит по дуге', () => {

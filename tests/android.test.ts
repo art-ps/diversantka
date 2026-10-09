@@ -184,7 +184,7 @@ describe('разрешение боя', () => {
     const n = ninaAt(21.2);
     a.state = 'punch';
     a.t = ANDROID.punch.windup;
-    const knife: Projectile = { kind: 'knife', x: n.body.x + 0.5, y: n.body.y + 1, vx: 0, vy: 0, from: 'enemy', damage: ANDROID.knifeDamage, alive: true };
+    const knife: Projectile = { kind: 'knife', x: n.body.x + 0.5, y: n.body.y + 1, vx: 0, vy: 0, from: 'enemy', damage: ANDROID.knifeDamage, alive: true, hitWall: false };
     resolveCombat(n, [a], [knife], ROOM);
     expect(NINA.energyMax - n.energy).toBe(ANDROID.punch.damage);
   });
@@ -192,7 +192,7 @@ describe('разрешение боя', () => {
   it('возвращает id убитых', () => {
     const a = android();
     a.hp = 1;
-    const p: Projectile = { kind: 'stone', x: center(a), y: a.body.y + 1, vx: 1, vy: 0, from: 'nina', damage: 1, alive: true };
+    const p: Projectile = { kind: 'stone', x: center(a), y: a.body.y + 1, vx: 1, vy: 0, from: 'nina', damage: 1, alive: true, hitWall: false };
     expect(resolveCombat(ninaAt(2, 14), [a], [p], ROOM)).toEqual(['r#e0']);
   });
 });

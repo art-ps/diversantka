@@ -88,4 +88,9 @@ export const FX = {
   floatTime: 0.8, // сколько живёт число, с
   floatRise: 1.6, // на сколько клеток поднимается
   floatFade: 0.3, // последние секунды — гаснет
+  sparkCount: 6,
+  sparkLife: 0.35,
+  sparkSpeed: 10,
+  crumbleLife: 1.2,
+  crumbleGravity: 30,
 };

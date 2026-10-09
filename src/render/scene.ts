@@ -6,6 +6,7 @@ import { NINA, ROOM_H, ROOM_W } from '../config';
 import { TRANSITION_TIME, type Game } from '../game';
 import { floaterView, type Floater } from '../sim/floaters';
 import type { Item, Projectile } from '../sim/items';
+import { particleAlpha, type Particle } from '../sim/particles';
 import type { Room } from '../world/room';
 import { drawFigure } from './figure';
 import type { Color, GlyphBatch } from './glyphs';
@@ -86,11 +87,19 @@ export function drawProjectiles(b: Pick<GlyphBatch, 'push'>, ps: Projectile[], o
   }
 }
 
+export function drawParticles(b: Pick<GlyphBatch, 'push'>, ps: Particle[], ox: number, oy: number): void {
+  for (const p of ps) {
+    const k = particleAlpha(p);
+    b.push(p.x - 0.5 + ox, p.y - 0.5 + oy, p.ch, [p.color[0], p.color[1], p.color[2], p.color[3] * k], p.size);
+  }
+}
+
 // Мигание при неуязвимости: фигура видна через кадр.
 const blinkOff = (invulnT: number, time: number) => invulnT > 0 && Math.floor(time * 12) % 2 !== 0;
 
 function drawAndroids(b: GlyphBatch, g: Game, ox: number, oy: number, time: number): void {
   for (const a of g.androids) {
+    if (a.gone) continue;
     if (a.state !== 'dead' && blinkOff(a.invulnT, time)) continue;
     drawFigure(b, simplePose(a.anim, CLIPS), a.body.x + a.body.w / 2 + ox, a.body.y + a.body.h + oy, a.facing, PAL.android, false, '@');
   }
@@ -145,6 +154,7 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     drawItems(b, g.items, ox, oy);
     drawAndroids(b, g, ox, oy, time);
     drawProjectiles(b, g.projectiles, ox, oy);
+    drawParticles(b, g.particles, ox, oy);
     drawNina(b, g, ox, oy, time);
     drawFloaters(b, g.floaters, ox, oy);
   } else {
@@ -152,6 +162,7 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     drawItems(b, g.items, 0, 0);
     drawAndroids(b, g, 0, 0, time);
     drawProjectiles(b, g.projectiles, 0, 0);
+    drawParticles(b, g.particles, 0, 0);
     drawNina(b, g, 0, 0, time);
     drawFloaters(b, g.floaters, 0, 0);
   }

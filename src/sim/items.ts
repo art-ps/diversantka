@@ -17,6 +17,7 @@ export interface Projectile {
   from: 'nina' | 'enemy';
   damage: number; // по андроиду — попадания; по героине — энергия
   alive: boolean;
+  hitWall: boolean; // погиб, ударившись о стену (для искр)
 }
 
 export const itemRect = (i: Item): Rect => ({ x: i.x - 0.5, y: i.bottom - 1, w: 1, h: 1 });
@@ -42,7 +43,7 @@ export function useThrowButton(n: Nina, it: Intent, items: Item[]): { picked?: I
   return {
     thrown: {
       kind, x: n.facing > 0 ? b.x + b.w : b.x, y: b.y + 0.3 * b.h,
-      vx: dx * n.facing * cfg.speed, vy: dy * cfg.speed, from: 'nina', damage: cfg.damage, alive: true,
+      vx: dx * n.facing * cfg.speed, vy: dy * cfg.speed, from: 'nina', damage: cfg.damage, alive: true, hitWall: false,
     },
   };
 }
@@ -54,7 +55,11 @@ export function stepProjectiles(ps: Projectile[], room: Room, dt: number): void 
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     const out = p.x < 0 || p.x >= ROOM_W || p.y < 0 || p.y >= ROOM_H;
-    if (out || isSolid(tileAt(room, Math.floor(p.x), Math.floor(p.y)))) p.alive = false;
+    if (out) p.alive = false;
+    else if (isSolid(tileAt(room, Math.floor(p.x), Math.floor(p.y)))) {
+      p.alive = false;
+      p.hitWall = true;
+    }
   }
 }
 

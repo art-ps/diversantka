@@ -21,6 +21,7 @@ export interface Android {
   punchHit: boolean; // этот удар уже попал
   invulnT: number; // неуязвимость после попадания
   anim: SimpleAnim;
+  gone: boolean; // рассыпался — не рисуется
 }
 
 const center = (b: Body) => b.x + b.w / 2;
@@ -29,7 +30,7 @@ export function createAndroid(id: string, s: AndroidSpawn): Android {
   return {
     id,
     body: { x: s.x - ANDROID.w / 2, y: s.bottom - ANDROID.h, w: ANDROID.w, h: ANDROID.h, vx: 0, vy: 0, onGround: true },
-    facing: 1, patrol: s.patrol, hp: ANDROID.hp, state: 'patrol', t: 0, cooldown: 0, punchHit: false, invulnT: 0, anim: createSimpleAnim(),
+    facing: 1, patrol: s.patrol, hp: ANDROID.hp, state: 'patrol', t: 0, cooldown: 0, punchHit: false, invulnT: 0, anim: createSimpleAnim(), gone: false,
   };
 }
 
@@ -57,7 +58,7 @@ function knife(a: Android): Projectile {
   const b = a.body;
   return {
     kind: 'knife', x: a.facing > 0 ? b.x + b.w : b.x, y: b.y + ANDROID.knifeHeight * b.h,
-    vx: a.facing * ANDROID.knifeSpeed, vy: 0, from: 'enemy', damage: ANDROID.knifeDamage, alive: true,
+    vx: a.facing * ANDROID.knifeSpeed, vy: 0, from: 'enemy', damage: ANDROID.knifeDamage, alive: true, hitWall: false,
   };
 }
 

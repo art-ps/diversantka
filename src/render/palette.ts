@@ -17,5 +17,8 @@ export const PAL = {
   android: [0.45, 0.72, 1.0, 1] as Color,
   item: [1.0, 0.85, 0.4, 1] as Color,
   projectile: [1.0, 0.95, 0.75, 1] as Color,
+  spark: [1.0, 0.95, 0.7, 1] as Color,
+  fire: [1.0, 0.5, 0.15, 1] as Color,
+  fireHot: [1.0, 0.85, 0.35, 1] as Color,
   danger: [1.0, 0.3, 0.2, 1] as Color,
 };
