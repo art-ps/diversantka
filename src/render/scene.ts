@@ -13,10 +13,11 @@ import { floaterView, type Floater } from '../sim/floaters';
 import type { Item, Projectile } from '../sim/items';
 import { particleAlpha, type Particle } from '../sim/particles';
 import type { Room } from '../world/room';
-import type { Point } from '../world/spawns';
+import type { Point, TerminalSpawn } from '../world/spawns';
 import { drawFigure } from './figure';
 import type { Color, GlyphBatch } from './glyphs';
 import { PAL } from './palette';
+import { drawScreen } from './screens';
 
 const WALL_GLYPHS = '#%&8';
 const hash = (c: number, r: number) => ((c * 73856093) ^ (r * 19349663)) >>> 0;
@@ -85,6 +86,18 @@ const ITEM_GLYPH = { knife: '/', stone: 'o', wrench: 'Y' } as const;
 
 export function drawItems(b: Pick<GlyphBatch, 'push'>, items: Item[], ox: number, oy: number): void {
   for (const i of items) b.push(i.x + ox - 0.5, i.bottom - 0.25 + oy - 0.5, ITEM_GLYPH[i.kind], PAL.item, 0.5);
+}
+
+// Терминал: экран над тумбой; главная ЭВМ — втрое шире.
+export function drawTerminals(b: Pick<GlyphBatch, 'push'>, ts: TerminalSpawn[], ox: number, oy: number): void {
+  for (const t of ts) {
+    const w = t.main ? 3 : 1;
+    for (let i = 0; i < w; i++) {
+      const x = t.x - (w - 1) / 2 + i - 0.5 + ox;
+      b.push(x, t.bottom - 2 + oy, '▒', PAL.hud);
+      b.push(x, t.bottom - 1 + oy, '█', PAL.wallInner);
+    }
+  }
 }
 
 // Перфолента — мелкий блок своего цвета.
@@ -208,6 +221,7 @@ export function drawFires(b: Pick<GlyphBatch, 'push'>, fires: Fire[], ox: number
 function drawWorld(b: GlyphBatch, g: Game, ox: number, oy: number, time: number): void {
   drawFires(b, g.fires, ox, oy);
   drawFlamers(b, g, ox, oy);
+  drawTerminals(b, g.terminals, ox, oy);
   drawItems(b, g.items, ox, oy);
   drawTapes(b, g.tapes, ox, oy);
   drawAndroids(b, g, ox, oy, time);
@@ -219,6 +233,12 @@ function drawWorld(b: GlyphBatch, g: Game, ox: number, oy: number, time: number)
 }
 
 export function drawGame(b: GlyphBatch, g: Game, time: number): void {
+  if (g.screen) {
+    // Экран ЭВМ на весь кадр: при сложении яркостей мир под рамкой мешал бы читать.
+    drawScreen(b, g.screen);
+    drawHud(b, g, time);
+    return;
+  }
   const cur = g.rooms.get(g.roomId)!;
   if (g.transition) {
     const p = Math.min(1, g.transition.t / TRANSITION_TIME);

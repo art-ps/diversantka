@@ -11,7 +11,8 @@ import { createFlamer, flamerPhase, flameRect, stepFlamer, type Flamer } from '.
 import { resolveCombat, resolveDogs, type HitEvent } from './sim/fight';
 import { spawnFloater, stepFloaters, type Floater } from './sim/floaters';
 import { stepProjectiles, itemRect, useThrowButton, type Item, type Projectile } from './sim/items';
-import { createMission, tickTimer, type Mission } from './sim/mission';
+import { createMission, saveCheckpoint, tickTimer, type Mission } from './sim/mission';
+import { openScreen, stepScreen, type Screen } from './sim/terminal';
 import { burnNina, createNina, updateNina, type Nina } from './sim/nina';
 import { crumble, smoke, sparks, splash, stepParticles, type Particle } from './sim/particles';
 import { bodyRect, overlap } from './sim/rect';
@@ -20,7 +21,7 @@ import { exitFor } from './sim/transition';
 import type { Dir, Room } from './world/room';
 import { figureGlyphs } from './render/figure';
 import { PAL } from './render/palette';
-import { parseEnemies, parseItems, parsePoints, type AndroidSpawn, type DogSpawn, type FlamerSpawn } from './world/spawns';
+import { parseEnemies, parseItems, parsePoints, parseTerminals, type AndroidSpawn, type DogSpawn, type FlamerSpawn, type Point, type TerminalSpawn } from './world/spawns';
 
 export { TRANSITION_TIME };
 
@@ -49,12 +50,14 @@ export interface Game {
   inWater: boolean;
   mission: Mission;
   tapes: Tape[]; // ленты комнаты, ещё не подобранные
+  terminals: TerminalSpawn[]; // терминалы комнаты
+  screen: Screen | null; // открытый экран ЭВМ — мир стоит
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
-    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, mission: createMission(start), tapes: [],
+    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, mission: createMission(start), tapes: [], terminals: [], screen: null,
   };
   enterRoom(g, start.room);
   return g;
@@ -78,7 +81,9 @@ export function enterRoom(g: Game, id: string): void {
   g.flamers = enemies
     .filter((e): e is { s: FlamerSpawn; id: string } => e.s.kind === 'flamer')
     .map(e => createFlamer(e.id, e.s));
+  applyFlamers(g);
   g.fires = [...pitFires(room), ...g.flamers.map(jetFire)];
+  g.terminals = parseTerminals(room.meta.terminals, id);
   g.dogs = enemies
     .filter((e): e is { s: DogSpawn; id: string } => e.s.kind === 'dog')
     .map(e => createDog(e.id, e.s))
@@ -91,10 +96,34 @@ export function enterRoom(g: Game, id: string): void {
   g.inWater = false;
 }
 
+// Огнемёты комнаты, выключенной с терминала, молчат.
+function applyFlamers(g: Game): void {
+  for (const f of g.flamers) f.off = g.mission.flamersOff.has(g.roomId);
+}
+
+// Чекпоинт у терминала: героиня возродится перед ним.
+function checkpointAt(g: Game, t: TerminalSpawn): void {
+  saveCheckpoint(g.mission, { room: g.roomId, x: t.x - NINA.w / 2, bottom: t.bottom });
+  applyFlamers(g);
+}
+
+// Рядом с объектом: стоит на его уровне, центр не дальше useRange.
+const near = (n: Nina, p: Point) =>
+  n.state === 'ground' && Math.abs(n.body.x + n.body.w / 2 - p.x) <= MISSION.useRange && Math.abs(n.body.y + n.body.h - p.bottom) < 0.5;
+
 export function stepGame(g: Game, it: Intent, dt: number): void {
   if (g.mission.result) return; // конец миссии — экраны итога в Task 6
   tickTimer(g.mission, dt); // таймер идёт всегда: в переходе, после гибели, на экране ЭВМ
-  if (g.mission.result) return; // таймер 0 — провал, мир стоит
+  if (g.mission.result) {
+    g.screen = null; // таймер 0 — провал, мир стоит
+    return;
+  }
+  if (g.screen) {
+    const r = stepScreen(g.screen, g.mission, it, dt);
+    if (r === 'changed') checkpointAt(g, g.screen.term);
+    if (r === 'close') g.screen = null;
+    return; // мир стоит; нажатие, закрывшее экран, в мир не уходит
+  }
   if (g.transition) {
     g.transition.t += dt;
     if (g.transition.t >= TRANSITION_TIME) g.transition = null;
@@ -125,6 +154,14 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   const room = g.rooms.get(g.roomId)!;
   const e0 = g.nina.energy;
   const inv0 = g.nina.invulnT; // выросла за шаг — получен удар
+  if (it.usePressed) {
+    const t = g.terminals.find(t => near(g.nina, t));
+    if (t) {
+      g.screen = openScreen(t);
+      checkpointAt(g, t);
+      return;
+    }
+  }
   updateNina(g.nina, it, room, dt);
   touchHazards(g.nina, room, dt);
   const wet = touchesTile(g.nina, room, '~');
