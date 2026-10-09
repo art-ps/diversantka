@@ -1,7 +1,7 @@
 import { COMBAT, ROOM_H, ROOM_W } from '../config';
 import type { Intent } from '../input/intent';
 import { tileAt, type Room } from '../world/room';
-import type { ItemKind } from '../world/spawns';
+import type { ItemKind, Point } from '../world/spawns';
 import type { Nina } from './nina';
 import { isSolid } from './physics';
 import { bodyRect, contains, overlap, type Rect } from './rect';
@@ -20,7 +20,7 @@ export interface Projectile {
   hitWall: boolean; // погиб, ударившись о стену (для искр)
 }
 
-export const itemRect = (i: Item): Rect => ({ x: i.x - 0.5, y: i.bottom - 1, w: 1, h: 1 });
+export const itemRect = (i: Point): Rect => ({ x: i.x - 0.5, y: i.bottom - 1, w: 1, h: 1 });
 
 // Кнопка броска: с пустыми руками подбирает предмет под ногами, с предметом — бросает.
 export function useThrowButton(n: Nina, it: Intent, items: Item[]): { picked?: Item; thrown?: Projectile } {

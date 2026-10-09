@@ -1,4 +1,4 @@
-import { FIRE, FLAMER, FX, NINA, TRANSITION_TIME } from './config';
+import { FIRE, FLAMER, FX, MISSION, NINA, TRANSITION_TIME } from './config';
 import { jetFire, pitFires, stepFires, type Fire } from './fx/fires';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { dogGlyphs } from './anim/dog';
@@ -10,7 +10,8 @@ import { createAndroid, updateAndroid, type Android } from './sim/android';
 import { createFlamer, flamerPhase, flameRect, stepFlamer, type Flamer } from './sim/flamer';
 import { resolveCombat, resolveDogs, type HitEvent } from './sim/fight';
 import { spawnFloater, stepFloaters, type Floater } from './sim/floaters';
-import { stepProjectiles, useThrowButton, type Item, type Projectile } from './sim/items';
+import { stepProjectiles, itemRect, useThrowButton, type Item, type Projectile } from './sim/items';
+import { createMission, tickTimer, type Mission } from './sim/mission';
 import { burnNina, createNina, updateNina, type Nina } from './sim/nina';
 import { crumble, smoke, sparks, splash, stepParticles, type Particle } from './sim/particles';
 import { bodyRect, overlap } from './sim/rect';
@@ -19,11 +20,12 @@ import { exitFor } from './sim/transition';
 import type { Dir, Room } from './world/room';
 import { figureGlyphs } from './render/figure';
 import { PAL } from './render/palette';
-import { parseEnemies, parseItems, type AndroidSpawn, type DogSpawn, type FlamerSpawn } from './world/spawns';
+import { parseEnemies, parseItems, parsePoints, type AndroidSpawn, type DogSpawn, type FlamerSpawn } from './world/spawns';
 
 export { TRANSITION_TIME };
 
 export interface Start { room: string; x: number; bottom: number }
+export interface Tape { id: string; x: number; bottom: number }
 
 export interface Game {
   rooms: Map<string, Room>;
@@ -45,12 +47,14 @@ export interface Game {
   dmgAcc: number; // накопленный непоказанный урон
   dmgT: number; // сколько он копится, с
   inWater: boolean;
+  mission: Mission;
+  tapes: Tape[]; // ленты комнаты, ещё не подобранные
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
-    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false,
+    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, mission: createMission(start), tapes: [],
   };
   enterRoom(g, start.room);
   return g;
@@ -63,6 +67,9 @@ export function enterRoom(g: Game, id: string): void {
   g.items = parseItems(room.meta.items, id)
     .map((s, i) => ({ id: `${id}#i${i}`, ...s }))
     .filter(i => !g.taken.has(i.id));
+  g.tapes = parsePoints(room.meta.tapes, id, 'ленты')
+    .map((p, i) => ({ id: `${id}#t${i}`, ...p }))
+    .filter(t => !g.mission.tapes.has(t.id));
   const enemies = parseEnemies(room.meta.enemies, id).map((s, i) => ({ s, id: `${id}#e${i}` }));
   g.androids = enemies
     .filter((e): e is { s: AndroidSpawn; id: string } => e.s.kind === 'android')
@@ -85,6 +92,9 @@ export function enterRoom(g: Game, id: string): void {
 }
 
 export function stepGame(g: Game, it: Intent, dt: number): void {
+  if (g.mission.result) return; // конец миссии — экраны итога в Task 6
+  tickTimer(g.mission, dt); // таймер идёт всегда: в переходе, после гибели, на экране ЭВМ
+  if (g.mission.result) return; // таймер 0 — провал, мир стоит
   if (g.transition) {
     g.transition.t += dt;
     if (g.transition.t >= TRANSITION_TIME) g.transition = null;
@@ -114,6 +124,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   }
   const room = g.rooms.get(g.roomId)!;
   const e0 = g.nina.energy;
+  const inv0 = g.nina.invulnT; // выросла за шаг — получен удар
   updateNina(g.nina, it, room, dt);
   touchHazards(g.nina, room, dt);
   const wet = touchesTile(g.nina, room, '~');
@@ -127,6 +138,14 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     g.items = g.items.filter(i => i !== picked);
   }
   if (thrown) g.projectiles.push(thrown);
+  // Ленты — в сумку касанием, руки остаются свободными.
+  const nr = bodyRect(g.nina.body);
+  for (const t of g.tapes) {
+    if (!overlap(itemRect(t), nr)) continue;
+    g.mission.tapes.add(t.id);
+    spawnFloater(g.floaters, `ЛЕНТА ${g.mission.tapes.size}/${MISSION.tapes}`, t.x, t.bottom - 1.5, 'enemy');
+  }
+  g.tapes = g.tapes.filter(t => !g.mission.tapes.has(t.id));
   stepProjectiles(g.projectiles, room, dt);
   for (const a of g.androids) {
     const k = updateAndroid(a, g.nina, room, dt);
@@ -152,6 +171,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     }
   }
   stepFires(g.fires, g.flamers, dt);
+  if (g.nina.invulnT > inv0) g.mission.hits++;
   // Дым: над ямами — всегда, над концом струи — пока она горит.
   for (const fire of g.fires) {
     if (fire.kind === 'pit') {

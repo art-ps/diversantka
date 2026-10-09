@@ -18,6 +18,18 @@ function at(rec: string): { kind: string; x: number; bottom: number } | null {
   return Number.isFinite(x) && Number.isFinite(bottom) ? { kind: m[1], x, bottom } : null;
 }
 
+export interface Point { x: number; bottom: number }
+
+// «x,низ ; x,низ» — ленты, щиток, мотоцикл. what — родительный падеж для ошибки.
+export function parsePoints(s: string | undefined, file: string, what: string): Point[] {
+  return parts(s).map(rec => {
+    const m = /^([^,\s]+),([^,\s]+)$/.exec(rec);
+    const x = m ? num(m[1]) : NaN, bottom = m ? num(m[2]) : NaN;
+    if (!Number.isFinite(x) || !Number.isFinite(bottom)) throw new Error(`${file}: плохая запись ${what} «${rec}»`);
+    return { x, bottom };
+  });
+}
+
 export function parseItems(s: string | undefined, file: string): ItemSpawn[] {
   return parts(s).map(rec => {
     const kind = /^([a-z]+)@/.exec(rec)?.[1];

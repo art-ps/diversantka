@@ -3,15 +3,17 @@ import { CLIPS } from '../anim/clips';
 import { J } from '../anim/clip';
 import { dogGlyphs } from '../anim/dog';
 import { simplePose } from '../anim/simple';
-import { FX, NINA, ROOM_H, ROOM_W } from '../config';
+import { FX, MISSION, NINA, ROOM_H, ROOM_W } from '../config';
 import { TRANSITION_TIME, type Game } from '../game';
 import { fireCells, heatColor, type Fire } from '../fx/fires';
 import { HEAT_RAMP } from '../fx/heat';
 import { flamerPhase } from '../sim/flamer';
+import { formatTime } from '../sim/mission';
 import { floaterView, type Floater } from '../sim/floaters';
 import type { Item, Projectile } from '../sim/items';
 import { particleAlpha, type Particle } from '../sim/particles';
 import type { Room } from '../world/room';
+import type { Point } from '../world/spawns';
 import { drawFigure } from './figure';
 import type { Color, GlyphBatch } from './glyphs';
 import { PAL } from './palette';
@@ -37,10 +39,12 @@ const HUD_STEP = 0.6; // шаг символов HUD — буквы уже кл�
 export const hudWidth = (s: string) => s.length * HUD_STEP;
 const ENERGY_LABEL = 'ЭНЕРГИЯ ';
 const LEFT_END = 1 + hudWidth(ENERGY_LABEL) + 10 * HUD_STEP;
+const MID_HALF = Math.ceil(hudWidth('ЛЕНТЫ 0/6 · 00:00') / 2); // ленты и таймер — по центру строки 0
 
 export const hudCell = (x: number, y: number, hudId: string, time: number) =>
   (Math.round(y) === 0 &&
-    (Math.round(x) <= Math.ceil(LEFT_END) || Math.round(x) >= Math.floor(ROOM_W - 1 - hudWidth(hudId)) - 1)) ||
+    (Math.round(x) <= Math.ceil(LEFT_END) || Math.abs(Math.round(x) - ROOM_W / 2) <= MID_HALF ||
+      Math.round(x) >= Math.floor(ROOM_W - 1 - hudWidth(hudId)) - 1)) ||
   (time < 8 && Math.round(y) === ROOM_H - 1 && Math.round(x) >= Math.floor(ROOM_W - 0.5 - hudWidth(CREDIT)) - 1);
 
 export function drawRoom(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy: number, time: number, hudId: string): void {
@@ -81,6 +85,11 @@ const ITEM_GLYPH = { knife: '/', stone: 'o', wrench: 'Y' } as const;
 
 export function drawItems(b: Pick<GlyphBatch, 'push'>, items: Item[], ox: number, oy: number): void {
   for (const i of items) b.push(i.x + ox - 0.5, i.bottom - 0.25 + oy - 0.5, ITEM_GLYPH[i.kind], PAL.item, 0.5);
+}
+
+// Перфолента — мелкий блок своего цвета.
+export function drawTapes(b: Pick<GlyphBatch, 'push'>, tapes: Point[], ox: number, oy: number): void {
+  for (const t of tapes) b.push(t.x + ox - 0.5, t.bottom - 0.25 + oy - 0.5, '▓', PAL.tape, 0.5);
 }
 
 export function drawProjectiles(b: Pick<GlyphBatch, 'push'>, ps: Projectile[], ox: number, oy: number): void {
@@ -172,6 +181,11 @@ function drawHud(b: GlyphBatch, g: Game, time: number): void {
   b.text(barX, 0, '█'.repeat(filled), g.nina.energy < NINA.lowEnergy ? PAL.danger : PAL.hud, HUD_STEP);
   b.text(barX + hudWidth('█'.repeat(filled)), 0, '░'.repeat(10 - filled), PAL.hudDim, HUD_STEP);
   b.text(ROOM_W - 1 - hudWidth(g.roomId), 0, g.roomId, PAL.hudDim, HUD_STEP);
+  const tapes = `ЛЕНТЫ ${g.mission.tapes.size}/${MISSION.tapes} · `;
+  const clock = formatTime(g.mission.timeLeft);
+  const mx = (ROOM_W - hudWidth(tapes + clock)) / 2;
+  b.text(mx, 0, tapes, PAL.hud, HUD_STEP);
+  b.text(mx + hudWidth(tapes), 0, clock, g.mission.timeLeft < MISSION.lowTime ? PAL.danger : PAL.hud, HUD_STEP);
   if (g.nina.dead) {
     const msg = 'ПОГИБЛА · ПРЫЖОК — ЗАНОВО';
     b.text((ROOM_W - hudWidth(msg)) / 2, 12, msg, PAL.danger, HUD_STEP);
@@ -190,6 +204,20 @@ export function drawFires(b: Pick<GlyphBatch, 'push'>, fires: Fire[], ox: number
   for (const fire of fires) for (const c of fireCells(fire)) b.push(c.x - 0.5 + ox, c.y - 0.5 + oy, HEAT_RAMP[c.level], heatColor(c.level), 0.5);
 }
 
+// Всё, что живёт в комнате поверх тайлов; ox, oy — сдвиг перехода.
+function drawWorld(b: GlyphBatch, g: Game, ox: number, oy: number, time: number): void {
+  drawFires(b, g.fires, ox, oy);
+  drawFlamers(b, g, ox, oy);
+  drawItems(b, g.items, ox, oy);
+  drawTapes(b, g.tapes, ox, oy);
+  drawAndroids(b, g, ox, oy, time);
+  drawDogs(b, g, ox, oy);
+  drawProjectiles(b, g.projectiles, ox, oy);
+  drawParticles(b, g.particles, ox, oy);
+  drawNina(b, g, ox, oy, time);
+  drawFloaters(b, g.floaters, ox, oy);
+}
+
 export function drawGame(b: GlyphBatch, g: Game, time: number): void {
   const cur = g.rooms.get(g.roomId)!;
   if (g.transition) {
@@ -199,26 +227,10 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     const ox = v[0] * ROOM_W * (1 - e), oy = v[1] * ROOM_H * (1 - e);
     drawRoom(b, g.rooms.get(g.transition.from)!, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time, g.roomId);
     drawRoom(b, cur, ox, oy, time, g.roomId);
-    drawFires(b, g.fires, ox, oy);
-    drawFlamers(b, g, ox, oy);
-    drawItems(b, g.items, ox, oy);
-    drawAndroids(b, g, ox, oy, time);
-    drawDogs(b, g, ox, oy);
-    drawProjectiles(b, g.projectiles, ox, oy);
-    drawParticles(b, g.particles, ox, oy);
-    drawNina(b, g, ox, oy, time);
-    drawFloaters(b, g.floaters, ox, oy);
+    drawWorld(b, g, ox, oy, time);
   } else {
     drawRoom(b, cur, 0, 0, time, g.roomId);
-    drawFires(b, g.fires, 0, 0);
-    drawFlamers(b, g, 0, 0);
-    drawItems(b, g.items, 0, 0);
-    drawAndroids(b, g, 0, 0, time);
-    drawDogs(b, g, 0, 0);
-    drawProjectiles(b, g.projectiles, 0, 0);
-    drawParticles(b, g.particles, 0, 0);
-    drawNina(b, g, 0, 0, time);
-    drawFloaters(b, g.floaters, 0, 0);
+    drawWorld(b, g, 0, 0, time);
   }
   if (g.nina.dead) drawStatic(b, g.nina.deadT, time);
   drawHud(b, g, time);

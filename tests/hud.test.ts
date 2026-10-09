@@ -12,7 +12,15 @@ it('строка 0 слева вычищается под шкалу энерг�
   expect(hudCell(0, 0, 'lab-1', 1)).toBe(true);
   expect(hudCell(Math.ceil(leftEnd), 0, 'lab-1', 1)).toBe(true);
   expect(hudCell(Math.ceil(leftEnd) + 1, 0, 'lab-1', 1)).toBe(false);
-  expect(hudCell(20, 0, 'lab-1', 1)).toBe(false);
+});
+
+it('строка 0 по центру вычищается под ленты и таймер', () => {
+  const half = Math.ceil(hudWidth('ЛЕНТЫ 0/6 · 00:00') / 2);
+  expect(hudCell(ROOM_W / 2, 0, 'lab-1', 1)).toBe(true);
+  expect(hudCell(ROOM_W / 2 - half, 0, 'lab-1', 1)).toBe(true);
+  expect(hudCell(ROOM_W / 2 + half, 0, 'lab-1', 1)).toBe(true);
+  expect(hudCell(ROOM_W / 2 - half - 1, 0, 'lab-1', 1)).toBe(false);
+  expect(hudCell(ROOM_W / 2, 1, 'lab-1', 1)).toBe(false);
 });
 
 it('строка 0 справа вычищается под id комнаты', () => {
