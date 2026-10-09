@@ -30,6 +30,24 @@ export function parsePoints(s: string | undefined, file: string, what: string): 
   });
 }
 
+export interface TerminalSpawn { x: number; bottom: number; controls: string[]; main: boolean }
+
+// «x,низ controls=a,b» — гасит огнемёты комнат a, b; «x,низ main» — главная ЭВМ.
+export function parseTerminals(s: string | undefined, file: string): TerminalSpawn[] {
+  return parts(s).map(rec => {
+    const [pos, ...opts] = rec.split(/\s+/);
+    const [p] = parsePoints(pos, file, 'терминала');
+    let controls: string[] = [];
+    let main = false;
+    for (const o of opts) {
+      if (o === 'main') main = true;
+      else if (/^controls=[^,]+(,[^,]+)*$/.test(o)) controls = o.slice('controls='.length).split(',');
+      else throw new Error(`${file}: у терминала непонятное «${o}»`);
+    }
+    return { ...p, controls, main };
+  });
+}
+
 export function parseItems(s: string | undefined, file: string): ItemSpawn[] {
   return parts(s).map(rec => {
     const kind = /^([a-z]+)@/.exec(rec)?.[1];

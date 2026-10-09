@@ -8,6 +8,7 @@ export interface Intent {
   moveX: number;
   up: boolean; down: boolean; jump: boolean;
   jumpPressed: boolean; attackPressed: boolean; throwPressed: boolean; usePressed: boolean; pausePressed: boolean;
+  upPressed: boolean; downPressed: boolean; // меню ЭВМ: шаг по пунктам
 }
 
 export const NO_BUTTONS: Buttons = {
@@ -17,6 +18,7 @@ export const NO_BUTTONS: Buttons = {
 export const IDLE: Intent = {
   moveX: 0, up: false, down: false, jump: false,
   jumpPressed: false, attackPressed: false, throwPressed: false, usePressed: false, pausePressed: false,
+  upPressed: false, downPressed: false,
 };
 
 export const DEADZONE = 0.25;
@@ -88,12 +90,14 @@ export class IntentTracker {
       throwPressed: cur.throw && !p.throw,
       usePressed: cur.use && !p.use,
       pausePressed: cur.pause && !p.pause,
+      upPressed: cur.up && !p.up,
+      downPressed: cur.down && !p.down,
     };
   }
 }
 
 export function clearPressed(i: Intent): Intent {
-  return { ...i, jumpPressed: false, attackPressed: false, throwPressed: false, usePressed: false, pausePressed: false };
+  return { ...i, jumpPressed: false, attackPressed: false, throwPressed: false, usePressed: false, pausePressed: false, upPressed: false, downPressed: false };
 }
 
 // Удержания из a, нажатия — из a или b (b — кадр, в котором не было шага симуляции).
@@ -105,5 +109,7 @@ export function orPressed(a: Intent, b: Intent): Intent {
     throwPressed: a.throwPressed || b.throwPressed,
     usePressed: a.usePressed || b.usePressed,
     pausePressed: a.pausePressed || b.pausePressed,
+    upPressed: a.upPressed || b.upPressed,
+    downPressed: a.downPressed || b.downPressed,
   };
 }
