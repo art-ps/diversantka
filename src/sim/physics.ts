@@ -1,4 +1,5 @@
 import { tileAt, type Room } from '../world/room';
+import type { Rect } from './rect';
 
 export interface Body {
   x: number; y: number; w: number; h: number;
@@ -6,12 +7,14 @@ export interface Body {
   onGround: boolean;
 }
 
-export interface MoveOpts { ignoreOneWay?: boolean }
+// tops — подвижные опоры (платформы лифтов): держат сверху, как «=», если центр тела над ними.
+export interface MoveOpts { ignoreOneWay?: boolean; tops?: readonly Rect[] }
 
 const EPS = 1e-6;
 const STEP = 0.4; // меньше клетки: на любой скорости не перепрыгнуть тайл
 
 export const isSolid = (t: string) => t === '#';
+export const overTop = (b: Body, p: Rect) => b.x + b.w / 2 >= p.x && b.x + b.w / 2 <= p.x + p.w;
 export const isLadder = (room: Room, col: number, row: number) => tileAt(room, col, row) === 'H';
 
 // Платформа или верхняя клетка лестницы держат только сверху.
@@ -53,14 +56,19 @@ export function moveY(b: Body, room: Room, dy: number, opts: MoveOpts = {}): boo
     if (step > 0) {
       const oldBottom = b.y + b.h;
       const row = Math.floor(ny + b.h - EPS);
+      let land: number | null = null;
       for (let c = c0; c <= c1; c++) {
         const oneWay = !opts.ignoreOneWay && isOneWayTop(room, c, row) && oldBottom <= row + EPS;
-        if (isSolid(tileAt(room, c, row)) || oneWay) {
-          b.y = row - b.h;
-          b.vy = 0;
-          b.onGround = true;
-          return true;
-        }
+        if (isSolid(tileAt(room, c, row)) || oneWay) land = row;
+      }
+      for (const p of opts.tops ?? []) {
+        if (overTop(b, p) && oldBottom <= p.y + EPS && ny + b.h >= p.y && (land === null || p.y < land)) land = p.y;
+      }
+      if (land !== null) {
+        b.y = land - b.h;
+        b.vy = 0;
+        b.onGround = true;
+        return true;
       }
     } else {
       const row = Math.floor(ny + EPS);

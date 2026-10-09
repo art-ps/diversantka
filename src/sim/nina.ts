@@ -4,6 +4,7 @@ import { attackTotal, type Attack } from './combat';
 import { tileAt, type Room } from '../world/room';
 import type { ItemKind } from '../world/spawns';
 import { isLadder, isSolid, moveX, moveY, type Body } from './physics';
+import type { Rect } from './rect';
 
 export type NinaState = 'ground' | 'air' | 'ladder';
 
@@ -69,13 +70,14 @@ function headroom(room: Room, b: Body, fullH: number): boolean {
   return true;
 }
 
-export function updateNina(n: Nina, it: Intent, room: Room, dt: number, cfg: NinaConfig = NINA): void {
+// tops — платформы лифтов в комнате: на них стоят, как на «=».
+export function updateNina(n: Nina, it: Intent, room: Room, dt: number, cfg: NinaConfig = NINA, tops: readonly Rect[] = []): void {
   if (n.dead) {
     n.deadT += dt;
     // Мёртвое тело падает под гравитацией без ввода, пока не ляжет на пол.
     if (!n.body.onGround) {
       if (n.state === 'ladder') n.state = 'air';
-      walk(n, IDLE, room, dt, cfg);
+      walk(n, IDLE, room, dt, cfg, tops);
       n.energy = 0;
     }
     return;
@@ -113,7 +115,7 @@ export function updateNina(n: Nina, it: Intent, room: Room, dt: number, cfg: Nin
   if (n.state === 'ladder') {
     climb(n, it, room, dt, cfg, col);
   } else {
-    walk(n, it, room, dt, cfg);
+    walk(n, it, room, dt, cfg, tops);
   }
 
   if (n.energy <= 0) {
@@ -148,7 +150,7 @@ function climb(n: Nina, it: Intent, room: Room, dt: number, cfg: NinaConfig, col
   n.peakY = b.y;
 }
 
-function walk(n: Nina, it: Intent, room: Room, dt: number, cfg: NinaConfig): void {
+function walk(n: Nina, it: Intent, room: Room, dt: number, cfg: NinaConfig, tops: readonly Rect[]): void {
   const b = n.body;
 
   const wantCrouch = it.down && b.onGround;
@@ -187,7 +189,7 @@ function walk(n: Nina, it: Intent, room: Room, dt: number, cfg: NinaConfig): voi
   const wasAir = n.state === 'air';
   const dy = b.vy * dt + 0.5 * cfg.gravity * dt * dt;
   b.vy = Math.min(b.vy + cfg.gravity * dt, cfg.maxFall);
-  moveY(b, room, dy);
+  moveY(b, room, dy, { tops });
 
   if (b.onGround) {
     if (wasAir) {

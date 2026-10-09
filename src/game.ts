@@ -1,4 +1,4 @@
-import { FIRE, FLAMER, FX, MISSION, NINA, PROLOGUE, ROOM_W, SOURCE, TRANSITION_TIME } from './config';
+import { FIRE, FLAMER, FX, LIFT, MISSION, NINA, PROLOGUE, ROOM_H, ROOM_W, SOURCE, TRANSITION_TIME } from './config';
 import { jetFire, pitFires, stepFires, type Fire } from './fx/fires';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { dogGlyphs } from './anim/dog';
@@ -12,10 +12,12 @@ import { resolveCombat, resolveDogs, type HitEvent } from './sim/fight';
 import { spawnFloater, stepFloaters, type Floater } from './sim/floaters';
 import { stepProjectiles, itemRect, useThrowButton, type Item, type Projectile } from './sim/items';
 import { gliderAt, gliderHits, ROUTE, ROUTE_LEN } from './sim/glider';
+import { createLifts, LIFT_W, liftRect, liftTop, nextStop, stepLift, type Lift } from './sim/lift';
 import { createMission, missionResult, restoreCheckpoint, saveCheckpoint, startBike, tickTimer, useSwitch, type Mission } from './sim/mission';
 import { openScreen, stepScreen, type Screen } from './sim/terminal';
 import { burnNina, createNina, updateNina, type Nina } from './sim/nina';
 import { crumble, smoke, sparks, splash, stepParticles, type Particle } from './sim/particles';
+import { overTop } from './sim/physics';
 import { bodyRect, overlap, type Rect } from './sim/rect';
 import { touchesTile, touchHazards } from './sim/hazards';
 import { exitFor } from './sim/transition';
@@ -64,12 +66,14 @@ export interface Game {
   copied: boolean; // буфер обмена принял строку — ставит main.ts
   prologue: Prologue | null; // идёт пролог — таймер миссии стоит
   withPrologue: boolean; // «заново» начинает с пролога
+  lifts: Lift[]; // лифты всей карты: где платформа, сохраняется между комнатами
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
     items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
+    lifts: createLifts(rooms),
   };
   enterRoom(g, start.room);
   return g;
@@ -208,6 +212,52 @@ function touchSource(g: Game, s: Point, nr: Rect, dt: number): void {
   }
 }
 
+// Платформы лифтов в текущей комнате — опора сверху, как «=».
+const liftTops = (g: Game): Rect[] => g.lifts.map(l => liftRect(l, g.roomId)).filter((r): r is Rect => r !== null);
+
+const LIFT_EPS = 1e-3;
+
+// Лифт, на платформе которого стоит героиня (центр над платформой, ноги на её верху).
+function liftUnder(g: Game): Lift | undefined {
+  const b = g.nina.body;
+  if (g.nina.state !== 'ground') return undefined;
+  return g.lifts.find(l => {
+    const r = liftRect(l, g.roomId);
+    return r !== null && overTop(b, r) && Math.abs(b.y + b.h - r.y) < LIFT_EPS;
+  });
+}
+
+// E у шахты на этаже, где лифта нет, — вызвать его к себе.
+function callLift(g: Game): void {
+  const b = g.nina.body;
+  if (g.nina.state !== 'ground') return;
+  for (const l of g.lifts) {
+    const k = l.rooms.indexOf(g.roomId);
+    if (k < 0 || Math.abs(b.x + b.w / 2 - (l.x + LIFT_W / 2)) > LIFT.callRange) continue;
+    const stop = l.stops.find(s => Math.abs(s - k * ROOM_H - (b.y + b.h)) < LIFT_EPS);
+    if (stop !== undefined && Math.abs(l.y - stop) > LIFT_EPS) l.target = stop;
+  }
+}
+
+// Лифты: удержание вверх/вниз на платформе — к следующему этажу. Платформа везёт стоящую героиню и лежащие
+// предметы; поднимаясь, подхватывает падающую героиню, чьи ноги прошла.
+function stepLifts(g: Game, it: Intent, dt: number): void {
+  const under = liftUnder(g);
+  if (under && under.target === null && under.rest === 0 && (it.up || it.down)) under.target = nextStop(under, it.up ? -1 : 1);
+  const b = g.nina.body;
+  for (const l of g.lifts) {
+    const before = liftTop(l, g.roomId);
+    stepLift(l, dt);
+    const after = liftTop(l, g.roomId);
+    if (before === null || after === null || after === before) continue;
+    const feet = b.y + b.h;
+    const over = overTop(b, { x: l.x, y: after, w: LIFT_W, h: 1 });
+    const caught = after < before && g.nina.state === 'air' && b.vy >= 0 && feet > after && feet <= before + LIFT_EPS;
+    if (over && (l === under || caught)) b.y = after - b.h;
+    for (const i of g.items) if (i.x >= l.x && i.x <= l.x + LIFT_W && Math.abs(i.bottom - before) < LIFT_EPS) i.bottom = after;
+  }
+}
+
 // Рядом с объектом: стоит на его уровне, центр не дальше useRange.
 const near = (n: Nina, p: Point) =>
   n.state === 'ground' && Math.abs(n.body.x + n.body.w / 2 - p.x) <= MISSION.useRange && Math.abs(n.body.y + n.body.h - p.bottom) < 0.5;
@@ -249,7 +299,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     return;
   }
   if (g.nina.dead) {
-    updateNina(g.nina, IDLE, g.rooms.get(g.roomId)!, dt);
+    updateNina(g.nina, IDLE, g.rooms.get(g.roomId)!, dt, NINA, liftTops(g));
     updateAnimator(g.anim, g.nina, CLIPS, dt);
     if (it.jumpPressed && g.nina.deadT >= NINA.respawnDelay) respawn(g);
     if (g.dmgAcc >= 0.5) {
@@ -281,9 +331,10 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
       if (startBike(g.mission)) return; // выезд — дальше stepEnd
       spawnFloater(g.floaters, 'ЗАБОР ПОД ТОКОМ', g.bike.x, g.bike.bottom - 2.5, 'damage');
       if (g.fence) for (let y = g.fence.top; y <= g.fence.bottom; y += 2) sparks(g.particles, g.fence.x + 0.5, y + 0.5, PAL.fireHot, 3);
-    }
+    } else callLift(g);
   }
-  updateNina(g.nina, it, room, dt);
+  stepLifts(g, it, dt);
+  updateNina(g.nina, it, room, dt, NINA, liftTops(g));
   touchHazards(g.nina, room, dt);
   const wet = touchesTile(g.nina, room, '~');
   const feet = g.nina.body;
