@@ -87,7 +87,7 @@ function climb(n: Nina, it: Intent, room: Room, dt: number, cfg: NinaConfig, col
   n.peakY = b.y;
   if (it.jumpPressed) {
     n.state = 'air';
-    b.vy = -Math.sqrt(2 * cfg.gravity * cfg.jumpHeight) * 0.6;
+    b.vy = -Math.sqrt(2 * cfg.gravity * cfg.jumpHeight) * cfg.ladderJump;
     return;
   }
   if (it.up) {

@@ -5,10 +5,14 @@ export class InputDevices {
 
   constructor(target: Window) {
     target.addEventListener('keydown', e => {
+      if (e.metaKey || e.ctrlKey) return;
       if (GAME_CODES.has(e.code)) e.preventDefault();
       this.keys.add(e.code);
     });
-    target.addEventListener('keyup', e => this.keys.delete(e.code));
+    target.addEventListener('keyup', e => {
+      if (e.code === 'MetaLeft' || e.code === 'MetaRight') this.keys.clear();
+      else this.keys.delete(e.code);
+    });
     target.addEventListener('blur', () => this.keys.clear());
   }
 

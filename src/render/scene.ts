@@ -60,7 +60,7 @@ function drawNina(b: GlyphBatch, g: Game, ox: number, oy: number): void {
 function drawHud(b: GlyphBatch, g: Game): void {
   const filled = Math.round((g.nina.energy / NINA.energyMax) * 10);
   b.text(1, 0, 'ЭНЕРГИЯ ', PAL.hud);
-  b.text(9, 0, '█'.repeat(filled), g.nina.energy < 25 ? PAL.danger : PAL.hud);
+  b.text(9, 0, '█'.repeat(filled), g.nina.energy < NINA.lowEnergy ? PAL.danger : PAL.hud);
   b.text(9 + filled, 0, '░'.repeat(10 - filled), PAL.hudDim);
   b.text(ROOM_W - g.roomId.length - 1, 0, g.roomId, PAL.hudDim);
   if (g.nina.dead) b.text(9, 12, 'ПОГИБЛА · ПРЫЖОК — ЗАНОВО', PAL.danger);

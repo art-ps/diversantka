@@ -1,9 +1,10 @@
+import { TRANSITION_TIME } from './config';
 import type { Intent } from './input/intent';
 import { createNina, updateNina, type Nina } from './sim/nina';
 import { exitFor } from './sim/transition';
 import type { Dir, Room } from './world/room';
 
-export const TRANSITION_TIME = 0.3;
+export { TRANSITION_TIME };
 
 export interface Start { room: string; x: number; bottom: number }
 

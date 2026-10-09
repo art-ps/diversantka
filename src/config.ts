@@ -22,6 +22,10 @@ export const NINA = {
   fallDamagePerCell: 6,
   energyMax: 100,
   regenPerSec: 4,
+  ladderJump: 0.6,
+  lowEnergy: 25,
 };
+
+export const TRANSITION_TIME = 0.3;
 
 export type NinaConfig = typeof NINA;

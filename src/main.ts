@@ -50,7 +50,7 @@ async function boot() {
   let glow = true;
   addEventListener('keydown', e => {
     if (e.code === 'KeyB') glow = !glow;
-    if (e.code === 'KeyF') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    if (e.code === 'KeyF') (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {});
   });
 
   let acc = 0;
@@ -75,4 +75,4 @@ async function boot() {
   requestAnimationFrame(frame);
 }
 
-boot();
+boot().catch(e => fail(`Ошибка запуска:\n${(e as Error).message}`));
