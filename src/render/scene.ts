@@ -21,6 +21,7 @@ import type { Point, TerminalSpawn } from '../world/spawns';
 import { drawBike, ridePose } from './bike';
 import { drawFigure } from './figure';
 import { drawGlider, hangPose } from './glider';
+import { drawMap } from './map';
 import type { Color, GlyphBatch } from './glyphs';
 import { PAL } from './palette';
 import { drawFailed, drawOutro, drawResult, drawScreen } from './screens';
@@ -321,6 +322,12 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
   if (g.screen) {
     // Экран ЭВМ на весь кадр: при сложении яркостей мир под рамкой мешал бы читать.
     drawScreen(b, g.screen);
+    drawHud(b, g, time);
+    return;
+  }
+  if (g.paused) {
+    // Пауза — карта на весь кадр, как экран ЭВМ.
+    drawMap(b, g, time);
     drawHud(b, g, time);
     return;
   }

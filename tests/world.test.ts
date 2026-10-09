@@ -3,6 +3,7 @@ import { DT, NINA } from '../src/config';
 import { createGame, stepGame, type Game } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
 import { loadWorld, validateLifts, validateMission } from '../src/world';
+import { layoutMap } from '../src/world/map';
 import { tileAt, validateWorld, type Room } from '../src/world/room';
 import { parsePoints, parseTerminals } from '../src/world/spawns';
 import { PAL } from '../src/render/palette';
@@ -210,4 +211,11 @@ it('roof-1 ↔ lab-1 через люк по лестнице, без урона'
   run(g, { up: true }, 900, () => g.roomId === 'roof-1' && g.nina.state === 'ground');
   expect(g.roomId).toBe('roof-1');
   expect(bottomOf(g)).toBeCloseTo(22);
+});
+
+it('карта паузы: все комнаты миссии раскладываются по выходам без конфликтов', () => {
+  const rooms = loadRoomsFs();
+  const { pos, conflicts } = layoutMap(rooms, 'roof-1');
+  expect(conflicts).toEqual([]);
+  expect([...rooms.keys()].filter(id => !pos.has(id)).sort()).toEqual(['sea-1', 'sea-2']);
 });
