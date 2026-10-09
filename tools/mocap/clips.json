@@ -5,6 +5,6 @@
   { "name": "jump", "source": "16_01", "from": 55, "to": 134, "loop": false, "anchor": "root" },
   { "name": "fall", "source": "16_01", "from": 152, "to": 181, "loop": false, "anchor": "root" },
   { "name": "land", "source": "16_01", "from": 183, "to": 230, "loop": false, "anchor": "floor" },
-  { "name": "crouch", "source": "16_01", "from": 185, "to": 203, "loop": false, "anchor": "floor" },
+  { "name": "crouch", "source": "13_29", "from": 3805, "to": 3985, "loop": false, "anchor": "floor" },
   { "name": "climb", "source": "13_33", "from": 261, "to": 620, "loop": true, "anchor": "root" }
 ]

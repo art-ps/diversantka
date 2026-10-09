@@ -46,6 +46,8 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     g.nina.body.x += ex.dx;
     g.nina.body.y += ex.dy;
     g.nina.peakY += ex.dy;
+    g.anim.peakY += ex.dy;
+    g.anim.lastY += ex.dy;
     g.transition = { from: g.roomId, dir: ex.dir, t: 0 };
     g.roomId = ex.to;
   }

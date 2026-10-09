@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { NINA } from '../src/config';
 import { J, poseDistance, validateClip, type Clip } from '../src/anim/clip';
 
 const NAMES = ['idle', 'walk', 'run', 'jump', 'fall', 'land', 'crouch', 'climb'];
@@ -20,6 +21,11 @@ describe('клипы anim/*.json', () => {
     const y = load('idle').frames[0][2 * J.head + 1];
     expect(y).toBeGreaterThan(4.5);
     expect(y).toBeLessThan(6.5);
+  });
+
+  it('присед: голова в конце клипа не выше NINA.crouchH + 0.6', () => {
+    const c = load('crouch');
+    expect(c.frames[c.frames.length - 1][2 * J.head + 1]).toBeLessThanOrEqual(NINA.crouchH + 0.6);
   });
 
   it('скорости правдоподобны', () => {

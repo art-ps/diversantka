@@ -22,9 +22,11 @@ function isWall(room: Room, c: number, r: number) {
 }
 
 // Клетки строки 0 под HUD (с полем в одну клетку) комната не рисует: свечение складывается, подложки нет.
+const CREDIT = 'движения: mocap.cs.cmu.edu';
+
 export const hudCell = (x: number, y: number, hudId: string, time: number) =>
   (Math.round(y) === 0 && (Math.round(x) <= 19 || Math.round(x) >= ROOM_W - hudId.length - 2)) ||
-  (time < 8 && Math.round(y) === ROOM_H - 1 && Math.round(x) >= ROOM_W - 27);
+  (time < 8 && Math.round(y) === ROOM_H - 1 && Math.round(x) >= ROOM_W - CREDIT.length - 1);
 
 export function drawRoom(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy: number, time: number, hudId: string): void {
   for (let r = 0; r < ROOM_H; r++) {
@@ -72,7 +74,7 @@ function drawHud(b: GlyphBatch, g: Game, time: number): void {
   b.text(9 + filled, 0, '░'.repeat(10 - filled), PAL.hudDim);
   b.text(ROOM_W - g.roomId.length - 1, 0, g.roomId, PAL.hudDim);
   if (g.nina.dead) b.text(9, 12, 'ПОГИБЛА · ПРЫЖОК — ЗАНОВО', PAL.danger);
-  if (time < 8) b.text(ROOM_W - 26, ROOM_H - 1, 'движения: mocap.cs.cmu.edu', PAL.hudDim);
+  if (time < 8) b.text(ROOM_W - CREDIT.length, ROOM_H - 1, CREDIT, PAL.hudDim);
 }
 
 export function drawGame(b: GlyphBatch, g: Game, time: number): void {

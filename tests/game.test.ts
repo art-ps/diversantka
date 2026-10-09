@@ -48,3 +48,14 @@ it('аниматор: бег переключает клип на walk/run, на
   for (let i = 0; i < 10; i++) stepGame(l, I({ up: true }), DT);
   expect(l.anim.clip).toBe('climb');
 });
+
+it('подъём по лестнице из cave-1 в lab-2: аниматор сдвинут вместе с Ниной, приземления нет', () => {
+  const g = createGame(loadRoomsFs(), { room: 'cave-1', x: 18.7, bottom: 23 });
+  for (let i = 0; i < 5; i++) stepGame(g, I(), DT);
+  for (let i = 0; i < 600 && g.roomId === 'cave-1'; i++) stepGame(g, I({ up: true }), DT);
+  expect(g.roomId).toBe('lab-2');
+  expect(g.anim.lastY).toBeCloseTo(g.nina.body.y, 0);
+  const clips: string[] = [];
+  for (let i = 0; i < 120; i++) { stepGame(g, I(), DT); clips.push(g.anim.clip); }
+  expect(clips).not.toContain('land');
+});
