@@ -156,3 +156,40 @@ describe('присед', () => {
     expect(bottom(n)).toBeCloseTo(22);
   });
 });
+
+describe('приземление с разбега', () => {
+  const landWithSpeed = () => {
+    const room = roomOf({ 22: FLOOR });
+    const n = createNina(5, 21); // клетка над полом: в воздухе скорость гаснет мало (accelAir)
+    n.body.vx = NINA.runSpeed;
+    while (n.state !== 'ground') updateNina(n, I(), room, DT);
+    return { n, room };
+  };
+
+  it('без ввода — тормозной шаг: торможение landDecel, а не decelGround', () => {
+    const { n, room } = landWithSpeed();
+    expect(n.skid).toBe(true);
+    const v0 = n.body.vx;
+    updateNina(n, I(), room, DT);
+    expect(v0 - n.body.vx).toBeCloseTo(NINA.landDecel * DT, 5);
+    run(n, room, I(), 60);
+    expect(n.body.vx).toBe(0);
+    expect(n.skid).toBe(false);
+  });
+
+  it('нажал направление во время шага — шаг прерывается, обычный разгон', () => {
+    const { n, room } = landWithSpeed();
+    updateNina(n, I({ moveX: 1 }), room, DT);
+    expect(n.skid).toBe(false);
+  });
+
+  it('обычная остановка бега — без тормозного шага', () => {
+    const room = roomOf({ 22: FLOOR });
+    const n = createNina(2, 22);
+    run(n, room, I({ moveX: 1 }), 30);
+    const v0 = n.body.vx;
+    updateNina(n, I(), room, DT);
+    expect(n.skid).toBe(false);
+    expect(v0 - n.body.vx).toBeCloseTo(NINA.decelGround * DT, 5);
+  });
+});

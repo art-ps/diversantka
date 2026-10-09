@@ -10,6 +10,7 @@ export const NINA = {
   runSpeed: 14,
   accelGround: 90,
   decelGround: 120,
+  landDecel: 40, // торможение после приземления без ввода — тормозной шаг вместо скольжения
   accelAir: 50,
   gravity: 90,
   maxFall: 45,

@@ -15,7 +15,7 @@ const clips = (over: Clip[] = []) => {
 const nina = (p: { state?: Nina['state']; vx?: number; vy?: number; y?: number; crouching?: boolean } = {}): Nina => ({
   body: { x: 0, y: p.y ?? 10, w: 1.6, h: 5.5, vx: p.vx ?? 0, vy: p.vy ?? 0, onGround: p.state !== 'air' },
   state: p.state ?? 'ground', facing: 1, crouching: p.crouching ?? false,
-  energy: 100, dead: false, coyoteT: 0, bufferT: 0, jumpHeld: false, peakY: p.y ?? 10,
+  energy: 100, dead: false, coyoteT: 0, bufferT: 0, jumpHeld: false, skid: false, peakY: p.y ?? 10,
 });
 
 describe('позы', () => {
@@ -144,5 +144,11 @@ describe('аниматор', () => {
     const p = currentPose(a, cl)[0];
     expect(p).toBeGreaterThan(0);
     expect(p).toBeLessThanOrEqual(mid);
+  });
+  it('приземление с горизонтальной скоростью — сразу шаг/бег, без land', () => {
+    const a = createAnimator(), cl = clips();
+    updateAnimator(a, nina({ state: 'air', vy: 5, y: 5, vx: 10 }), cl, 1 / 60);
+    updateAnimator(a, nina({ state: 'ground', y: 10, vx: 10 }), cl, 1 / 60);
+    expect(['walk', 'run']).toContain(a.clip);
   });
 });

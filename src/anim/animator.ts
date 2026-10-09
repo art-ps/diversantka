@@ -25,8 +25,8 @@ export function chooseClip(n: Nina, a: Animator): AnimName {
   if (n.state === 'ladder') return 'climb';
   if (n.state === 'air') return n.body.vy < 0 ? 'jump' : 'fall';
   if (n.crouching) return 'crouch';
-  if (a.landT > 0) return 'land';
   const s = Math.abs(n.body.vx);
+  if (a.landT > 0 && s < ANIM.moveEps) return 'land';
   if (s < ANIM.moveEps) return 'idle';
   return s < ANIM.walkBelow ? 'walk' : 'run';
 }

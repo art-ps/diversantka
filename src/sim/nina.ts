@@ -15,6 +15,7 @@ export interface Nina {
   coyoteT: number;
   bufferT: number;
   jumpHeld: boolean;
+  skid: boolean; // тормозной шаг после приземления без ввода
   peakY: number; // самая высокая точка текущего полёта — для урона от падения
 }
 
@@ -26,7 +27,7 @@ export function createNina(x: number, bottom: number, cfg: NinaConfig = NINA): N
     body: { x, y, w: cfg.w, h: cfg.h, vx: 0, vy: 0, onGround: false },
     state: 'air', facing: 1, crouching: false,
     energy: cfg.energyMax, dead: false,
-    coyoteT: 0, bufferT: 0, jumpHeld: false, peakY: y,
+    coyoteT: 0, bufferT: 0, jumpHeld: false, skid: false, peakY: y,
   };
 }
 
@@ -123,7 +124,9 @@ function walk(n: Nina, it: Intent, room: Room, dt: number, cfg: NinaConfig): voi
   }
 
   const target = n.crouching ? 0 : it.moveX * cfg.runSpeed;
-  const accel = b.onGround ? (target !== 0 ? cfg.accelGround : cfg.decelGround) : cfg.accelAir;
+  if (n.skid && (it.moveX !== 0 || b.vx === 0 || !b.onGround)) n.skid = false;
+  const decel = n.skid ? cfg.landDecel : cfg.decelGround;
+  const accel = b.onGround ? (target !== 0 ? cfg.accelGround : decel) : cfg.accelAir;
   b.vx = approach(b.vx, target, accel * dt);
   if (it.moveX !== 0) n.facing = it.moveX > 0 ? 1 : -1;
   moveX(b, room, b.vx * dt);
@@ -151,6 +154,7 @@ function walk(n: Nina, it: Intent, room: Room, dt: number, cfg: NinaConfig): voi
     if (wasAir) {
       const fall = b.y - n.peakY;
       if (fall > cfg.safeFall) n.energy -= (fall - cfg.safeFall) * cfg.fallDamagePerCell;
+      if (it.moveX === 0 && Math.abs(b.vx) > 0) n.skid = true;
     }
     n.state = 'ground';
     n.peakY = b.y;
