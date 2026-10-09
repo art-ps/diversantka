@@ -14,5 +14,8 @@ export const PAL = {
   nina: [1.0, 0.93, 0.78, 1] as Color,
   hud: [0.55, 0.95, 0.65, 1] as Color,
   hudDim: [0.25, 0.45, 0.3, 1] as Color,
+  android: [0.45, 0.72, 1.0, 1] as Color,
+  item: [1.0, 0.85, 0.4, 1] as Color,
+  projectile: [1.0, 0.95, 0.75, 1] as Color,
   danger: [1.0, 0.3, 0.2, 1] as Color,
 };

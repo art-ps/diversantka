@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { drawRoom } from '../src/render/scene';
+import { drawItems, drawProjectiles, drawRoom } from '../src/render/scene';
 import { roomOf } from './helpers';
 
 type G = { x: number; y: number; ch: string; s: number };
@@ -40,5 +40,19 @@ describe('drawRoom в полклетки', () => {
   it('под надписями HUD в верхнем ряду ничего не рисуется', () => {
     const g = draw({ 0: '#'.repeat(40) });
     expect(g.filter(p => cellOf(p)[1] === 0 && cellOf(p)[0] <= 19)).toHaveLength(0);
+  });
+});
+
+describe('предметы и снаряды', () => {
+  it('каждый предмет и живой снаряд — один мелкий символ', () => {
+    const out: { ch: string; s: number }[] = [];
+    const b = { push: (_x: number, _y: number, ch: string, _c: unknown, s = 1) => { out.push({ ch, s }); } };
+    drawItems(b, [{ id: 'a', kind: 'knife', x: 5, bottom: 22 }, { id: 'b', kind: 'stone', x: 8, bottom: 22 }], 0, 0);
+    drawProjectiles(b, [
+      { kind: 'knife', x: 3, y: 3, vx: 1, vy: 0, from: 'nina', damage: 1, alive: true },
+      { kind: 'knife', x: 3, y: 3, vx: 1, vy: 0, from: 'nina', damage: 1, alive: false },
+    ], 0, 0);
+    expect(out).toHaveLength(3);
+    expect(out.every(g => g.s === 0.5)).toBe(true);
   });
 });

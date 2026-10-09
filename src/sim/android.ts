@@ -1,3 +1,4 @@
+import { createSimpleAnim, type SimpleAnim } from '../anim/simple';
 import { ANDROID } from '../config';
 import type { Room } from '../world/room';
 import type { EnemySpawn } from '../world/spawns';
@@ -19,6 +20,7 @@ export interface Android {
   cooldown: number;
   punchHit: boolean; // этот удар уже попал
   invulnT: number; // неуязвимость после попадания
+  anim: SimpleAnim;
 }
 
 const center = (b: Body) => b.x + b.w / 2;
@@ -27,7 +29,7 @@ export function createAndroid(id: string, s: EnemySpawn): Android {
   return {
     id,
     body: { x: s.x - ANDROID.w / 2, y: s.bottom - ANDROID.h, w: ANDROID.w, h: ANDROID.h, vx: 0, vy: 0, onGround: true },
-    facing: 1, patrol: s.patrol, hp: ANDROID.hp, state: 'patrol', t: 0, cooldown: 0, punchHit: false, invulnT: 0,
+    facing: 1, patrol: s.patrol, hp: ANDROID.hp, state: 'patrol', t: 0, cooldown: 0, punchHit: false, invulnT: 0, anim: createSimpleAnim(),
   };
 }
 

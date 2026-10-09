@@ -1,6 +1,7 @@
 import { TRANSITION_TIME } from './config';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { CLIPS } from './anim/clips';
+import { androidClip, playClip } from './anim/simple';
 import type { Intent } from './input/intent';
 import { createAndroid, updateAndroid, type Android } from './sim/android';
 import { resolveCombat } from './sim/fight';
@@ -83,6 +84,10 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   for (const id of resolveCombat(g.nina, g.androids, g.projectiles)) g.killed.add(id);
   g.projectiles = g.projectiles.filter(p => p.alive);
   updateAnimator(g.anim, g.nina, CLIPS, dt);
+  for (const a of g.androids) {
+    const { name, advance } = androidClip(a, dt, CLIPS);
+    playClip(a.anim, name, advance, CLIPS);
+  }
   const ex = exitFor(g.nina.body, room);
   if (ex) {
     g.nina.body.x += ex.dx;

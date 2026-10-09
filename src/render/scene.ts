@@ -1,7 +1,10 @@
 import { currentPose } from '../anim/animator';
 import { CLIPS } from '../anim/clips';
+import { J } from '../anim/clip';
+import { simplePose } from '../anim/simple';
 import { NINA, ROOM_H, ROOM_W } from '../config';
 import { TRANSITION_TIME, type Game } from '../game';
+import type { Item, Projectile } from '../sim/items';
 import type { Room } from '../world/room';
 import { drawFigure } from './figure';
 import type { Color, GlyphBatch } from './glyphs';
@@ -62,9 +65,37 @@ export function drawRoom(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy
   }
 }
 
-function drawNina(b: GlyphBatch, g: Game, ox: number, oy: number): void {
+const ITEM_GLYPH = { knife: '/', stone: 'o', wrench: 'Y' } as const;
+
+export function drawItems(b: Pick<GlyphBatch, 'push'>, items: Item[], ox: number, oy: number): void {
+  for (const i of items) b.push(i.x + ox - 0.5, i.bottom - 0.25 + oy - 0.5, ITEM_GLYPH[i.kind], PAL.item, 0.5);
+}
+
+export function drawProjectiles(b: Pick<GlyphBatch, 'push'>, ps: Projectile[], ox: number, oy: number): void {
+  for (const p of ps) {
+    if (!p.alive) continue;
+    const ch = p.kind === 'knife' ? (Math.abs(p.vy) > Math.abs(p.vx) * 0.3 ? (p.vy * p.vx > 0 ? '\\' : '/') : '-') : ITEM_GLYPH[p.kind];
+    b.push(p.x + ox - 0.5, p.y + oy - 0.5, ch, PAL.projectile, 0.5);
+  }
+}
+
+// Мигание при неуязвимости: фигура видна через кадр.
+const blinkOff = (invulnT: number, time: number) => invulnT > 0 && Math.floor(time * 12) % 2 !== 0;
+
+function drawAndroids(b: GlyphBatch, g: Game, ox: number, oy: number, time: number): void {
+  for (const a of g.androids) {
+    if (a.state !== 'dead' && blinkOff(a.invulnT, time)) continue;
+    drawFigure(b, simplePose(a.anim, CLIPS), a.body.x + a.body.w / 2 + ox, a.body.y + a.body.h + oy, a.facing, PAL.android, false, '@');
+  }
+}
+
+function drawNina(b: GlyphBatch, g: Game, ox: number, oy: number, time: number): void {
   const { body, facing } = g.nina;
-  drawFigure(b, currentPose(g.anim, CLIPS), body.x + body.w / 2 + ox, body.y + body.h + oy, facing, PAL.nina, g.nina.state === 'ladder');
+  if (blinkOff(g.nina.invulnT, time)) return;
+  const pose = currentPose(g.anim, CLIPS);
+  const x = body.x + body.w / 2 + ox, y = body.y + body.h + oy;
+  drawFigure(b, pose, x, y, facing, PAL.nina, g.nina.state === 'ladder');
+  if (g.nina.held) b.push(x + facing * pose[2 * J.rHand] - 0.5, y - pose[2 * J.rHand + 1] - 0.5, ITEM_GLYPH[g.nina.held], PAL.item, 0.5);
 }
 
 function drawHud(b: GlyphBatch, g: Game, time: number): void {
@@ -86,10 +117,16 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     const ox = v[0] * ROOM_W * (1 - e), oy = v[1] * ROOM_H * (1 - e);
     drawRoom(b, g.rooms.get(g.transition.from)!, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time, g.roomId);
     drawRoom(b, cur, ox, oy, time, g.roomId);
-    drawNina(b, g, ox, oy);
+    drawItems(b, g.items, ox, oy);
+    drawAndroids(b, g, ox, oy, time);
+    drawProjectiles(b, g.projectiles, ox, oy);
+    drawNina(b, g, ox, oy, time);
   } else {
     drawRoom(b, cur, 0, 0, time, g.roomId);
-    drawNina(b, g, 0, 0);
+    drawItems(b, g.items, 0, 0);
+    drawAndroids(b, g, 0, 0, time);
+    drawProjectiles(b, g.projectiles, 0, 0);
+    drawNina(b, g, 0, 0, time);
   }
   drawHud(b, g, time);
 }

@@ -18,7 +18,7 @@ export function glyphForAngle(dx: number, dy: number): string {
 
 // symmetric — вид со спины на лестнице: обе стороны на одной глубине, не затемняем.
 // x, y — точка на земле под тазом, в клетках экрана. Камера сбоку: при взгляде вправо дальняя сторона — правая.
-export function drawFigure(b: Pick<GlyphBatch, 'push'>, pose: Pose, x: number, y: number, facing: 1 | -1, color: Color, symmetric = false): void {
+export function drawFigure(b: Pick<GlyphBatch, 'push'>, pose: Pose, x: number, y: number, facing: 1 | -1, color: Color, symmetric = false, head = 'O'): void {
   const far = facing === 1 ? 'r' : 'l';
   const dim: Color = [color[0] * FAR, color[1] * FAR, color[2] * FAR, color[3]];
   const at = (j: number) => [x + facing * pose[2 * j], y - pose[2 * j + 1]] as const;
@@ -41,5 +41,5 @@ export function drawFigure(b: Pick<GlyphBatch, 'push'>, pose: Pose, x: number, y
     }
   }
   const [hx, hy] = at(J.head);
-  b.push(hx - 0.5, hy - 0.5, 'O', color, 1);
+  b.push(hx - 0.5, hy - 0.5, head, color, 1);
 }
