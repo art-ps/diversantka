@@ -3,13 +3,21 @@ import { androidPunchBox, hitAndroid, type Android } from './android';
 import { attackBox } from './combat';
 import { projectileHit, type Projectile } from './items';
 import { hurtNina, type Nina } from './nina';
+import type { Room } from '../world/room';
+import { moveX } from './physics';
 import { bodyRect, overlap } from './rect';
 
 const isDead = (a: Android) => a.state === 'dead'; // функция — чтобы TS не сужал state после hitAndroid
 const dirOf = (vx: number): 1 | -1 => (vx >= 0 ? 1 : -1);
 
+// Отброс: центр остаётся внутри участка патруля, стены держит moveX.
+function push(a: Android, dir: 1 | -1, dist: number, room: Room): void {
+  const c = a.body.x + a.body.w / 2;
+  moveX(a.body, room, Math.min(Math.max(c + dir * dist, a.patrol[0]), a.patrol[1]) - c);
+}
+
 // Все попадания одного шага. Возвращает id андроидов, убитых в этом шаге.
-export function resolveCombat(n: Nina, androids: Android[], projectiles: Projectile[]): string[] {
+export function resolveCombat(n: Nina, androids: Android[], projectiles: Projectile[], room: Room): string[] {
   const killed: string[] = [];
   const box = attackBox(n.body, n.facing, n.attack);
   const nr = bodyRect(n.body);
@@ -18,7 +26,9 @@ export function resolveCombat(n: Nina, androids: Android[], projectiles: Project
     const ar = bodyRect(a.body);
     if (box && n.attack && !n.attack.hits.includes(a.id) && overlap(box, ar)) {
       n.attack.hits.push(a.id);
+      const counted = a.invulnT <= 0;
       hitAndroid(a, COMBAT[n.attack.kind].damage, n.facing);
+      if (counted && n.attack.kind === 'kick') push(a, n.facing, COMBAT.kick.push, room);
     }
     for (const p of projectiles) {
       if (p.from === 'nina' && !isDead(a) && projectileHit(p, ar)) {

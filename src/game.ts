@@ -1,8 +1,8 @@
-import { TRANSITION_TIME } from './config';
+import { NINA, TRANSITION_TIME } from './config';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { CLIPS } from './anim/clips';
 import { androidClip, playClip } from './anim/simple';
-import type { Intent } from './input/intent';
+import { IDLE, type Intent } from './input/intent';
 import { createAndroid, updateAndroid, type Android } from './sim/android';
 import { resolveCombat } from './sim/fight';
 import { stepProjectiles, useThrowButton, type Item, type Projectile } from './sim/items';
@@ -59,8 +59,9 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   }
   if (g.nina.dead) {
     // ponytail: в плане 1 смерть — возврат на старт; чекпоинты на терминалах — план 4.
+    updateNina(g.nina, IDLE, g.rooms.get(g.roomId)!, dt);
     updateAnimator(g.anim, g.nina, CLIPS, dt);
-    if (it.jumpPressed) {
+    if (it.jumpPressed && g.nina.deadT >= NINA.respawnDelay) {
       g.taken.clear();
       enterRoom(g, g.start.room);
       g.nina = createNina(g.start.x, g.start.bottom);
@@ -81,7 +82,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     const k = updateAndroid(a, g.nina, room, dt);
     if (k) g.projectiles.push(k);
   }
-  for (const id of resolveCombat(g.nina, g.androids, g.projectiles)) g.killed.add(id);
+  for (const id of resolveCombat(g.nina, g.androids, g.projectiles, room)) g.killed.add(id);
   g.projectiles = g.projectiles.filter(p => p.alive);
   updateAnimator(g.anim, g.nina, CLIPS, dt);
   for (const a of g.androids) {

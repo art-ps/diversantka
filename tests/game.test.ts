@@ -1,7 +1,8 @@
 import { expect, it } from 'vitest';
-import { DT, NINA } from '../src/config';
+import { ANDROID, DT, NINA } from '../src/config';
 import { createGame, enterRoom, stepGame } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
+import { hurtNina } from '../src/sim/nina';
 import { loadRoomsFs } from './helpers';
 
 const I = (p: Partial<Intent> = {}): Intent => ({ ...IDLE, ...p });
@@ -34,10 +35,46 @@ it('во время перехода симуляция стоит', () => {
 it('после гибели прыжок возвращает на старт', () => {
   const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
   g.nina.dead = true;
+  g.nina.deadT = NINA.respawnDelay;
   g.roomId = 'cave-1';
   stepGame(g, I({ jump: true, jumpPressed: true }), DT);
   expect(g.roomId).toBe('lab-1');
   expect(g.nina.dead).toBe(false);
+});
+
+it('возрождение только после паузы respawnDelay', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
+  for (let i = 0; i < 5; i++) stepGame(g, I(), DT);
+  hurtNina(g.nina, NINA.energyMax + 1, 1);
+  stepGame(g, I({ jump: true, jumpPressed: true }), DT);
+  expect(g.nina.dead).toBe(true);
+  for (let i = 0; i < Math.ceil(NINA.respawnDelay / DT) + 2; i++) stepGame(g, I(), DT);
+  stepGame(g, I({ jump: true, jumpPressed: true }), DT);
+  expect(g.nina.dead).toBe(false);
+});
+
+it('мёртвое тело в воздухе падает на пол и остаётся в комнате', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
+  for (let i = 0; i < 5; i++) stepGame(g, I(), DT);
+  for (let i = 0; i < 10; i++) stepGame(g, I({ jump: true, jumpPressed: i === 0 }), DT);
+  expect(g.nina.body.onGround).toBe(false);
+  hurtNina(g.nina, NINA.energyMax + 1, 1);
+  for (let i = 0; i < 120; i++) stepGame(g, I(), DT);
+  expect(g.nina.body.y + g.nina.body.h).toBeCloseTo(22);
+  expect(g.roomId).toBe('lab-1');
+});
+
+it('живой андроид после выхода и входа снова на месте с полным hp', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
+  const a = g.androids[0];
+  const x0 = a.body.x;
+  a.hp = 1;
+  a.body.x += 3;
+  enterRoom(g, 'lab-2');
+  enterRoom(g, 'lab-1');
+  expect(g.androids).toHaveLength(1);
+  expect(g.androids[0].hp).toBe(ANDROID.hp);
+  expect(g.androids[0].body.x).toBe(x0);
 });
 
 it('аниматор: бег переключает клип на walk/run, на лестнице — climb', () => {

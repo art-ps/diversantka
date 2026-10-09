@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ANDROID, DT, NINA } from '../src/config';
+import { ANDROID, COMBAT, DT, NINA } from '../src/config';
 import { IDLE } from '../src/input/intent';
 import { androidPunchBox, createAndroid, hitAndroid, seesNina, updateAndroid, type Android } from '../src/sim/android';
 import { resolveCombat } from '../src/sim/fight';
@@ -125,9 +125,34 @@ describe('разрешение боя', () => {
     updateNina(n, { ...IDLE, attackPressed: true }, ROOM, DT);
     for (let i = 0; i < 30; i++) {
       updateNina(n, IDLE, ROOM, DT);
-      resolveCombat(n, [a], []);
+      resolveCombat(n, [a], [], ROOM);
     }
     expect(a.hp).toBe(ANDROID.hp - 1);
+  });
+
+  const strike = (n: Nina, a: Android, up: boolean) => {
+    updateNina(n, { ...IDLE, attackPressed: true, up }, ROOM, DT);
+    for (let i = 0; i < 30; i++) {
+      updateNina(n, IDLE, ROOM, DT);
+      resolveCombat(n, [a], [], ROOM);
+    }
+  };
+
+  it('пинок отбрасывает андроида по направлению героини, удар рукой — нет', () => {
+    const k = android(20);
+    strike(ninaAt(18.2), k, true);
+    expect(k.hp).toBe(ANDROID.hp - 1);
+    expect(center(k)).toBeCloseTo(20 + COMBAT.kick.push);
+    const p = android(20);
+    strike(ninaAt(18.2), p, false);
+    expect(p.hp).toBe(ANDROID.hp - 1);
+    expect(center(p)).toBeCloseTo(20);
+  });
+
+  it('отброс упирается в край участка', () => {
+    const a = android(27.5);
+    strike(ninaAt(25.7), a, true);
+    expect(center(a)).toBeCloseTo(28);
   });
 
   it('нож андроида и удар в одном кадре — энергия снимается один раз', () => {
@@ -136,7 +161,7 @@ describe('разрешение боя', () => {
     a.state = 'punch';
     a.t = ANDROID.punch.windup;
     const knife: Projectile = { kind: 'knife', x: n.body.x + 0.5, y: n.body.y + 1, vx: 0, vy: 0, from: 'enemy', damage: ANDROID.knifeDamage, alive: true };
-    resolveCombat(n, [a], [knife]);
+    resolveCombat(n, [a], [knife], ROOM);
     expect(NINA.energyMax - n.energy).toBe(ANDROID.punch.damage);
   });
 
@@ -144,6 +169,6 @@ describe('разрешение боя', () => {
     const a = android();
     a.hp = 1;
     const p: Projectile = { kind: 'stone', x: center(a), y: a.body.y + 1, vx: 1, vy: 0, from: 'nina', damage: 1, alive: true };
-    expect(resolveCombat(ninaAt(2, 14), [a], [p])).toEqual(['r#e0']);
+    expect(resolveCombat(ninaAt(2, 14), [a], [p], ROOM)).toEqual(['r#e0']);
   });
 });

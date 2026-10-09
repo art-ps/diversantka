@@ -91,7 +91,7 @@ function drawAndroids(b: GlyphBatch, g: Game, ox: number, oy: number, time: numb
 
 function drawNina(b: GlyphBatch, g: Game, ox: number, oy: number, time: number): void {
   const { body, facing } = g.nina;
-  if (blinkOff(g.nina.invulnT, time)) return;
+  if (!g.nina.dead && blinkOff(g.nina.invulnT, time)) return;
   const pose = currentPose(g.anim, CLIPS);
   const x = body.x + body.w / 2 + ox, y = body.y + body.h + oy;
   drawFigure(b, pose, x, y, facing, PAL.nina, g.nina.state === 'ladder');

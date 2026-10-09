@@ -25,6 +25,7 @@ export const NINA = {
   regenPerSec: 4,
   ladderJump: 0.6,
   lowEnergy: 25,
+  respawnDelay: 1.0, // пауза после смерти, пока прыжок не возвращает на старт
 };
 
 export const TRANSITION_TIME = 0.3;
@@ -45,7 +46,7 @@ export const ANIM = {
 // Бой: время — секунды, дальность — клетки; top/bottom — полоса удара по высоте, доли роста от макушки.
 export const COMBAT = {
   punch: { windup: 0.08, active: 0.1, recover: 0.15, reach: 1.3, top: 0.15, bottom: 0.45, damage: 1 },
-  kick: { windup: 0.15, active: 0.12, recover: 0.25, reach: 1.9, top: 0.35, bottom: 0.75, damage: 1 },
+  kick: { windup: 0.15, active: 0.12, recover: 0.25, reach: 1.9, top: 0.35, bottom: 0.75, damage: 1, push: 1.5 }, // push — отброс андроида, клеток
   flykick: { windup: 0.05, active: 0.3, recover: 0.1, reach: 1.6, top: 0.4, bottom: 0.9, damage: 1 },
   hurtStun: 0.35, // оглушение после попадания — ввод не слушается
   hurtInvuln: 0.8, // неуязвимость после попадания

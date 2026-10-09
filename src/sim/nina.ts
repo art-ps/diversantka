@@ -14,6 +14,7 @@ export interface Nina {
   crouching: boolean;
   energy: number;
   dead: boolean;
+  deadT: number; // секунд с момента смерти
   attack: Attack | null;
   hurtT: number; // оглушение
   invulnT: number; // неуязвимость
@@ -33,7 +34,7 @@ export function createNina(x: number, bottom: number, cfg: NinaConfig = NINA): N
   return {
     body: { x, y, w: cfg.w, h: cfg.h, vx: 0, vy: 0, onGround: false },
     state: 'air', facing: 1, crouching: false,
-    energy: cfg.energyMax, dead: false, attack: null, hurtT: 0, invulnT: 0,
+    energy: cfg.energyMax, dead: false, deadT: 0, attack: null, hurtT: 0, invulnT: 0,
     coyoteT: 0, bufferT: 0, jumpHeld: false, skid: false, peakY: y, held: null, throwT: 0,
   };
 }
@@ -64,6 +65,7 @@ function headroom(room: Room, b: Body, fullH: number): boolean {
 
 export function updateNina(n: Nina, it: Intent, room: Room, dt: number, cfg: NinaConfig = NINA): void {
   if (n.dead) {
+    n.deadT += dt;
     // Мёртвое тело падает под гравитацией без ввода, пока не ляжет на пол.
     if (!n.body.onGround) {
       if (n.state === 'ladder') n.state = 'air';
