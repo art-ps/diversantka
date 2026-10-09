@@ -14,7 +14,7 @@ export const attackTotal = (k: AttackKind) => COMBAT[k].windup + COMBAT[k].activ
 
 export function isActive(at: Attack): boolean {
   const a = COMBAT[at.kind];
-  return at.t >= a.windup && at.t < a.windup + a.active;
+  return at.t >= a.windup - 1e-9 && at.t < a.windup + a.active - 1e-9;
 }
 
 // Зона удара перед телом: по ширине — дальность, по высоте — полоса от макушки.
