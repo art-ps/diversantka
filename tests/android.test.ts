@@ -75,12 +75,24 @@ describe('андроид: атаки', () => {
 
   it('три попадания — падает и больше не действует', () => {
     const a = android();
-    hitAndroid(a, 1, 1); hitAndroid(a, 1, 1);
+    hitAndroid(a, 1, 1); a.invulnT = 0; hitAndroid(a, 1, 1);
     expect(a.state).toBe('hurt');
-    hitAndroid(a, 1, 1);
+    a.invulnT = 0; hitAndroid(a, 1, 1);
     expect(a.state).toBe('dead');
     expect(updateAndroid(a, ninaAt(30), ROOM, DT)).toBeNull();
     expect(a.state).toBe('dead');
+  });
+});
+
+describe('неуязвимость после попадания', () => {
+  it('попадание во время неуязвимости не считается', () => {
+    const a = android();
+    hitAndroid(a, 1, 1); hitAndroid(a, 1, 1);
+    expect(a.hp).toBe(ANDROID.hp - 1);
+    const n = far();
+    for (let i = 0; i < Math.ceil(ANDROID.hitInvuln / DT) + 1; i++) updateAndroid(a, n, ROOM, DT);
+    hitAndroid(a, 1, 1);
+    expect(a.hp).toBe(ANDROID.hp - 2);
   });
 });
 

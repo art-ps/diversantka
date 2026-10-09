@@ -68,14 +68,15 @@ export const ANDROID = {
   chaseSpeed: 5,
   sight: 14, // видит героиню на своём этаже не дальше
   floorTol: 0.5, // «тот же этаж» — разница низа тел меньше
-  meleeRange: 1.6, // ближе — бьёт рукой
+  meleeRange: 2.6, // ближе — бьёт рукой
   throwMin: 4, // дальше — бросает нож
   throwWindup: 0.4,
   throwCooldown: 1.8,
   knifeHeight: 0.2, // нож летит на этой доле роста от макушки — на уровне головы
   knifeSpeed: 20,
   knifeDamage: 12, // энергии героини
-  punch: { windup: 0.25, active: 0.1, recover: 0.4, reach: 1.3, top: 0.15, bottom: 0.45, damage: 10 },
+  punch: { windup: 0.25, active: 0.1, recover: 0.4, reach: 2.0, top: 0.15, bottom: 0.45, damage: 10 },
   punchCooldown: 0.5,
-  hurtStun: 0.4,
+  hurtStun: 0.3,
+  hitInvuln: 0.6, // после попадания андроид неуязвим — серию подряд не провести
 };

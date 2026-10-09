@@ -18,6 +18,7 @@ export interface Android {
   t: number; // время в текущем состоянии
   cooldown: number;
   punchHit: boolean; // этот удар уже попал
+  invulnT: number; // неуязвимость после попадания
 }
 
 const center = (b: Body) => b.x + b.w / 2;
@@ -26,7 +27,7 @@ export function createAndroid(id: string, s: EnemySpawn): Android {
   return {
     id,
     body: { x: s.x - ANDROID.w / 2, y: s.bottom - ANDROID.h, w: ANDROID.w, h: ANDROID.h, vx: 0, vy: 0, onGround: true },
-    facing: 1, patrol: s.patrol, hp: ANDROID.hp, state: 'patrol', t: 0, cooldown: 0, punchHit: false,
+    facing: 1, patrol: s.patrol, hp: ANDROID.hp, state: 'patrol', t: 0, cooldown: 0, punchHit: false, invulnT: 0,
   };
 }
 
@@ -62,6 +63,7 @@ export function updateAndroid(a: Android, n: Nina, room: Room, dt: number): Proj
   if (a.state === 'dead') return null;
   a.t += dt;
   a.cooldown = Math.max(0, a.cooldown - dt);
+  a.invulnT = Math.max(0, a.invulnT - dt);
   const p = ANDROID.punch;
 
   if (a.state === 'hurt') {
@@ -117,7 +119,8 @@ export function androidPunchBox(a: Android): Rect | null {
 }
 
 export function hitAndroid(a: Android, damage: number, dir: 1 | -1): void {
-  if (a.state === 'dead') return;
+  if (a.state === 'dead' || a.invulnT > 0) return;
+  a.invulnT = ANDROID.hitInvuln;
   a.hp -= damage;
   setState(a, a.hp <= 0 ? 'dead' : 'hurt');
   if (a.hp < 0) a.hp = 0;
