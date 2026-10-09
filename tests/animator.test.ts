@@ -121,4 +121,28 @@ describe('аниматор', () => {
     updateAnimator(a, nina({ state: 'ladder', y: 9.8 }), cl, 1 / 60);
     expect(a.t).toBeGreaterThan(t);
   });
+
+  it('присед доходит до нижней позы за ANIM.crouchTime', () => {
+    const frames = Array.from({ length: 45 }, (_, k) => pose(k)); // 1.5 с при 30 к/с
+    const crouch: Clip = { name: 'crouch', fps: 30, loop: false, speed: 0, frames, contacts: frames.map(() => 0) };
+    const cl = clips([crouch]);
+    const a = createAnimator();
+    updateAnimator(a, nina(), cl, 1 / 60);
+    const ticks = Math.ceil((ANIM.crouchTime + ANIM.fade) * 60) + 1;
+    for (let i = 0; i < ticks; i++) updateAnimator(a, nina({ crouching: true }), cl, 1 / 60);
+    expect(currentPose(a, cl)[0]).toBe(44);
+  });
+
+  it('отпустил присед на середине — обычный плавный переход в idle', () => {
+    const frames = Array.from({ length: 45 }, (_, k) => pose(k));
+    const cl = clips([{ name: 'crouch', fps: 30, loop: false, speed: 0, frames, contacts: frames.map(() => 0) }]);
+    const a = createAnimator();
+    for (let i = 0; i < 5; i++) updateAnimator(a, nina({ crouching: true }), cl, 1 / 60);
+    const mid = currentPose(a, cl)[0];
+    updateAnimator(a, nina(), cl, 1 / 60);
+    expect(a.clip).toBe('idle');
+    const p = currentPose(a, cl)[0];
+    expect(p).toBeGreaterThan(0);
+    expect(p).toBeLessThanOrEqual(mid);
+  });
 });

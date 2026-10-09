@@ -16,8 +16,9 @@ export function glyphForAngle(dx: number, dy: number): string {
   return '/';
 }
 
+// symmetric — вид со спины на лестнице: обе стороны на одной глубине, не затемняем.
 // x, y — точка на земле под тазом, в клетках экрана. Камера сбоку: при взгляде вправо дальняя сторона — правая.
-export function drawFigure(b: Pick<GlyphBatch, 'push'>, pose: Pose, x: number, y: number, facing: 1 | -1, color: Color): void {
+export function drawFigure(b: Pick<GlyphBatch, 'push'>, pose: Pose, x: number, y: number, facing: 1 | -1, color: Color, symmetric = false): void {
   const far = facing === 1 ? 'r' : 'l';
   const dim: Color = [color[0] * FAR, color[1] * FAR, color[2] * FAR, color[3]];
   const at = (j: number) => [x + facing * pose[2 * j], y - pose[2 * j + 1]] as const;
@@ -27,7 +28,7 @@ export function drawFigure(b: Pick<GlyphBatch, 'push'>, pose: Pose, x: number, y
     const dx = x1 - x0, dy = y1 - y0;
     const steps = Math.max(1, Math.round(Math.hypot(dx, dy) / STEP));
     const ch = glyphForAngle(dx, dy);
-    const c = to.startsWith(far) ? dim : color;
+    const c = !symmetric && to.startsWith(far) ? dim : color;
     // Корпус — три параллельные линии, чтобы читался как тело.
     const len = Math.hypot(dx, dy) || 1;
     const offs = from === 'neck' && to === 'pelvis' ? [-TORSO, 0, TORSO] : [0];

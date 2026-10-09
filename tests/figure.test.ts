@@ -21,9 +21,9 @@ describe('drawFigure', () => {
   set(J.rShoulder, -0.1, 4.4); set(J.rElbow, -0.1, 3.4); set(J.rHand, -0.1, 2.6);
   set(J.lKnee, 0.2, 1.3); set(J.lFoot, 0.2, 0); set(J.rKnee, -0.2, 1.3); set(J.rFoot, -0.2, 0);
 
-  const capture = (facing: 1 | -1) => {
+  const capture = (facing: 1 | -1, symmetric = false) => {
     const out: { x: number; y: number; ch: string; c: Color }[] = [];
-    drawFigure({ push: (x, y, ch, c) => { out.push({ x, y, ch, c }); } }, pose, 10, 20, facing, [1, 1, 1, 1]);
+    drawFigure({ push: (x, y, ch, c) => { out.push({ x, y, ch, c }); } }, pose, 10, 20, facing, [1, 1, 1, 1], symmetric);
     return out;
   };
 
@@ -51,5 +51,10 @@ describe('drawFigure', () => {
     const g = capture(1);
     const levels = new Set(g.map(p => p.c[0]));
     expect(levels.size).toBeGreaterThan(1);
+  });
+
+  it('symmetric: ни одна сторона не затемняется', () => {
+    const g = capture(1, true);
+    expect(new Set(g.map(p => p.c[0])).size).toBe(1);
   });
 });

@@ -61,6 +61,9 @@ export function updateAnimator(a: Animator, n: Nina, clips: Map<string, Clip>, d
     // Вверх — клип вперёд, вниз — назад: руки и ноги перехватывают в правильную сторону.
     if (y < a.lastY) a.t += dt;
     else if (y > a.lastY) a.t -= dt;
+  } else if (a.clip === 'crouch') {
+    // Клип записан медленно; сжимаем его до ANIM.crouchTime.
+    a.t += (dt * ((c.frames.length - 1) / c.fps)) / ANIM.crouchTime;
   } else {
     a.t += dt;
   }

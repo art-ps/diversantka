@@ -64,7 +64,7 @@ export function drawRoom(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy
 
 function drawNina(b: GlyphBatch, g: Game, ox: number, oy: number): void {
   const { body, facing } = g.nina;
-  drawFigure(b, currentPose(g.anim, CLIPS), body.x + body.w / 2 + ox, body.y + body.h + oy, facing, PAL.nina);
+  drawFigure(b, currentPose(g.anim, CLIPS), body.x + body.w / 2 + ox, body.y + body.h + oy, facing, PAL.nina, g.nina.state === 'ladder');
 }
 
 function drawHud(b: GlyphBatch, g: Game, time: number): void {

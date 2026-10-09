@@ -32,6 +32,7 @@ export type NinaConfig = typeof NINA;
 
 // Анимация: числа «ощущения».
 export const ANIM = {
+  crouchTime: 0.2, // за сколько секунд присед доходит до нижней позы
   fade: 0.12, // секунды перехода между клипами
   moveEps: 0.3, // медленнее — стоит (idle)
   walkBelow: 7, // медленнее — шаг, быстрее — бег
