@@ -2,6 +2,7 @@ id: lab-1
 exits: left=- right=lab-2 up=- down=-
 items: knife@6,22
 enemies: android@20,22 patrol=16..28
+tapes: 10,14
 ---
 ########################################
 #......................................#
