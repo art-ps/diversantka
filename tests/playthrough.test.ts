@@ -1,7 +1,8 @@
 import { expect, it } from 'vitest';
 import { DT, MISSION } from '../src/config';
-import { createGame, stepGame, type Game } from '../src/game';
+import { createPrologue, stepGame, type Game } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
+import { gliderAt } from '../src/sim/glider';
 import { formatTime, missionResult } from '../src/sim/mission';
 import { loadRoomsFs } from './helpers';
 
@@ -84,9 +85,22 @@ function useTerminal(g: Game, sel: number, items: number) {
   return msg;
 }
 
-it('миссия проходится от старта до выезда', () => {
-  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
+it('игра проходится от пролога до выезда', () => {
+  const g = createPrologue(loadRoomsFs());
+  // пролог: дельтаплан над крышей — отцепиться; до посадки таймер стоит
+  run(g, {}, 3000, () => g.roomId === 'roof-1' && !g.transition && gliderAt(g.prologue!.d).x >= 8);
+  expect(g.mission.timeLeft).toBe(MISSION.time);
+  step(g, { jump: true, jumpPressed: true });
+  run(g, {}, 600, () => !g.prologue);
+  const landedAt = frames - 1; // кадр посадки — первый, где тикает таймер
+  expect(g.roomId, where(g)).toBe('roof-1');
+  expect(g.mission.checkpoint.room).toBe('roof-1');
+  log.push(`landed ${where(g)}`);
   idle(g, 10);
+  // крыша: к люку, по лестнице вниз в lab-1 — дальше прежний маршрут
+  walkTo(g, 3.5);
+  climb(g, 'down', () => g.roomId === 'lab-1' && g.nina.state === 'ground');
+  log.push(`lab-1 ${where(g)}`);
   // lab-1: прыжок через шипы, андроид, лестница x30, лента 10,14
   walkTo(g, 9.5);
   jumpRun(g, 1, 45);
@@ -176,4 +190,6 @@ it('миссия проходится от старта до выезда', () =
   log.push(`WON ${r.line} frames=${frames} (${(frames * DT).toFixed(1)} s sim)`);
 
   expect(MISSION.time - g.mission.timeLeft).toBeLessThan(MISSION.time);
+  // время миссии — от посадки, полёт не в счёт
+  expect(MISSION.time - g.mission.timeLeft).toBeCloseTo((frames - landedAt) * DT, 3);
 });
