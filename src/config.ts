@@ -29,3 +29,12 @@ export const NINA = {
 export const TRANSITION_TIME = 0.3;
 
 export type NinaConfig = typeof NINA;
+
+// Анимация: числа «ощущения».
+export const ANIM = {
+  fade: 0.12, // секунды перехода между клипами
+  moveEps: 0.3, // медленнее — стоит (idle)
+  walkBelow: 7, // медленнее — шаг, быстрее — бег
+  landTime: 0.25, // сколько играет приземление
+  landMinFall: 1.5, // с какой высоты падения (клетки) играть приземление
+};
