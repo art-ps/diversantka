@@ -2,7 +2,10 @@ export type ItemKind = 'knife' | 'stone' | 'wrench';
 export const ITEM_KINDS: ItemKind[] = ['knife', 'stone', 'wrench'];
 
 export interface ItemSpawn { kind: ItemKind; x: number; bottom: number }
-export interface EnemySpawn { kind: 'android'; x: number; bottom: number; patrol: [number, number] }
+export interface AndroidSpawn { kind: 'android'; x: number; bottom: number; patrol: [number, number] }
+export interface DogSpawn { kind: 'dog'; x: number; bottom: number; patrol: [number, number] }
+export interface FlamerSpawn { kind: 'flamer'; x: number; y: number; dir: 1 | -1 } // x — сопло, y — высота струи
+export type EnemySpawn = AndroidSpawn | DogSpawn | FlamerSpawn;
 
 const parts = (s: string | undefined) => (s ?? '').split(';').map(p => p.trim()).filter(Boolean);
 const num = (v: string) => (v.trim() === '' ? NaN : Number(v));
@@ -25,16 +28,28 @@ export function parseItems(s: string | undefined, file: string): ItemSpawn[] {
   });
 }
 
+const NAMES = { android: 'андроид', dog: 'собака' } as const;
+const GEN = { android: 'у андроида', dog: 'у собаки' } as const;
+
+function patrolOf(rec: string, file: string, kind: 'android' | 'dog', x: number): [number, number] {
+  const m = /patrol=([\d.]+)\.\.([\d.]+)/.exec(rec);
+  if (!m) throw new Error(`${file}: ${GEN[kind]} нет patrol=a..b`);
+  const a = Number(m[1]), b = Number(m[2]);
+  if (!(a < b) || x < a || x > b) throw new Error(`${file}: ${NAMES[kind]} стоит вне своего участка ${m[1]}..${m[2]}`);
+  return [a, b];
+}
+
 export function parseEnemies(s: string | undefined, file: string): EnemySpawn[] {
-  return parts(s).map(rec => {
+  return parts(s).map((rec): EnemySpawn => {
     const kind = /^([a-z]+)@/.exec(rec)?.[1];
-    if (kind !== 'android') throw new Error(`${file}: неизвестный враг «${kind ?? rec}»`);
+    if (kind !== 'android' && kind !== 'dog' && kind !== 'flamer') throw new Error(`${file}: неизвестный враг «${kind ?? rec}»`);
     const p = at(rec);
     if (!p) throw new Error(`${file}: плохая запись врага «${rec}»`);
-    const m = /patrol=([\d.]+)\.\.([\d.]+)/.exec(rec);
-    if (!m) throw new Error(`${file}: у андроида нет patrol=a..b`);
-    const a = Number(m[1]), b = Number(m[2]);
-    if (!(a < b) || p.x < a || p.x > b) throw new Error(`${file}: андроид стоит вне своего участка ${m[1]}..${m[2]}`);
-    return { kind: 'android', x: p.x, bottom: p.bottom, patrol: [a, b] };
+    if (kind === 'flamer') {
+      const d = /dir=(left|right)/.exec(rec)?.[1];
+      if (!d) throw new Error(`${file}: у огнемёта нет dir=left|right`);
+      return { kind, x: p.x, y: p.bottom, dir: d === 'left' ? -1 : 1 };
+    }
+    return { kind, x: p.x, bottom: p.bottom, patrol: patrolOf(rec, file, kind, p.x) };
   });
 }

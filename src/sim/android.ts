@@ -1,7 +1,7 @@
 import { createSimpleAnim, type SimpleAnim } from '../anim/simple';
 import { ANDROID } from '../config';
 import type { Room } from '../world/room';
-import type { EnemySpawn } from '../world/spawns';
+import type { AndroidSpawn } from '../world/spawns';
 import type { Projectile } from './items';
 import type { Nina } from './nina';
 import { moveX, type Body } from './physics';
@@ -25,7 +25,7 @@ export interface Android {
 
 const center = (b: Body) => b.x + b.w / 2;
 
-export function createAndroid(id: string, s: EnemySpawn): Android {
+export function createAndroid(id: string, s: AndroidSpawn): Android {
   return {
     id,
     body: { x: s.x - ANDROID.w / 2, y: s.bottom - ANDROID.h, w: ANDROID.w, h: ANDROID.h, vx: 0, vy: 0, onGround: true },

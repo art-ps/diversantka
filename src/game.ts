@@ -10,7 +10,7 @@ import { stepProjectiles, useThrowButton, type Item, type Projectile } from './s
 import { createNina, updateNina, type Nina } from './sim/nina';
 import { exitFor } from './sim/transition';
 import type { Dir, Room } from './world/room';
-import { parseEnemies, parseItems } from './world/spawns';
+import { parseEnemies, parseItems, type AndroidSpawn } from './world/spawns';
 
 export { TRANSITION_TIME };
 
@@ -47,8 +47,10 @@ export function enterRoom(g: Game, id: string): void {
   g.items = parseItems(room.meta.items, id)
     .map((s, i) => ({ id: `${id}#i${i}`, ...s }))
     .filter(i => !g.taken.has(i.id));
-  g.androids = parseEnemies(room.meta.enemies, id)
-    .map((s, i) => createAndroid(`${id}#e${i}`, s))
+  const enemies = parseEnemies(room.meta.enemies, id).map((s, i) => ({ s, id: `${id}#e${i}` }));
+  g.androids = enemies
+    .filter((e): e is { s: AndroidSpawn; id: string } => e.s.kind === 'android')
+    .map(e => createAndroid(e.id, e.s))
     .filter(a => !g.killed.has(a.id));
   g.projectiles = [];
   g.floaters = [];

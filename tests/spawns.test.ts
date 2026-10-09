@@ -28,6 +28,20 @@ describe('enemies:', () => {
     ]);
   });
 
+  it('собака с участком и огнемёт с направлением', () => {
+    expect(parseEnemies('dog@30,23 patrol=22..37 ; flamer@38,19 dir=left', 'a')).toEqual([
+      { kind: 'dog', x: 30, bottom: 23, patrol: [22, 37] },
+      { kind: 'flamer', x: 38, y: 19, dir: -1 },
+    ]);
+    expect(parseEnemies('flamer@1,19 dir=right', 'a')[0]).toMatchObject({ dir: 1 });
+  });
+
+  it('ошибки огнемёта и собаки', () => {
+    expect(() => parseEnemies('flamer@1,2', 'r')).toThrow('r: у огнемёта нет dir=left|right');
+    expect(() => parseEnemies('dog@1,2', 'r')).toThrow('r: у собаки нет patrol=a..b');
+    expect(() => parseEnemies('dog@40,23 patrol=22..37', 'r')).toThrow('r: собака стоит вне своего участка 22..37');
+  });
+
   it('ошибки: неизвестный враг, нет patrol, старт вне участка', () => {
     expect(() => parseEnemies('ninja@1,2 patrol=0..5', 'r')).toThrow('r: неизвестный враг «ninja»');
     expect(() => parseEnemies('android@1,2', 'r')).toThrow('r: у андроида нет patrol=a..b');
