@@ -15,3 +15,7 @@ B — свечение вкл/выкл, F — полный экран. Гейм�
 Позы героини построены по базе захвата движений CMU. The data used in this project was obtained from mocap.cs.cmu.edu.
 The database was created with funding from NSF EIA-0196217. BVH-конвертация — Bruce Hahne (cgspeed).
 Исходные файлы в репозиторий не входят: `npm run mocap:fetch` скачивает их, `npm run mocap:build` собирает `anim/*.json`.
+
+## Огонь и эффекты
+
+Поле жара, помехи и рябь — по мотивам анимаций [ascii.rest](https://github.com/bas3line/ascii) (© 2026 bas3line, MIT, см. `third_party/ascii.rest-LICENSE`).
