@@ -1,6 +1,7 @@
-import { ANDROID, COMBAT } from '../config';
+import { ANDROID, COMBAT, DOG } from '../config';
 import { androidPunchBox, hitAndroid, type Android, type HitResult } from './android';
 import { attackBox } from './combat';
+import { hitDog, type Dog } from './dog';
 import { projectileHit, type Projectile } from './items';
 import { hurtNina, type Nina } from './nina';
 import type { Room } from '../world/room';
@@ -10,6 +11,7 @@ import { bodyRect, overlap } from './rect';
 export interface HitEvent { id: string; result: HitResult }
 
 const isDead = (a: Android) => a.state === 'dead'; // функция — чтобы TS не сужал state после hitAndroid
+const dogDead = (d: Dog) => d.state === 'dead'; // функция — чтобы TS не сужал state после hitDog
 const dirOf = (vx: number): 1 | -1 => (vx >= 0 ? 1 : -1);
 
 // Отброс: центр остаётся внутри участка патруля, стены держит moveX.
@@ -51,6 +53,33 @@ export function resolveCombat(n: Nina, androids: Android[], projectiles: Project
       p.alive = false;
       hurtNina(n, p.damage, dirOf(p.vx)); // при неуязвимости нож всё равно исчезает
     }
+  }
+  return killed;
+}
+
+// Собака: удары и снаряды героини, укус в прыжке. Возвращает id убитых.
+export function resolveDogs(n: Nina, dogs: Dog[], projectiles: Projectile[], events: HitEvent[] = []): string[] {
+  const killed: string[] = [];
+  const box = attackBox(n.body, n.facing, n.attack);
+  const nr = bodyRect(n.body);
+  for (const d of dogs) {
+    if (d.state === 'dead') continue;
+    const dr = bodyRect(d.body);
+    if (box && n.attack && !n.attack.hits.includes(d.id) && overlap(box, dr)) {
+      n.attack.hits.push(d.id);
+      events.push({ id: d.id, result: hitDog(d, n.facing) });
+    }
+    for (const p of projectiles) {
+      if (p.from === 'nina' && !dogDead(d) && projectileHit(p, dr)) {
+        p.alive = false;
+        events.push({ id: d.id, result: hitDog(d, dirOf(p.vx)) });
+      }
+    }
+    if (d.state === 'leap' && !d.bit && overlap(dr, nr)) {
+      d.bit = true;
+      hurtNina(n, DOG.biteDamage, d.facing);
+    }
+    if (dogDead(d)) killed.push(d.id);
   }
   return killed;
 }

@@ -205,3 +205,17 @@ it('огонь: энергия убывает, число всплывает н�
   expect(g.floaters.length).toBeGreaterThan(0);
   expect(g.particles.length).toBeGreaterThan(0);
 });
+
+it('убитая собака рассыпается и не возвращается', () => {
+  const g = createGame(loadRoomsFs(), { room: 'cave-1', x: 4, bottom: 23 });
+  expect(g.dogs).toHaveLength(1);
+  const d = g.dogs[0];
+  g.projectiles.push({ kind: 'stone', x: d.body.x + 0.8, y: d.body.y + 0.7, vx: 0.1, vy: 0, from: 'nina', damage: 1, alive: true, hitWall: false });
+  stepGame(g, I(), DT);
+  expect(d.gone).toBe(true);
+  expect(g.killed.has(d.id)).toBe(true);
+  expect(g.floaters.map(f => f.text)).toContain('ВЫВЕДЕН');
+  enterRoom(g, 'lab-2');
+  enterRoom(g, 'cave-1');
+  expect(g.dogs).toHaveLength(0);
+});

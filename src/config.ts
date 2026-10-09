@@ -106,3 +106,22 @@ export const FLAMER = {
   dps: 30,
   sparksPerSec: 30, // частиц огня в секунду
 };
+
+// Сторожевая собака: скорости — клеток/с, время — с.
+export const DOG = {
+  w: 1.6,
+  h: 1.5,
+  hp: 1,
+  speed: 4, // патруль
+  chaseSpeed: 16, // быстрее бега героини
+  sight: 14,
+  floorTol: 0.5,
+  leapRange: 3.5, // ближе — прыжок с укусом
+  leapVx: 14,
+  leapVy: -9,
+  gravity: 60,
+  biteDamage: 8,
+  recoil: 0.35, // отскок после прыжка
+  recoilSpeed: 6,
+  cooldown: 1.0,
+};

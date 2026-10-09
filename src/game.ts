@@ -3,9 +3,10 @@ import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { CLIPS } from './anim/clips';
 import { androidClip, playClip, simplePose } from './anim/simple';
 import { IDLE, type Intent } from './input/intent';
+import { createDog, updateDog, type Dog } from './sim/dog';
 import { createAndroid, updateAndroid, type Android } from './sim/android';
 import { createFlamer, flamerPhase, flameRect, stepFlamer, type Flamer } from './sim/flamer';
-import { resolveCombat, type HitEvent } from './sim/fight';
+import { resolveCombat, resolveDogs, type HitEvent } from './sim/fight';
 import { spawnFloater, stepFloaters, type Floater } from './sim/floaters';
 import { stepProjectiles, useThrowButton, type Item, type Projectile } from './sim/items';
 import { burnNina, createNina, updateNina, type Nina } from './sim/nina';
@@ -15,7 +16,7 @@ import { exitFor } from './sim/transition';
 import type { Dir, Room } from './world/room';
 import { figureGlyphs } from './render/figure';
 import { PAL } from './render/palette';
-import { parseEnemies, parseItems, type AndroidSpawn, type FlamerSpawn } from './world/spawns';
+import { parseEnemies, parseItems, type AndroidSpawn, type DogSpawn, type FlamerSpawn } from './world/spawns';
 
 export { TRANSITION_TIME };
 
@@ -36,6 +37,7 @@ export interface Game {
   floaters: Floater[];
   particles: Particle[];
   flamers: Flamer[];
+  dogs: Dog[];
   dmgAcc: number; // накопленный непоказанный урон
   dmgT: number; // сколько он копится, с
 }
@@ -43,7 +45,7 @@ export interface Game {
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
-    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], dmgAcc: 0, dmgT: 0,
+    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], dogs: [], dmgAcc: 0, dmgT: 0,
   };
   enterRoom(g, start.room);
   return g;
@@ -64,6 +66,10 @@ export function enterRoom(g: Game, id: string): void {
   g.flamers = enemies
     .filter((e): e is { s: FlamerSpawn; id: string } => e.s.kind === 'flamer')
     .map(e => createFlamer(e.id, e.s));
+  g.dogs = enemies
+    .filter((e): e is { s: DogSpawn; id: string } => e.s.kind === 'dog')
+    .map(e => createDog(e.id, e.s))
+    .filter(d => !g.killed.has(d.id));
   g.projectiles = [];
   g.floaters = [];
   g.particles = [];
@@ -111,8 +117,10 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     const k = updateAndroid(a, g.nina, room, dt);
     if (k) g.projectiles.push(k);
   }
+  for (const d of g.dogs) updateDog(d, g.nina, room, dt);
   const events: HitEvent[] = [];
   for (const id of resolveCombat(g.nina, g.androids, g.projectiles, room, events)) g.killed.add(id);
+  for (const id of resolveDogs(g.nina, g.dogs, g.projectiles, events)) g.killed.add(id);
   for (const f of g.flamers) {
     stepFlamer(f, dt);
     const r = flameRect(f);
@@ -144,15 +152,23 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     g.dmgT = 0;
   }
   for (const e of events) {
-    const a = g.androids.find(x => x.id === e.id)!;
+    const a = g.androids.find(x => x.id === e.id);
+    const d = a ? undefined : g.dogs.find(x => x.id === e.id)!;
+    const body = (a ?? d)!.body;
     const text = e.result === 'killed' ? 'ВЫВЕДЕН' : e.result === 'blocked' ? 'блок' : '-1';
-    const cx = a.body.x + a.body.w / 2;
-    spawnFloater(g.floaters, text, cx, a.body.y - 0.6, e.result === 'blocked' ? 'blocked' : 'enemy');
-    sparks(g.particles, cx, a.body.y + 1, PAL.spark);
+    const cx = body.x + body.w / 2;
+    spawnFloater(g.floaters, text, cx, body.y - 0.6, e.result === 'blocked' ? 'blocked' : 'enemy');
+    sparks(g.particles, cx, body.y + 1, PAL.spark);
     if (e.result === 'killed') {
-      // андроид смотрит на ударившего — разлёт от него
-      crumble(g.particles, figureGlyphs(simplePose(a.anim, CLIPS), cx, a.body.y + a.body.h, a.facing, PAL.android, false, '@'), -a.facing as 1 | -1);
-      a.gone = true;
+      if (a) {
+        // андроид смотрит на ударившего — разлёт от него
+        crumble(g.particles, figureGlyphs(simplePose(a.anim, CLIPS), cx, a.body.y + a.body.h, a.facing, PAL.android, false, '@'), -a.facing as 1 | -1);
+        a.gone = true;
+      } else if (d) {
+        // ponytail: символьный распад собаки — Task 5 (dogGlyphs); пока искры.
+        sparks(g.particles, cx, d.body.y + 0.7, PAL.danger, 14);
+        d.gone = true;
+      }
     }
   }
   for (const p of g.projectiles) if (!p.alive && p.hitWall) sparks(g.particles, p.x, p.y, PAL.spark, 4);
