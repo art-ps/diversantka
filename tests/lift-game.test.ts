@@ -134,3 +134,42 @@ it('лежащий на платформе предмет едет вместе 
   run(g, {}, 600, () => lift(g).target === null);
   expect(g.items.find(i => i.id === 'a#x')!.bottom).toBe(22);
 });
+
+// Та же шахта, в «b» — терминал у x=10.
+const withTerminal = () => {
+  const w = world();
+  w.set('b', { ...w.get('b')!, meta: { terminals: '10,22' } });
+  return w;
+};
+const die = (g: Game) => {
+  g.nina.dead = true;
+  g.nina.deadT = NINA.respawnDelay;
+  stepGame(g, I({ jump: true, jumpPressed: true }), DT);
+};
+
+it('смерть: лифт возвращается туда, где был при записи чекпоинта', () => {
+  const g = createGame(withTerminal(), { room: 'b', x: 10 - NINA.w / 2, bottom: 22 });
+  run(g, {}, 5);
+  lift(g).y = 47;
+  stepGame(g, I({ usePressed: true }), DT);
+  expect(g.screen).not.toBeNull();
+  expect(g.mission.checkpoint.lifts).toEqual({ a: 47 });
+  g.screen = null;
+  lift(g).y = 30;
+  lift(g).target = 10;
+  die(g);
+  expect(lift(g)).toMatchObject({ y: 47, target: null });
+});
+
+it('лифт в пути при записи чекпоинта — записан этаж, куда он едет; до первого терминала — верхний этаж', () => {
+  const g = createGame(withTerminal(), { room: 'b', x: 10 - NINA.w / 2, bottom: 22 });
+  run(g, {}, 5);
+  lift(g).target = 47;
+  run(g, {}, 3);
+  stepGame(g, I({ usePressed: true }), DT);
+  expect(g.mission.checkpoint.lifts).toEqual({ a: 47 });
+  const fresh = createGame(withTerminal(), { room: 'b', x: 10 - NINA.w / 2, bottom: 22 });
+  lift(fresh).y = 47;
+  die(fresh);
+  expect(lift(fresh).y).toBe(10);
+});

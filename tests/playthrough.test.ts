@@ -69,6 +69,12 @@ function climb(g: Game, dir: 'up' | 'down', until: () => boolean) {
   run(g, { [dir]: true }, 1200, until);
   idle(g, 20);
 }
+// Лифт power-1 ↔ garage-1: стоя на платформе, держать вверх/вниз, пока не приедет в комнату room.
+function ride(g: Game, dir: 'up' | 'down', room: string) {
+  run(g, { [dir]: true }, 1200, () => g.roomId === room && g.lifts[0].target === null && !g.transition);
+  idle(g, 20);
+  expect(g.roomId, where(g)).toBe(room);
+}
 // Терминал: E, ждать лог, выбрать пункт sel (вниз sel раз), прыжок; потом ВЫХОД.
 function useTerminal(g: Game, sel: number, items: number) {
   step(g, { usePressed: true });
@@ -156,9 +162,9 @@ it('игра проходится от пролога до выезда', () => 
   idle(g, 20);
   expect(g.mission.tapes.has('power-1#t0'), where(g)).toBe(true);
   log.push(`tape5 ${where(g)}`);
-  // со платформы вниз, к лестнице x27 → гараж
+  // со платформы вниз, на лифт x26..28 → гараж
   walkTo(g, 27.5);
-  climb(g, 'down', () => g.roomId === 'garage-1' && g.nina.state === 'ground');
+  ride(g, 'down', 'garage-1');
   walkTo(g, 6);
   expect(g.mission.tapes.has('garage-1#t0'), where(g)).toBe(true);
   log.push(`tape6 ${where(g)}`);
@@ -167,7 +173,7 @@ it('игра проходится от пролога до выезда', () => 
   step(g, { usePressed: true });
   expect(g.mission.result).toBeNull();
   walkTo(g, 27.5);
-  climb(g, 'up', () => g.roomId === 'power-1' && g.nina.state === 'ground');
+  ride(g, 'up', 'power-1');
   // щиток до ввода лент — закрыт
   walkTo(g, 14);
   step(g, { usePressed: true });
@@ -182,7 +188,7 @@ it('игра проходится от пролога до выезда', () => 
   step(g, { usePressed: true });
   expect(g.mission.fenceOff, where(g)).toBe(true);
   walkTo(g, 27.5);
-  climb(g, 'down', () => g.roomId === 'garage-1' && g.nina.state === 'ground');
+  ride(g, 'down', 'garage-1');
   walkTo(g, 22);
   step(g, { usePressed: true });
   expect(g.mission.result, where(g)).toBe('won');

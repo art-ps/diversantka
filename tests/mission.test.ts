@@ -100,6 +100,15 @@ describe('чекпоинт', () => {
     expect(m.timeLeft).toBe(MISSION.time);
   });
 
+  it('положения лифтов в чекпоинте — копия; до первого терминала — пусто', () => {
+    const m = createMission(START);
+    expect(m.checkpoint.lifts).toEqual({});
+    const lifts = { 'power-1': 47 };
+    saveCheckpoint(m, START, lifts);
+    lifts['power-1'] = 14;
+    expect(m.checkpoint.lifts).toEqual({ 'power-1': 47 });
+  });
+
   it('повторное восстановление не делит множества с чекпоинтом', () => {
     const m = createMission(START);
     restoreCheckpoint(m);

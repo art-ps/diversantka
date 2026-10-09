@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { DT, NINA } from '../src/config';
 import { createGame, stepGame, type Game } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
-import { loadWorld, validateMission } from '../src/world';
+import { loadWorld, validateLifts, validateMission } from '../src/world';
 import { tileAt, validateWorld, type Room } from '../src/world/room';
 import { parsePoints, parseTerminals } from '../src/world/spawns';
 import { PAL } from '../src/render/palette';
@@ -20,6 +20,7 @@ it('комнаты демо-карты читаются и связаны вза
   expect([...rooms.keys()].sort()).toEqual(['cave-1', 'evm-1', 'garage-1', 'lab-1', 'lab-2', 'power-1', 'roof-1', 'sea-1', 'sea-2', 'secret-1', 'slope-1']);
   expect(validateWorld(rooms)).toEqual([]);
   expect(validateMission(rooms)).toEqual([]);
+  expect(validateLifts(rooms)).toEqual([]);
   expect(() => loadWorld()).not.toThrow();
 });
 
@@ -91,16 +92,33 @@ it('ленты на платформах evm-1 и power-1 берутся пры�
   }
 });
 
-it('power-1 ↔ garage-1 по лестнице без урона', () => {
-  const g = createGame(loadRoomsFs(), { room: 'power-1', x: 26.9, bottom: 14 });
+it('power-1 ↔ garage-1 на лифте без урона; E в гараже вызывает лифт', () => {
+  const g = createGame(loadRoomsFs(), { room: 'power-1', x: 27.5 - NINA.w / 2, bottom: 14 });
+  const lift = g.lifts[0];
   run(g, {}, 5);
-  run(g, { down: true }, 900, () => g.roomId === 'garage-1' && g.nina.state === 'ground');
+  expect(lift).toMatchObject({ id: 'power-1', y: 14, rooms: ['power-1', 'garage-1'] });
+  expect(bottomOf(g)).toBeCloseTo(14);
+  run(g, { down: true }, 900, () => g.roomId === 'garage-1' && lift.target === null);
+  run(g, {}, 30);
   expect(g.roomId).toBe('garage-1');
   expect(bottomOf(g)).toBeCloseTo(22);
   expect(g.nina.energy).toBe(NINA.energyMax);
-  run(g, { up: true }, 900, () => g.roomId === 'power-1' && g.nina.state === 'ground');
+  run(g, { up: true }, 900, () => g.roomId === 'power-1' && lift.target === null);
+  run(g, {}, 30);
   expect(g.roomId).toBe('power-1');
   expect(bottomOf(g)).toBeCloseTo(14);
+  // лифт наверху, героиня в гараже: E у шахты — приезжает
+  const c = createGame(loadRoomsFs(), { room: 'garage-1', x: 24, bottom: 22 });
+  run(c, {}, 5);
+  run(c, { usePressed: true }, 1);
+  run(c, {}, 900, () => c.lifts[0].target === null);
+  expect(c.lifts[0].y).toBe(47);
+  run(c, { moveX: 1 }, 100, () => c.nina.body.x + NINA.w / 2 >= 27.2);
+  run(c, {}, 20);
+  run(c, { up: true }, 900, () => c.roomId === 'power-1' && c.lifts[0].target === null);
+  run(c, {}, 30);
+  expect(c.roomId).toBe('power-1');
+  expect(bottomOf(c)).toBeCloseTo(14);
 });
 
 it('lab-1: лента на платформе — по лестнице; cave-1: лента за водой', () => {

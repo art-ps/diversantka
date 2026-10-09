@@ -9,6 +9,7 @@ export interface Checkpoint extends Spot {
   tapesIn: boolean;
   fenceOff: boolean;
   flamersOff: string[];
+  lifts: Record<string, number>; // id лифта → этаж платформы; лифта нет в записи — на верхнем этаже
 }
 
 export interface Mission {
@@ -28,12 +29,12 @@ export interface MissionResult { time: string; tapes: string; hits: number; secr
 export function createMission(start: Spot): Mission {
   return {
     timeLeft: MISSION.time, tapes: new Set(), tapesIn: false, fenceOff: false, flamersOff: new Set(), hits: 0, secret: false, result: null,
-    checkpoint: { ...start, timeLeft: MISSION.time, tapes: [], tapesIn: false, fenceOff: false, flamersOff: [] },
+    checkpoint: { ...start, timeLeft: MISSION.time, tapes: [], tapesIn: false, fenceOff: false, flamersOff: [], lifts: {} },
   };
 }
 
-export function saveCheckpoint(m: Mission, at: Spot): void {
-  m.checkpoint = { ...at, timeLeft: m.timeLeft, tapes: [...m.tapes], tapesIn: m.tapesIn, fenceOff: m.fenceOff, flamersOff: [...m.flamersOff] };
+export function saveCheckpoint(m: Mission, at: Spot, lifts: Record<string, number> = {}): void {
+  m.checkpoint = { ...at, timeLeft: m.timeLeft, tapes: [...m.tapes], tapesIn: m.tapesIn, fenceOff: m.fenceOff, flamersOff: [...m.flamersOff], lifts: { ...lifts } };
 }
 
 // Состояние миссии — как в чекпоинте; возвращает место возрождения.

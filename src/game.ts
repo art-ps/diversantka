@@ -175,9 +175,10 @@ function applyFlamers(g: Game): void {
   for (const f of g.flamers) f.off = g.mission.flamersOff.has(g.roomId);
 }
 
-// Чекпоинт у терминала: героиня возродится перед ним.
+// Чекпоинт у терминала: героиня возродится перед ним; лифт в пути записывается на этаже, куда едет.
 function checkpointAt(g: Game, t: TerminalSpawn): void {
-  saveCheckpoint(g.mission, { room: g.roomId, x: t.x - NINA.w / 2, bottom: t.bottom });
+  const lifts = Object.fromEntries(g.lifts.map(l => [l.id, l.target ?? l.y]));
+  saveCheckpoint(g.mission, { room: g.roomId, x: t.x - NINA.w / 2, bottom: t.bottom }, lifts);
   applyFlamers(g);
 }
 
@@ -185,6 +186,11 @@ function checkpointAt(g: Game, t: TerminalSpawn): void {
 // Предметы возвращаются на места, убитые враги — нет (g.killed не трогаем).
 function respawn(g: Game): void {
   const p = restoreCheckpoint(g.mission);
+  for (const l of g.lifts) {
+    l.y = g.mission.checkpoint.lifts[l.id] ?? l.stops[0];
+    l.target = null;
+    l.rest = 0;
+  }
   g.taken.clear();
   enterRoom(g, p.room);
   g.nina = createNina(p.x, p.bottom);
