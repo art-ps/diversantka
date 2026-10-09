@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { NINA } from '../src/config';
 import { J, poseDistance, validateClip, type Clip } from '../src/anim/clip';
 
-const NAMES = ['idle', 'walk', 'run', 'jump', 'fall', 'land', 'crouch', 'climb'];
+const NAMES = [
+  'idle', 'walk', 'run', 'jump', 'fall', 'land', 'crouch', 'climb',
+  'punch', 'kick', 'flykick', 'throw', 'hit', 'death',
+];
 const load = (n: string): Clip => JSON.parse(readFileSync(new URL(`../anim/${n}.json`, import.meta.url), 'utf8'));
 
 describe('клипы anim/*.json', () => {
@@ -54,5 +57,33 @@ describe('клипы anim/*.json', () => {
         expect(Math.abs(world - start)).toBeLessThan(0.5);
       });
     }
+  });
+});
+
+describe('клипы боя', () => {
+  const dur = (c: Clip) => (c.frames.length - 1) / c.fps;
+  const maxX = (c: Clip, joints: number[]) => Math.max(...c.frames.flatMap(f => joints.map(j => f[2 * j])));
+
+  it.each([
+    ['punch', 0.25, 1.2], ['kick', 0.35, 1.5], ['flykick', 0.3, 1.5],
+    ['throw', 0.3, 1.5], ['hit', 0.2, 1.0], ['death', 0.5, 3.0],
+  ])('%s — одноразовый, длительность %s..%s с', (n, lo, hi) => {
+    const c = load(n as string);
+    expect(c.loop).toBe(false);
+    expect(dur(c)).toBeGreaterThanOrEqual(lo as number);
+    expect(dur(c)).toBeLessThanOrEqual(hi as number);
+  });
+
+  it('удар рукой тянет кисть вперёд', () => {
+    expect(maxX(load('punch'), [J.lHand, J.rHand])).toBeGreaterThan(1);
+  });
+
+  it('удар ногой выносит стопу вперёд', () => {
+    expect(maxX(load('kick'), [J.lFoot, J.rFoot])).toBeGreaterThan(1);
+  });
+
+  it('смерть кончается лёжа', () => {
+    const c = load('death');
+    expect(c.frames[c.frames.length - 1][2 * J.head + 1]).toBeLessThan(1.5);
   });
 });

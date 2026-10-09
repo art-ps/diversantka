@@ -6,5 +6,11 @@
   { "name": "fall", "source": "16_01", "from": 152, "to": 181, "loop": false, "anchor": "root" },
   { "name": "land", "source": "16_01", "from": 183, "to": 230, "loop": false, "anchor": "floor" },
   { "name": "crouch", "source": "13_29", "from": 3805, "to": 3985, "loop": false, "anchor": "floor" },
-  { "name": "climb", "source": "13_33", "from": 261, "to": 620, "loop": true, "anchor": "root", "view": "back" }
+  { "name": "climb", "source": "13_33", "from": 261, "to": 620, "loop": true, "anchor": "root", "view": "back" },
+  { "name": "punch", "source": "02_05", "from": 985, "to": 1105, "loop": false, "anchor": "floor" },
+  { "name": "kick", "source": "74_06", "from": 115, "to": 220, "loop": false, "anchor": "floor" },
+  { "name": "flykick", "source": "75_16", "from": 214, "to": 259, "loop": false, "anchor": "root" },
+  { "name": "throw", "source": "141_11", "from": 493, "to": 589, "loop": false, "anchor": "floor" },
+  { "name": "hit", "source": "85_07", "from": 175, "to": 235, "loop": false, "anchor": "floor" },
+  { "name": "death", "source": "90_18", "from": 55, "to": 181, "loop": false, "anchor": "floor" }
 ]
