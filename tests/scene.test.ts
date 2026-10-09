@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { drawFloaters, drawGame, drawItems, drawProjectiles, drawRoom, drawStatic } from '../src/render/scene';
+import { drawFloaters, drawGame, drawItems, drawLifts, drawProjectiles, drawRoom, drawStatic } from '../src/render/scene';
+import { CHARSET } from '../src/render/atlas';
+import type { Lift } from '../src/sim/lift';
 import { FX, ROOM_H, ROOM_W } from '../src/config';
 import { PAL } from '../src/render/palette';
 import { createGame } from '../src/game';
@@ -124,5 +126,38 @@ describe('помехи при смерти', () => {
     const msg = seq.findIndex(s => s.text?.startsWith('ПОГИБЛА'));
     expect(lastSnow).toBeGreaterThan(-1);
     expect(msg).toBeGreaterThan(lastSnow);
+  });
+});
+
+describe('лифт', () => {
+  const lift = (y: number): Lift => ({ id: 'test', x: 30, stops: [8, 47], rooms: ['test', 'low'], y, target: null, rest: 0 });
+  const collect = (l: Lift, room = roomOf({ 3: '#'.repeat(40) })) => {
+    const out: G[] = [];
+    drawLifts({ push: (x, y, ch, _c, s = 1) => { out.push({ x, y, ch, s }); } }, [l], room, 0, 0, 10);
+    return out;
+  };
+
+  it('платформа — шесть мелких блоков в верхней половине строки верха; трос над ней, сквозь стену не идёт', () => {
+    const g = collect(lift(8));
+    const plat = g.filter(p => p.ch === '▓');
+    expect(plat).toHaveLength(6);
+    for (const p of plat) {
+      expect(p.s).toBe(0.5);
+      expect(p.y + 0.5).toBeCloseTo(8.25);
+      expect(p.x + 0.5).toBeGreaterThanOrEqual(30);
+      expect(p.x + 0.5).toBeLessThanOrEqual(33);
+    }
+    const cable = g.filter(p => p.ch === '|');
+    for (const p of cable) expect(p.x + 0.5).toBeCloseTo(31.5);
+    expect(new Set(cable.map(p => Math.floor(p.y + 0.5)))).toEqual(new Set([0, 1, 2, 4, 5, 6, 7]));
+    for (const p of g) expect(CHARSET).toContain(p.ch);
+  });
+
+  it('платформа в комнате ниже — здесь ни платформы, ни троса; в комнате ниже — со своими строками', () => {
+    expect(collect(lift(47))).toHaveLength(0);
+    const low = { ...roomOf({}), id: 'low' };
+    const g = collect(lift(47), low);
+    expect(g.filter(p => p.ch === '▓').every(p => Math.abs(p.y + 0.5 - 22.25) < 1e-9)).toBe(true);
+    expect(g.filter(p => p.ch === '|')).toHaveLength(44);
   });
 });

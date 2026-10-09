@@ -10,6 +10,7 @@ import { HEAT_RAMP } from '../fx/heat';
 import { stormGlyphs } from '../fx/storm';
 import { flamerPhase } from '../sim/flamer';
 import { gliderRect } from '../sim/glider';
+import { LIFT_W, liftTop, type Lift } from '../sim/lift';
 import { formatTime, missionResult } from '../sim/mission';
 import { floaterView, type Floater } from '../sim/floaters';
 import type { Item, Projectile } from '../sim/items';
@@ -145,6 +146,20 @@ export function drawSource(b: Pick<GlyphBatch, 'push'>, s: Point, ox: number, oy
     const a = (i / 6) * Math.PI * 2 + time;
     const r = 0.6 + 0.2 * k;
     b.push(cx + Math.cos(a) * r - 0.5, cy + Math.sin(a) * r * 0.8 - 0.5, '·', [c[0], c[1], c[2], 0.3 + 0.4 * k], 0.5);
+  }
+}
+
+// Лифты в комнате room: платформа — ряд мелких блоков, над ней трос посередине шахты (сквозь стены не рисуется).
+export function drawLifts(b: Pick<GlyphBatch, 'push'>, lifts: Lift[], room: Room, ox: number, oy: number, time: number): void {
+  for (const l of lifts) {
+    const top = liftTop(l, room.id);
+    if (top === null || top < -1 || top > ROOM_H) continue;
+    const cx = l.x + LIFT_W / 2;
+    for (let r = 0; r + 1 <= top && r < ROOM_H; r++) {
+      if (room.tiles[r][l.x + 1] === '#' || hudCell(cx, r, room.id, time)) continue;
+      for (let j = 0; j < 2; j++) b.push(cx - 0.5 + ox, r + 0.25 + j / 2 - 0.5 + oy, '|', PAL.ladder, 0.5);
+    }
+    for (let i = 0; i < LIFT_W * 2; i++) b.push(l.x + 0.25 + i / 2 - 0.5 + ox, top + 0.25 - 0.5 + oy, '▓', PAL.platform, 0.5);
   }
 }
 
@@ -284,6 +299,7 @@ function drawWorld(b: GlyphBatch, g: Game, ox: number, oy: number, time: number)
   drawFires(b, g.fires, ox, oy);
   drawFlamers(b, g, ox, oy);
   drawTerminals(b, g.terminals, ox, oy);
+  drawLifts(b, g.lifts, g.rooms.get(g.roomId)!, ox, oy, time);
   drawFenceParts(b, g, ox, oy, time);
   drawItems(b, g.items, ox, oy);
   drawTapes(b, g.tapes, ox, oy);
