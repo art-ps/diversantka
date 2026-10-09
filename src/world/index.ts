@@ -18,14 +18,15 @@ export function loadWorld(): Map<string, Room> {
   return rooms;
 }
 
-// Миссия на карте: 6 лент, одна главная ЭВМ, один щиток, один мотоцикл; терминалы гасят существующие комнаты.
+// Миссия на карте: 6 лент, одна главная ЭВМ, один щиток, один мотоцикл, один источник; терминалы гасят существующие комнаты.
 export function validateMission(rooms: Map<string, Room>): string[] {
   const errors: string[] = [];
-  let tapes = 0, mains = 0, panels = 0, bikes = 0;
+  let tapes = 0, mains = 0, panels = 0, bikes = 0, sources = 0;
   for (const r of rooms.values()) {
     tapes += parsePoints(r.meta.tapes, r.id, 'ленты').length;
     panels += parsePoints(r.meta.switch, r.id, 'щитка').length;
     bikes += parsePoints(r.meta.bike, r.id, 'мотоцикла').length;
+    sources += parsePoints(r.meta.source, r.id, 'источника').length;
     parseFence(r.meta.fence, r.id);
     for (const t of parseTerminals(r.meta.terminals, r.id)) {
       if (t.main) mains++;
@@ -36,5 +37,6 @@ export function validateMission(rooms: Map<string, Room>): string[] {
   if (mains !== 1) errors.push(`главных ЭВМ на карте ${mains}, нужна одна`);
   if (panels !== 1) errors.push(`щитков на карте ${panels}, нужен один`);
   if (bikes !== 1) errors.push(`мотоциклов на карте ${bikes}, нужен один`);
+  if (sources !== 1) errors.push(`источников на карте ${sources}, нужен один`);
   return errors;
 }
