@@ -13,12 +13,17 @@ function isWall(room: Room, c: number, r: number) {
   return t === '#' || t === 'S';
 }
 
-export function drawRoom(b: GlyphBatch, room: Room, ox: number, oy: number, time: number): void {
+// Клетки строки 0 под HUD (с полем в одну клетку) комната не рисует: свечение складывается, подложки нет.
+const hudCell = (x: number, y: number, hudId: string) =>
+  Math.round(y) === 0 && (Math.round(x) <= 19 || Math.round(x) >= ROOM_W - hudId.length - 2);
+
+export function drawRoom(b: GlyphBatch, room: Room, ox: number, oy: number, time: number, hudId: string): void {
   for (let r = 0; r < ROOM_H; r++) {
     for (let c = 0; c < ROOM_W; c++) {
       const t = room.tiles[r][c];
       const x = c + ox, y = r + oy;
       const h = hash(c, r);
+      if (hudCell(x, y, hudId)) continue;
       if (t === '.') {
         // Дышащая фоновая сетка: редкие тусклые символы.
         if (h % 7 === 0) {
@@ -68,11 +73,11 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     const e = p * p * (3 - 2 * p);
     const v = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[g.transition.dir];
     const ox = v[0] * ROOM_W * (1 - e), oy = v[1] * ROOM_H * (1 - e);
-    drawRoom(b, g.rooms.get(g.transition.from)!, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time);
-    drawRoom(b, cur, ox, oy, time);
+    drawRoom(b, g.rooms.get(g.transition.from)!, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time, g.roomId);
+    drawRoom(b, cur, ox, oy, time, g.roomId);
     drawNina(b, g, ox, oy);
   } else {
-    drawRoom(b, cur, 0, 0, time);
+    drawRoom(b, cur, 0, 0, time, g.roomId);
     drawNina(b, g, 0, 0);
   }
   drawHud(b, g);
