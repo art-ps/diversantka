@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { ANDROID, DT, NINA } from '../src/config';
+import { ANDROID, DT, FLAMER, NINA } from '../src/config';
 import { createGame, enterRoom, stepGame } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
 import { hurtNina } from '../src/sim/nina';
@@ -192,4 +192,16 @@ it('попадание даёт искры; смена комнаты чисти
   expect(g.particles.length).toBeGreaterThan(0);
   enterRoom(g, 'lab-2');
   expect(g.particles).toHaveLength(0);
+});
+
+it('огонь: энергия убывает, число всплывает не каждый кадр', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-2', x: 34, bottom: 22 });
+  const f = g.flamers[0];
+  f.t = FLAMER.off + 0.01; // сразу огонь
+  const e0 = g.nina.energy;
+  for (let i = 0; i < 30; i++) stepGame(g, I(), DT); // 0.5 с в огне
+  expect(g.nina.energy).toBeLessThan(e0 - FLAMER.dps * 0.4);
+  expect(g.floaters.filter(x => x.kind === 'damage').length).toBeLessThanOrEqual(3);
+  expect(g.floaters.length).toBeGreaterThan(0);
+  expect(g.particles.length).toBeGreaterThan(0);
 });

@@ -1,19 +1,21 @@
-import { NINA, TRANSITION_TIME } from './config';
+import { FLAMER, FX, NINA, TRANSITION_TIME } from './config';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { CLIPS } from './anim/clips';
 import { androidClip, playClip, simplePose } from './anim/simple';
 import { IDLE, type Intent } from './input/intent';
 import { createAndroid, updateAndroid, type Android } from './sim/android';
+import { createFlamer, flamerPhase, flameRect, stepFlamer, type Flamer } from './sim/flamer';
 import { resolveCombat, type HitEvent } from './sim/fight';
 import { spawnFloater, stepFloaters, type Floater } from './sim/floaters';
 import { stepProjectiles, useThrowButton, type Item, type Projectile } from './sim/items';
-import { createNina, updateNina, type Nina } from './sim/nina';
+import { burnNina, createNina, updateNina, type Nina } from './sim/nina';
 import { crumble, sparks, stepParticles, type Particle } from './sim/particles';
+import { bodyRect, overlap } from './sim/rect';
 import { exitFor } from './sim/transition';
 import type { Dir, Room } from './world/room';
 import { figureGlyphs } from './render/figure';
 import { PAL } from './render/palette';
-import { parseEnemies, parseItems, type AndroidSpawn } from './world/spawns';
+import { parseEnemies, parseItems, type AndroidSpawn, type FlamerSpawn } from './world/spawns';
 
 export { TRANSITION_TIME };
 
@@ -33,12 +35,15 @@ export interface Game {
   killed: Set<string>; // убитые андроиды — не возвращаются до конца миссии
   floaters: Floater[];
   particles: Particle[];
+  flamers: Flamer[];
+  dmgAcc: number; // накопленный непоказанный урон
+  dmgT: number; // сколько он копится, с
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
-    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [],
+    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], dmgAcc: 0, dmgT: 0,
   };
   enterRoom(g, start.room);
   return g;
@@ -56,9 +61,14 @@ export function enterRoom(g: Game, id: string): void {
     .filter((e): e is { s: AndroidSpawn; id: string } => e.s.kind === 'android')
     .map(e => createAndroid(e.id, e.s))
     .filter(a => !g.killed.has(a.id));
+  g.flamers = enemies
+    .filter((e): e is { s: FlamerSpawn; id: string } => e.s.kind === 'flamer')
+    .map(e => createFlamer(e.id, e.s));
   g.projectiles = [];
   g.floaters = [];
   g.particles = [];
+  g.dmgAcc = 0;
+  g.dmgT = 0;
 }
 
 export function stepGame(g: Game, it: Intent, dt: number): void {
@@ -77,6 +87,12 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
       g.nina = createNina(g.start.x, g.start.bottom);
       g.anim = createAnimator();
     }
+    if (g.dmgAcc >= 0.5) {
+      const db = g.nina.body;
+      spawnFloater(g.floaters, `-${Math.round(g.dmgAcc)}`, db.x + db.w / 2, db.y - 0.6, 'damage');
+    }
+    g.dmgAcc = 0;
+    g.dmgT = 0;
     g.floaters = stepFloaters(g.floaters, dt);
     g.particles = stepParticles(g.particles, dt);
     return;
@@ -97,9 +113,36 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   }
   const events: HitEvent[] = [];
   for (const id of resolveCombat(g.nina, g.androids, g.projectiles, room, events)) g.killed.add(id);
+  for (const f of g.flamers) {
+    stepFlamer(f, dt);
+    const r = flameRect(f);
+    if (r && overlap(r, bodyRect(g.nina.body))) burnNina(g.nina, FLAMER.dps * dt);
+    if (r) {
+      // Огонь из частиц: летят от сопла вдоль струи и гаснут к её концу.
+      const n = Math.round(FLAMER.sparksPerSec * dt + Math.random() * 0.999);
+      for (let i = 0; i < n; i++) {
+        const v = FLAMER.length / 0.35;
+        g.particles.push({ ch: '~*^,'[Math.floor(Math.random() * 4)], x: f.x, y: f.y + (Math.random() - 0.5) * FLAMER.halfH, vx: f.dir * v * (0.8 + 0.4 * Math.random()), vy: (Math.random() - 0.5) * 2, t: 0, life: 0.35, gravity: -3, size: 0.6, color: Math.random() < 0.4 ? PAL.fireHot : PAL.fire });
+      }
+    } else if (flamerPhase(f) === 'warn' && Math.random() < dt * 12) {
+      sparks(g.particles, f.x + f.dir * 0.3, f.y, PAL.fireHot, 2);
+    }
+  }
   const lost = e0 - g.nina.energy;
   const nb = g.nina.body;
-  if (lost >= 0.5) spawnFloater(g.floaters, `-${Math.round(lost)}`, nb.x + nb.w / 2, nb.y - 0.6, 'damage');
+  if (lost > 0) {
+    g.dmgAcc += lost;
+    g.dmgT += dt;
+  }
+  // Удар — число на следующем кадре; огонь копится и показывается раз в FX.damageFlush.
+  if (g.dmgAcc >= 0.5 && (lost <= 0 || g.dmgT >= FX.damageFlush)) {
+    spawnFloater(g.floaters, `-${Math.round(g.dmgAcc)}`, nb.x + nb.w / 2, nb.y - 0.6, 'damage');
+    g.dmgAcc = 0;
+    g.dmgT = 0;
+  } else if (lost <= 0) {
+    g.dmgAcc = 0;
+    g.dmgT = 0;
+  }
   for (const e of events) {
     const a = g.androids.find(x => x.id === e.id)!;
     const text = e.result === 'killed' ? 'ВЫВЕДЕН' : e.result === 'blocked' ? 'блок' : '-1';

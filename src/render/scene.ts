@@ -4,6 +4,7 @@ import { J } from '../anim/clip';
 import { simplePose } from '../anim/simple';
 import { NINA, ROOM_H, ROOM_W } from '../config';
 import { TRANSITION_TIME, type Game } from '../game';
+import { flamerPhase } from '../sim/flamer';
 import { floaterView, type Floater } from '../sim/floaters';
 import type { Item, Projectile } from '../sim/items';
 import { particleAlpha, type Particle } from '../sim/particles';
@@ -142,6 +143,13 @@ function drawHud(b: GlyphBatch, g: Game, time: number): void {
   if (time < 8) b.text(ROOM_W - 0.5 - hudWidth(CREDIT), ROOM_H - 1, CREDIT, PAL.hudDim, HUD_STEP);
 }
 
+function drawFlamers(b: GlyphBatch, g: Game, ox: number, oy: number): void {
+  for (const f of g.flamers) {
+    const hot = flamerPhase(f) !== 'off';
+    b.push(f.x - 0.5 + ox - (f.dir > 0 ? 0.5 : -0.5), f.y - 0.5 + oy, f.dir > 0 ? '>' : '<', hot ? PAL.fireHot : PAL.wall, 0.8);
+  }
+}
+
 export function drawGame(b: GlyphBatch, g: Game, time: number): void {
   const cur = g.rooms.get(g.roomId)!;
   if (g.transition) {
@@ -151,6 +159,7 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     const ox = v[0] * ROOM_W * (1 - e), oy = v[1] * ROOM_H * (1 - e);
     drawRoom(b, g.rooms.get(g.transition.from)!, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time, g.roomId);
     drawRoom(b, cur, ox, oy, time, g.roomId);
+    drawFlamers(b, g, ox, oy);
     drawItems(b, g.items, ox, oy);
     drawAndroids(b, g, ox, oy, time);
     drawProjectiles(b, g.projectiles, ox, oy);
@@ -159,6 +168,7 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     drawFloaters(b, g.floaters, ox, oy);
   } else {
     drawRoom(b, cur, 0, 0, time, g.roomId);
+    drawFlamers(b, g, 0, 0);
     drawItems(b, g.items, 0, 0);
     drawAndroids(b, g, 0, 0, time);
     drawProjectiles(b, g.projectiles, 0, 0);

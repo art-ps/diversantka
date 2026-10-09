@@ -212,3 +212,13 @@ export function hurtNina(n: Nina, amount: number, dir: 1 | -1): boolean {
   }
   return true;
 }
+
+// Непрерывный урон (огонь): без оглушения и неуязвимости.
+export function burnNina(n: Nina, amount: number): void {
+  if (n.dead) return;
+  n.energy -= amount;
+  if (n.energy <= 0) {
+    n.energy = 0;
+    n.dead = true;
+  }
+}
