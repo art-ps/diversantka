@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { drawItems, drawProjectiles, drawRoom } from '../src/render/scene';
+import { drawFloaters, drawItems, drawProjectiles, drawRoom } from '../src/render/scene';
 import { roomOf } from './helpers';
 
 type G = { x: number; y: number; ch: string; s: number };
@@ -54,5 +54,23 @@ describe('предметы и снаряды', () => {
     ], 0, 0);
     expect(out).toHaveLength(3);
     expect(out.every(g => g.s === 0.5)).toBe(true);
+  });
+});
+
+describe('всплывающие числа', () => {
+  it('drawFloaters центрирует текст и разносит символы на 0.42 с размером 0.7', () => {
+    const out: { x: number; ch: string; s: number }[] = [];
+    const b = { push: (x: number, _y: number, ch: string, _c: unknown, s = 1) => { out.push({ x, ch, s }); } };
+    drawFloaters(b, [{ text: '-12', kind: 'damage', t: 0, x: 10, y: 18 }], 0, 0);
+
+    expect(out).toHaveLength(3);
+    expect(out.every(g => g.s === 0.7)).toBe(true);
+
+    // Средний символ центрирован на f.x
+    expect(out[1].x + 0.5).toBeCloseTo(10, 3);
+
+    // Шаг между соседними символами ≈ 0.42
+    expect(out[1].x - out[0].x).toBeCloseTo(0.42, 2);
+    expect(out[2].x - out[1].x).toBeCloseTo(0.42, 2);
   });
 });

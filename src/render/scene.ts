@@ -100,13 +100,16 @@ function drawNina(b: GlyphBatch, g: Game, ox: number, oy: number, time: number):
 }
 
 const FLOAT_COLOR = { damage: PAL.danger, enemy: PAL.item, blocked: PAL.hudDim } as const;
+const FLOAT_SIZE = 0.7; // числа чуть мельче обычного текста
+const FLOAT_STEP = 0.6 * FLOAT_SIZE; // шаг между символами числа — цифры уже клетки
 
 export function drawFloaters(b: Pick<GlyphBatch, 'push'>, list: Floater[], ox: number, oy: number): void {
   for (const f of list) {
     const v = floaterView(f);
     const c = FLOAT_COLOR[f.kind];
     const color: Color = [c[0], c[1], c[2], c[3] * v.alpha];
-    [...f.text].forEach((ch, i) => b.push(v.x - f.text.length / 2 + i + ox, v.y - 0.5 + oy, ch, color));
+    const w = f.text.length * FLOAT_STEP;
+    [...f.text].forEach((ch, i) => b.push(v.x - w / 2 + i * FLOAT_STEP + FLOAT_STEP / 2 - 0.5 + ox, v.y - 0.5 + oy, ch, color, FLOAT_SIZE));
   }
 }
 
