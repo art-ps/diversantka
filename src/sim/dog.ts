@@ -59,7 +59,7 @@ export function updateDog(d: Dog, n: Nina, room: Room, dt: number): void {
     slide(d, room, b.vx * dt);
     const dy = b.vy * dt + 0.5 * DOG.gravity * dt * dt;
     b.vy += DOG.gravity * dt;
-    if (moveY(b, room, dy) && b.vy >= 0 && d.t > 0.05) {
+    if (moveY(b, room, dy) && b.onGround && d.t > 0.05) {
       b.vx = -d.facing * DOG.recoilSpeed;
       b.vy = 0;
       setState(d, 'recoil');
@@ -80,8 +80,12 @@ export function updateDog(d: Dog, n: Nina, room: Room, dt: number): void {
   if (sees(d, n)) {
     d.state = 'chase';
     const dx = center(n.body) - center(b);
-    d.facing = dx >= 0 ? 1 : -1;
-    if (Math.abs(dx) <= DOG.leapRange && d.cooldown <= 0) {
+    if (Math.abs(dx) > 0.1) d.facing = dx >= 0 ? 1 : -1; // на крошечном dx не разворачиваться
+    if (Math.abs(dx) <= DOG.leapRange && d.cooldown > 0) {
+      b.vx = 0; // пауза после прыжка: держит дистанцию, не лезет в героиню
+      return;
+    }
+    if (Math.abs(dx) <= DOG.leapRange) {
       b.vx = d.facing * DOG.leapVx;
       b.vy = DOG.leapVy;
       d.bit = false;

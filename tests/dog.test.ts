@@ -84,4 +84,29 @@ describe('собака', () => {
     expect(attack('punch')).not.toBe('dead');
     expect(attack('kick')).toBe('dead');
   });
+
+  it('в паузе после прыжка держит дистанцию и не разворачивается', () => {
+    const d = dog(26);
+    const n = ninaAt(24);
+    for (let i = 0; i < 120 && d.state !== 'recoil'; i++) updateDog(d, n, ROOM, DT);
+    for (let i = 0; i < 60 && d.state === 'recoil'; i++) updateDog(d, n, ROOM, DT);
+    expect(d.state).toBe('chase');
+    updateDog(d, n, ROOM, DT); // единственный разворот к героине допустим
+    const face = d.facing;
+    const gap = Math.abs(center(d) - (n.body.x + n.body.w / 2));
+    for (let i = 0; i < 50; i++) {
+      updateDog(d, n, ROOM, DT);
+      expect(d.facing).toBe(face);
+      expect(Math.abs(center(d) - (n.body.x + n.body.w / 2))).toBeGreaterThanOrEqual(gap - 1e-6);
+    }
+  });
+
+  it('удар головой о потолок в прыжке — не приземление', () => {
+    const low = roomOf({ 23: FLOOR, 20: '#'.repeat(40) }); // потолок над прыжком
+    const d = dog(23);
+    const n = ninaAt(20.5);
+    for (let i = 0; i < 60 && d.state !== 'leap'; i++) updateDog(d, n, low, DT);
+    for (let i = 0; i < 6; i++) updateDog(d, n, low, DT);
+    expect(d.state).toBe('leap');
+  });
 });
