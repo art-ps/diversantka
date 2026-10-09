@@ -53,6 +53,16 @@ describe('выбор клипа', () => {
 });
 
 describe('аниматор', () => {
+  it('на лестнице спуск проигрывает клип назад, подъём — вперёд', () => {
+    const a = createAnimator(), cl = clips();
+    updateAnimator(a, nina({ state: 'ladder', y: 10 }), cl, 1 / 60);
+    const t0 = a.t;
+    updateAnimator(a, nina({ state: 'ladder', y: 10.2 }), cl, 1 / 60); // вниз (y растёт)
+    expect(a.t).toBeLessThan(t0);
+    updateAnimator(a, nina({ state: 'ladder', y: 10.0 }), cl, 1 / 60); // вверх
+    expect(a.t).toBeCloseTo(t0);
+  });
+
   it('после прыжка с высоты играет приземление, потом idle', () => {
     const a = createAnimator(), cl = clips();
     updateAnimator(a, nina({ state: 'air', vy: 5, y: 5 }), cl, 1 / 60);

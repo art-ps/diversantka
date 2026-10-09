@@ -113,6 +113,14 @@ const OPTS = { height: 5.5, fps: 10 };
 const pt = (pose: number[], j: number) => [pose[2 * j], pose[2 * j + 1]];
 
 describe('convertClip', () => {
+  it('view back: x — боковое смещение, левое плечо слева на экране', () => {
+    const c = convertClip(bvh([frame(0), frame(0), frame(0)]), spec({ to: 2, view: 'back' }), OPTS);
+    // LeftArm смещён на +2 ед. по X (влево у персонажа); со спины лево персонажа — лево экрана → x < 0
+    expect(pt(c.frames[0], J.lShoulder)[0]).toBeCloseTo(-2 * 0.25);
+    expect(pt(c.frames[0], J.rShoulder)[0]).toBeCloseTo(2 * 0.25);
+    expect(c.speed).toBe(0);
+  });
+
   it('legScale укорачивает ноги, рост по-прежнему opts.height', () => {
     const c = convertClip(bvh([frame(0), frame(0), frame(0)]), spec({ to: 2 }), { ...OPTS, legScale: 0.5 });
     const p = c.frames[0];

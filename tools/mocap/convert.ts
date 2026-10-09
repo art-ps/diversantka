@@ -8,6 +8,7 @@ export interface ClipSpec {
   to: number; // последний кадр включительно
   loop: boolean;
   anchor: 'floor' | 'root'; // floor — высота от земли; root — таз всегда на высоте покоя (прыжки, лестница)
+  view?: 'side' | 'back'; // side (по умолчанию) — камера сбоку; back — камера за спиной (лестница)
 }
 
 export interface ConvertOpts { height: number; fps: number; legScale?: number }
@@ -86,7 +87,8 @@ export function convertClip(bvh: Bvh, spec: ClipSpec, opts: ConvertOpts): Clip {
   let frames: Pose[] = raw.map(f => {
     const pose: Pose = [];
     for (const p of f) {
-      const x = (p[2] - f[J.pelvis][2]) * scale;
+      // side — камера сбоку, вперёд = +Z; back — камера за спиной: лево персонажа (+X) — лево экрана.
+      const x = (spec.view === 'back' ? -(p[0] - f[J.pelvis][0]) : p[2] - f[J.pelvis][2]) * scale;
       const y = spec.anchor === 'floor' ? (p[1] - floor) * scale : (p[1] - f[J.pelvis][1] + restPelvis) * scale;
       pose.push(round(x), round(y));
     }
@@ -105,7 +107,7 @@ export function convertClip(bvh: Bvh, spec: ClipSpec, opts: ConvertOpts): Clip {
   }
 
   const seconds = end / opts.fps;
-  const speed = seconds > 0 ? round((Math.abs(rootZ[end] - rootZ[0]) * scale) / seconds) : 0;
+  const speed = seconds > 0 && spec.view !== 'back' ? round((Math.abs(rootZ[end] - rootZ[0]) * scale) / seconds) : 0;
 
   // Контакт: стопа низко и почти неподвижна относительно мира (таз едет вперёд со скоростью speed).
   const n = frames.length;

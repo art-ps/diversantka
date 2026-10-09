@@ -58,7 +58,9 @@ export function updateAnimator(a: Animator, n: Nina, clips: Map<string, Clip>, d
     // Фаза по пройденному пути: стопа на земле стоит на месте при любой скорости бега.
     a.t += (Math.abs(n.body.vx) * dt) / c.speed;
   } else if (a.clip === 'climb') {
-    if (y !== a.lastY) a.t += dt;
+    // Вверх — клип вперёд, вниз — назад: руки и ноги перехватывают в правильную сторону.
+    if (y < a.lastY) a.t += dt;
+    else if (y > a.lastY) a.t -= dt;
   } else {
     a.t += dt;
   }
