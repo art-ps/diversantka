@@ -7,6 +7,7 @@ import { FX, MISSION, NINA, ROOM_H, ROOM_W, SOURCE } from '../config';
 import { TRANSITION_TIME, type Game } from '../game';
 import { fireCells, heatColor, type Fire } from '../fx/fires';
 import { HEAT_RAMP } from '../fx/heat';
+import { stormGlyphs } from '../fx/storm';
 import { flamerPhase } from '../sim/flamer';
 import { formatTime, missionResult } from '../sim/mission';
 import { floaterView, type Floater } from '../sim/floaters';
@@ -85,6 +86,12 @@ export function drawRoom(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy
       if (t === 'H') b.push(x, y, '-', PAL.ladder, SUB);
     }
   }
+}
+
+// Небо комнаты с «sky: storm»: шторм пролога под тайлами; строку HUD не трогает.
+export function drawSky(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy: number, time: number): void {
+  if (room.meta.sky !== 'storm') return;
+  for (const s of stormGlyphs(room, time)) if (s.y + oy >= 1) b.push(s.x - 0.5 + ox, s.y - 0.5 + oy, s.ch, s.color, s.size);
 }
 
 const ITEM_GLYPH = { knife: '/', stone: 'o', wrench: 'Y' } as const;
@@ -297,10 +304,14 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     const e = p * p * (3 - 2 * p);
     const v = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[g.transition.dir];
     const ox = v[0] * ROOM_W * (1 - e), oy = v[1] * ROOM_H * (1 - e);
-    drawRoom(b, g.rooms.get(g.transition.from)!, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time, g.roomId);
+    const from = g.rooms.get(g.transition.from)!;
+    drawSky(b, from, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time);
+    drawRoom(b, from, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time, g.roomId);
+    drawSky(b, cur, ox, oy, time);
     drawRoom(b, cur, ox, oy, time, g.roomId);
     drawWorld(b, g, ox, oy, time);
   } else {
+    drawSky(b, cur, 0, 0, time);
     drawRoom(b, cur, 0, 0, time, g.roomId);
     drawWorld(b, g, 0, 0, time);
   }
