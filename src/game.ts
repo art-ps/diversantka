@@ -1,4 +1,6 @@
 import { TRANSITION_TIME } from './config';
+import { createAnimator, updateAnimator, type Animator } from './anim/animator';
+import { CLIPS } from './anim/clips';
 import type { Intent } from './input/intent';
 import { createNina, updateNina, type Nina } from './sim/nina';
 import { exitFor } from './sim/transition';
@@ -12,12 +14,13 @@ export interface Game {
   rooms: Map<string, Room>;
   roomId: string;
   nina: Nina;
+  anim: Animator;
   start: Start;
   transition: { from: string; dir: Dir; t: number } | null;
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
-  return { rooms, roomId: start.room, nina: createNina(start.x, start.bottom), start, transition: null };
+  return { rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null };
 }
 
 export function stepGame(g: Game, it: Intent, dt: number): void {
@@ -31,11 +34,13 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     if (it.jumpPressed) {
       g.roomId = g.start.room;
       g.nina = createNina(g.start.x, g.start.bottom);
+      g.anim = createAnimator();
     }
     return;
   }
   const room = g.rooms.get(g.roomId)!;
   updateNina(g.nina, it, room, dt);
+  updateAnimator(g.anim, g.nina, CLIPS, dt);
   const ex = exitFor(g.nina.body, room);
   if (ex) {
     g.nina.body.x += ex.dx;

@@ -39,3 +39,12 @@ it('после гибели прыжок возвращает на старт', 
   expect(g.roomId).toBe('lab-1');
   expect(g.nina.dead).toBe(false);
 });
+
+it('аниматор: бег переключает клип на walk/run, на лестнице — climb', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
+  for (let i = 0; i < 40; i++) stepGame(g, I({ moveX: 1 }), DT);
+  expect(['walk', 'run']).toContain(g.anim.clip);
+  const l = createGame(loadRoomsFs(), { room: 'lab-1', x: 29.7, bottom: 22 });
+  for (let i = 0; i < 10; i++) stepGame(l, I({ up: true }), DT);
+  expect(l.anim.clip).toBe('climb');
+});

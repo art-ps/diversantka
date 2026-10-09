@@ -1,6 +1,9 @@
+import { currentPose } from '../anim/animator';
+import { CLIPS } from '../anim/clips';
 import { NINA, ROOM_H, ROOM_W } from '../config';
 import { TRANSITION_TIME, type Game } from '../game';
 import type { Room } from '../world/room';
+import { drawFigure } from './figure';
 import type { Color, GlyphBatch } from './glyphs';
 import { PAL } from './palette';
 
@@ -44,26 +47,19 @@ export function drawRoom(b: GlyphBatch, room: Room, ox: number, oy: number, time
   }
 }
 
-// ponytail: заглушка героини — прямоугольник из символов; скелет — план 2.
 function drawNina(b: GlyphBatch, g: Game, ox: number, oy: number): void {
-  const { body, crouching } = g.nina;
-  const cols = Math.max(1, Math.round(body.w));
-  const rows = Math.round(body.h);
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const ch = r === 0 ? 'O' : crouching ? '%' : r === rows - 1 ? (c === 0 ? '/' : '\\') : '#';
-      b.push(body.x + ox + c * (body.w / cols) - 0.2, body.y + oy + r * (body.h / rows), ch, PAL.nina);
-    }
-  }
+  const { body, facing } = g.nina;
+  drawFigure(b, currentPose(g.anim, CLIPS), body.x + body.w / 2 + ox, body.y + body.h + oy, facing, PAL.nina);
 }
 
-function drawHud(b: GlyphBatch, g: Game): void {
+function drawHud(b: GlyphBatch, g: Game, time: number): void {
   const filled = Math.round((g.nina.energy / NINA.energyMax) * 10);
   b.text(1, 0, 'ЭНЕРГИЯ ', PAL.hud);
   b.text(9, 0, '█'.repeat(filled), g.nina.energy < NINA.lowEnergy ? PAL.danger : PAL.hud);
   b.text(9 + filled, 0, '░'.repeat(10 - filled), PAL.hudDim);
   b.text(ROOM_W - g.roomId.length - 1, 0, g.roomId, PAL.hudDim);
   if (g.nina.dead) b.text(9, 12, 'ПОГИБЛА · ПРЫЖОК — ЗАНОВО', PAL.danger);
+  if (time < 8) b.text(ROOM_W - 26, ROOM_H - 1, 'движения: mocap.cs.cmu.edu', PAL.hudDim);
 }
 
 export function drawGame(b: GlyphBatch, g: Game, time: number): void {
@@ -80,5 +76,5 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     drawRoom(b, cur, 0, 0, time, g.roomId);
     drawNina(b, g, 0, 0);
   }
-  drawHud(b, g);
+  drawHud(b, g, time);
 }
