@@ -6,7 +6,7 @@ import { IDLE } from '../src/input/intent';
 import { CHARSET } from '../src/render/atlas';
 import { PAL } from '../src/render/palette';
 import { drawGame } from '../src/render/scene';
-import { ROUTE } from '../src/sim/glider';
+import { gliderAt, gliderRect, ROUTE } from '../src/sim/glider';
 import { loadRoomsFs } from './helpers';
 
 const rooms = loadRoomsFs();
@@ -104,5 +104,27 @@ describe('кадр пролога', () => {
     };
     expect(has(g)).toBe(true);
     expect(has(inside)).toBe(false);
+  });
+
+  it('подсказка полёта — в небе: строка без воды и ниже строки HUD', () => {
+    for (const id of ['sea-1', 'sea-2']) {
+      const g = createPrologue(rooms);
+      g.roomId = id;
+      const ys: number[] = [];
+      drawGame({ push: () => {}, text: (_x: number, y: number, s: string) => { if (s.includes('ОТЦЕПИТЬСЯ')) ys.push(y); } } as never, g, DARK);
+      expect(ys, id).toHaveLength(1);
+      expect(ys[0]).toBeGreaterThan(0);
+      expect(rooms.get(id)!.tiles[Math.floor(ys[0])].includes('~'), id).toBe(false);
+    }
+  });
+
+  it('во вспышку горы не заслоняют дельтаплан на крыше', () => {
+    const roof = rooms.get('roof-1')!;
+    const r = gliderRect(gliderAt(150));
+    const inside = (g: { x: number; y: number }) => g.x >= r.x && g.x <= r.x + r.w && g.y >= r.y && g.y <= r.y + r.h;
+    const slopes = (skip?: typeof r) => stormGlyphs(roof, BRIGHT, skip).filter(g => '=-.'.includes(g.ch) && g.color[0] === PAL.storm[0]);
+    expect(slopes().some(inside)).toBe(true);
+    expect(slopes(r).filter(inside)).toHaveLength(0);
+    expect(slopes(r).length).toBeGreaterThan(0);
   });
 });

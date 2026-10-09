@@ -9,10 +9,12 @@ import { fireCells, heatColor, type Fire } from '../fx/fires';
 import { HEAT_RAMP } from '../fx/heat';
 import { stormGlyphs } from '../fx/storm';
 import { flamerPhase } from '../sim/flamer';
+import { gliderRect } from '../sim/glider';
 import { formatTime, missionResult } from '../sim/mission';
 import { floaterView, type Floater } from '../sim/floaters';
 import type { Item, Projectile } from '../sim/items';
 import { particleAlpha, type Particle } from '../sim/particles';
+import type { Rect } from '../sim/rect';
 import type { Room } from '../world/room';
 import type { Point, TerminalSpawn } from '../world/spawns';
 import { drawBike, ridePose } from './bike';
@@ -89,9 +91,17 @@ export function drawRoom(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy
 }
 
 // Небо комнаты с «sky: storm»: шторм пролога под тайлами; строку HUD не трогает.
-export function drawSky(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy: number, time: number): void {
+export function drawSky(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy: number, time: number, skip?: Rect): void {
   if (room.meta.sky !== 'storm') return;
-  for (const s of stormGlyphs(room, time)) if (s.y + oy >= 1) b.push(s.x - 0.5 + ox, s.y - 0.5 + oy, s.ch, s.color, s.size);
+  for (const s of stormGlyphs(room, time, skip)) if (s.y + oy >= 1) b.push(s.x - 0.5 + ox, s.y - 0.5 + oy, s.ch, s.color, s.size);
+}
+
+// Прямоугольник дельтаплана в комнате (в полёте и при ударе), иначе ничего.
+function gliderSkip(g: Game): Rect | undefined {
+  const p = g.prologue;
+  if (!p || (p.phase !== 'fly' && p.phase !== 'crash')) return undefined;
+  const { body } = g.nina;
+  return gliderRect({ screen: 0, x: body.x + body.w / 2, bottom: body.y + body.h });
 }
 
 const ITEM_GLYPH = { knife: '/', stone: 'o', wrench: 'Y' } as const;
@@ -254,7 +264,7 @@ function drawHud(b: GlyphBatch, g: Game, time: number): void {
   const p = g.prologue;
   if (p) {
     const msg = PROLOGUE_TEXT[p.phase];
-    if (msg) b.text((ROOM_W - hudWidth(msg)) / 2, p.phase === 'fly' ? ROOM_H - 2 : 12, msg, p.phase === 'fly' ? PAL.hudDim : PAL.danger, HUD_STEP);
+    if (msg) b.text((ROOM_W - hudWidth(msg)) / 2, p.phase === 'fly' ? 2 : 12, msg, p.phase === 'fly' ? PAL.hud : PAL.danger, HUD_STEP);
   }
 }
 
@@ -307,11 +317,11 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     const from = g.rooms.get(g.transition.from)!;
     drawSky(b, from, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time);
     drawRoom(b, from, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time, g.roomId);
-    drawSky(b, cur, ox, oy, time);
+    drawSky(b, cur, ox, oy, time, gliderSkip(g));
     drawRoom(b, cur, ox, oy, time, g.roomId);
     drawWorld(b, g, ox, oy, time);
   } else {
-    drawSky(b, cur, 0, 0, time);
+    drawSky(b, cur, 0, 0, time, gliderSkip(g));
     drawRoom(b, cur, 0, 0, time, g.roomId);
     drawWorld(b, g, 0, 0, time);
   }

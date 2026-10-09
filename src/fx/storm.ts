@@ -10,6 +10,7 @@ import { ROOM_H, ROOM_W, STORM } from '../config';
 import type { Glyph } from '../render/figure';
 import type { Color } from '../render/glyphs';
 import { PAL } from '../render/palette';
+import type { Rect } from '../sim/rect';
 import type { Room } from '../world/room';
 
 const TAU = Math.PI * 2;
@@ -68,22 +69,24 @@ export const swellH = (x: number, time: number) => trochoid(x / STORM.swellLen -
 const open = (room: Room, x: number, y: number) => room.tiles[Math.floor(y)]?.[Math.floor(x)] === '.';
 
 // Всё, что шторм рисует в комнате с «sky: storm»: горы и силуэт НИИ (ярче во вспышку), молния, косой дождь, зыбь с барашками.
-export function stormGlyphs(room: Room, time: number): Glyph[] {
+// skip — прямоугольник дельтаплана: горы внутри него не рисуются, чтобы вспышка не заслоняла его.
+export function stormGlyphs(room: Room, time: number, skip?: Rect): Glyph[] {
   const out: Glyph[] = [];
   const put = (x: number, y: number, ch: string, color: Color) => {
     if (x >= 0 && x < ROOM_W && y >= 0 && y < ROOM_H) out.push({ x, y, ch, color, size: 0.5 });
   };
   const { lit, strike, age } = flashAt(time);
   const seed = seedOf(room.id) % 100;
+  const covered = (x: number, y: number) => !!skip && x >= skip.x && x <= skip.x + skip.w && y >= skip.y && y <= skip.y + skip.h;
   // Горы: линия гребня, во вспышку — освещённые склоны под ней.
   for (let i = 0; i < ROOM_W * 2; i++) {
     const x = (i + 0.5) / 2, y = ridgeY(x, seed);
     const r = Math.floor(y * 2) / 2;
-    if (open(room, x, r)) put(x, r + 0.25, SURF[Math.min(3, Math.floor((1 - (y * 2 - Math.floor(y * 2))) * 4))], tint(PAL.storm, 0.2 + 0.8 * lit));
+    if (open(room, x, r) && !covered(x, r + 0.25)) put(x, r + 0.25, SURF[Math.min(3, Math.floor((1 - (y * 2 - Math.floor(y * 2))) * 4))], tint(PAL.storm, 0.2 + 0.8 * lit));
     if (lit > 0.08) {
       for (let k = 1; k <= 8; k++) {
         const yy = r + k / 2, g = lit * (1.1 - k / 8) - 0.2;
-        if (g > 0.08 && open(room, x, yy)) put(x, yy + 0.25, g > 0.55 ? '=' : g > 0.3 ? '-' : '.', tint(PAL.storm, 0.3 + 0.6 * lit));
+        if (g > 0.08 && open(room, x, yy) && !covered(x, yy + 0.25)) put(x, yy + 0.25, g > 0.55 ? '=' : g > 0.3 ? '-' : '.', tint(PAL.storm, 0.3 + 0.6 * lit));
       }
     }
   }
