@@ -18,4 +18,4 @@ The database was created with funding from NSF EIA-0196217. BVH-конверта
 
 ## Огонь и эффекты
 
-Поле жара, помехи и рябь — по мотивам анимаций [ascii.rest](https://github.com/bas3line/ascii) (© 2026 bas3line, MIT, см. `third_party/ascii.rest-LICENSE`).
+Поле жара, дым, помехи и рябь — по мотивам анимаций [ascii.rest](https://github.com/bas3line/ascii) (© 2026 bas3line, MIT, см. `third_party/ascii.rest-LICENSE`).
