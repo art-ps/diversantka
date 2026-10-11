@@ -16,13 +16,14 @@ it('бег вправо из lab-1 приводит в lab-2', () => {
   expect(g.nina.body.x).toBeLessThan(2);
 });
 
-it('спуск по лестнице из lab-2 в cave-1 без урона', () => {
-  const g = createGame(loadRoomsFs(), { room: 'lab-2', x: 18.7, bottom: 22 });
+it('спуск по лестнице из lab-2 в office без урона', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-2', x: 34.9, bottom: 22 });
+  g.flamers = [];
   for (let i = 0; i < 5; i++) stepGame(g, I(), DT);
   for (let i = 0; i < 600; i++) stepGame(g, I({ down: true }), DT);
-  expect(g.roomId).toBe('cave-1');
+  expect(g.roomId).toBe('office');
   expect(g.nina.state).toBe('ground');
-  expect(g.nina.body.y + g.nina.body.h).toBeCloseTo(23);
+  expect(g.nina.body.y + g.nina.body.h).toBeCloseTo(22);
   expect(g.nina.energy).toBe(NINA.energyMax);
 });
 
@@ -88,11 +89,12 @@ it('аниматор: бег переключает клип на walk/run, на
   expect(l.anim.clip).toBe('climb');
 });
 
-it('подъём по лестнице из cave-1 в lab-2: аниматор сдвинут вместе с Ниной, приземления нет', () => {
-  const g = createGame(loadRoomsFs(), { room: 'cave-1', x: 18.7, bottom: 23 });
+it('подъём по лестнице из office в lab-2: аниматор сдвинут вместе с Ниной, приземления нет', () => {
+  const g = createGame(loadRoomsFs(), { room: 'office', x: 34.9, bottom: 22 });
   for (let i = 0; i < 5; i++) stepGame(g, I(), DT);
-  for (let i = 0; i < 600 && g.roomId === 'cave-1'; i++) stepGame(g, I({ up: true }), DT);
+  for (let i = 0; i < 600 && g.roomId === 'office'; i++) stepGame(g, I({ up: true }), DT);
   expect(g.roomId).toBe('lab-2');
+  g.flamers = [];
   expect(g.anim.lastY).toBeCloseTo(g.nina.body.y, 0);
   const clips: string[] = [];
   for (let i = 0; i < 120; i++) { stepGame(g, I(), DT); clips.push(g.anim.clip); }

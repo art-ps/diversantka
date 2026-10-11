@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import type { Room } from '../src/world/room';
 import { loadRoomsFs } from './helpers';
-import { missionTargets, unreachable } from './reach';
+import { missionTargets, reachableNodes, unreachable } from './reach';
 
 // Точки посадки пролога: крыша и склон (x — левый край тела).
 const LANDINGS = [{ room: 'roof-1', x: 8, bottom: 22 }, { room: 'slope-1', x: 2, bottom: 14 }];
@@ -12,41 +12,47 @@ const patch = (room: Room, cells: [number, number, string][], meta: Record<strin
   for (const [c, r, ch] of cells) tiles[r][c] = ch;
   return { ...room, meta, tiles: tiles.map(row => row.join('')) };
 };
+// Комнаты, где героиня может стоять, если выйти из starts.
+const roomsReached = (rooms: Map<string, Room>, starts: { room: string; x: number; bottom: number }[]) =>
+  new Set([...reachableNodes(rooms, starts)].filter(k => k.startsWith('S|')).map(k => k.split('|')[1]));
 
 it('приёмка №3: с крыши и со склона достижимы 6 лент, ЭВМ, щиток, гараж и источник', () => {
   const rooms = loadRoomsFs();
   expect(missionTargets(rooms).map(t => t.what).sort()).toEqual([
     'ЭВМ', 'гараж', 'источник',
-    'лента cave-1#t0', 'лента evm-1#t0', 'лента garage-1#t0', 'лента lab-1#t0', 'лента lab-2#t0', 'лента power-1#t0',
+    'лента arch-1#t0', 'лента cave-1#t0', 'лента garage-1#t0', 'лента lab-3#t0', 'лента roof-3#t0', 'лента store-3#t0',
     'щиток',
   ]);
   for (const s of LANDINGS) expect(unreachable(rooms, [s]), s.room).toEqual([]);
 });
 
-it('без лестницы lab-2 → cave-1 пещера и источник недостижимы (в шахту — слишком высоко падать)', () => {
+it('с крыши достижима каждая комната корпуса', () => {
   const rooms = loadRoomsFs();
-  const cave = rooms.get('cave-1')!;
-  rooms.set('cave-1', patch(cave, Array.from({ length: 23 }, (_, r) => [19, r, '.'] as [number, number, string])));
-  expect(unreachable(rooms, LANDINGS)).toEqual(['лента cave-1#t0', 'источник']);
+  const all = [...rooms.keys()].filter(id => !id.startsWith('sea-')).sort();
+  expect([...roomsReached(rooms, [LANDINGS[0]])].sort()).toEqual(all);
 });
 
-it('платформа на 4 клетки выше пола — прыжком 3,5 не достать', () => {
+it('тупиков нет: из секретной, котельной, пещеры и гаража есть путь назад на крышу', () => {
   const rooms = loadRoomsFs();
-  const evm = rooms.get('evm-1')!;
-  const cells: [number, number, string][] = [];
-  for (let c = 30; c <= 35; c++) cells.push([c, 11, '.'], [c, 10, '=']);
-  rooms.set('evm-1', patch(evm, cells, { ...evm.meta, tapes: '33,10' }));
-  expect(unreachable(rooms, LANDINGS)).toEqual(['лента evm-1#t0']);
+  for (const s of [{ room: 'secret-1', x: 15, bottom: 22 }, { room: 'boiler', x: 4, bottom: 22 }, { room: 'cave-1', x: 3, bottom: 23 }, { room: 'garage-1', x: 26.9, bottom: 22 }]) {
+    expect(roomsReached(rooms, [s]).has('roof-1'), s.room).toBe(true);
+  }
 });
 
-it('без лифта power-1 → garage-1 гараж недостижим; фальш-стена S проходима, стена # — нет', () => {
+it('без лифта shaft-top пещера и гараж недостижимы', () => {
   const rooms = loadRoomsFs();
-  const power = rooms.get('power-1')!;
-  const { lift: _, ...meta } = power.meta;
-  rooms.set('power-1', { ...power, meta });
-  expect(unreachable(rooms, LANDINGS)).toEqual(['лента garage-1#t0', 'гараж']);
-  const walled = loadRoomsFs();
-  const cave = walled.get('cave-1')!;
-  walled.set('cave-1', patch(cave, [19, 20, 21, 22].map(r => [39, r, '#'] as [number, number, string])));
-  expect(unreachable(walled, LANDINGS)).toEqual(['источник']);
+  const top = rooms.get('shaft-top')!;
+  const { lift: _, ...meta } = top.meta;
+  rooms.set('shaft-top', { ...top, meta });
+  expect(unreachable(rooms, LANDINGS)).toEqual(['лента cave-1#t0', 'лента garage-1#t0', 'гараж']);
+});
+
+it('фальш-пол и фальш-стена S проходимы, стена # — нет: заложены оба входа — источник недостижим', () => {
+  const rooms = loadRoomsFs();
+  const floor: [number, number, string][] = [];
+  for (let c = 33; c <= 35; c++) for (let r = 22; r <= 24; r++) floor.push([c, r, '#']);
+  rooms.set('store-2', patch(rooms.get('store-2')!, floor));
+  expect(unreachable(rooms, LANDINGS)).toEqual([]); // через фальш-стену power-1
+  rooms.set('power-1', patch(rooms.get('power-1')!, [18, 19, 20, 21].map(r => [0, r, '#'] as [number, number, string])));
+  expect(unreachable(rooms, LANDINGS)).toEqual(['источник']);
 });

@@ -11,12 +11,16 @@ import { loadRoomsFs, roomOf } from './helpers';
 
 const R = (id: string, exits: Room['exits']): Room => ({ ...roomOf({}, exits), id });
 
-it('раскладка демо-карты по выходам: соседи — в соседних клетках, пролог без выходов не попадает', () => {
+it('раскладка корпуса по выходам: соседи — в соседних клетках, пролог без выходов не попадает', () => {
   const { pos, conflicts } = layoutMap(loadRoomsFs(), 'lab-1');
   expect(conflicts).toEqual([]);
   expect(Object.fromEntries([...pos].map(([id, c]) => [id, [c.x, c.y]]))).toEqual({
-    'lab-1': [0, 0], 'slope-1': [-1, 0], 'roof-1': [0, -1], 'lab-2': [1, 0], 'evm-1': [2, 0],
-    'power-1': [3, 0], 'garage-1': [3, 1], 'cave-1': [1, 1], 'secret-1': [2, 1],
+    'roof-1': [1, -1], 'roof-2': [2, -1], 'roof-3': [3, -1],
+    'slope-1': [-1, 0], 'lab-1': [0, 0], 'lab-2': [1, 0], 'lab-3': [2, 0], 'hall-1': [3, 0],
+    'arch-1': [0, 1], office: [1, 1], 'corr-1': [2, 1], 'evm-1': [3, 1],
+    'store-1': [0, 2], 'store-2': [1, 2], 'store-3': [2, 2], 'evm-2': [3, 2],
+    'secret-1': [1, 3], 'power-1': [2, 3], 'shaft-top': [3, 3], boiler: [4, 3],
+    'cave-1': [3, 4], 'garage-1': [3, 5],
   });
 });
 
@@ -39,10 +43,11 @@ it('раскладка: занятая клетка и несходящийся 
 it('значки: терминал, главная ЭВМ, щиток, гараж, неподобранные ленты; источник — без значка', () => {
   const rooms = loadRoomsFs();
   const none = new Set<string>();
-  expect(mapIcons(rooms.get('lab-2')!, none)).toEqual(['terminal', 'tape']);
-  expect(mapIcons(rooms.get('evm-1')!, none)).toEqual(['main', 'tape']);
-  expect(mapIcons(rooms.get('evm-1')!, new Set(['evm-1#t0']))).toEqual(['main']);
-  expect(mapIcons(rooms.get('power-1')!, none)).toEqual(['switch', 'tape']);
+  expect(mapIcons(rooms.get('lab-2')!, none)).toEqual(['terminal']);
+  expect(mapIcons(rooms.get('evm-1')!, none)).toEqual(['main']);
+  expect(mapIcons(rooms.get('arch-1')!, none)).toEqual(['tape']);
+  expect(mapIcons(rooms.get('arch-1')!, new Set(['arch-1#t0']))).toEqual([]);
+  expect(mapIcons(rooms.get('power-1')!, none)).toEqual(['switch']);
   expect(mapIcons(rooms.get('garage-1')!, none)).toEqual(['bike', 'tape']);
   expect(mapIcons(rooms.get('secret-1')!, none)).toEqual([]);
 });
@@ -55,13 +60,13 @@ const collect = (g: ReturnType<typeof createGame>, time: number) => {
 
 it('карта: только открытые комнаты, текущая мигает, всё внутри области и из атласа', () => {
   const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
-  g.seen = new Set(['lab-1', 'lab-2', 'evm-1']);
+  g.seen = new Set(['lab-1', 'lab-2', 'lab-3']);
   const a = collect(g, 0), b = collect(g, 0.4);
   expect(a.texts).toEqual([MAP_TITLE, MAP_LEGEND, MAP_HINT]);
-  // три блока по 8 полклеток, связи lab-1 — lab-2 — evm-1
+  // три блока по 8 полклеток, связи lab-1 — lab-2 — lab-3
   expect(a.glyphs).toHaveLength(3 * 8 + 2);
   expect(a.glyphs.filter(p => p.ch === '-')).toHaveLength(2);
-  expect(a.glyphs.filter(p => p.ch === 'Т' || p.ch === 'Э')).toHaveLength(2);
+  expect(a.glyphs.filter(p => p.ch === 'Т')).toHaveLength(1);
   expect(a.glyphs.filter(p => p.ch === '▓').length).toBeGreaterThan(b.glyphs.filter(p => p.ch === '▓').length);
   g.seen = new Set(loadRoomsFs().keys());
   const all = collect(g, 0);

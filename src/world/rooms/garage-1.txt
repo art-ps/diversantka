@@ -1,5 +1,5 @@
 id: garage-1
-exits: left=- right=- up=power-1 down=-
+exits: left=- right=- up=cave-1 down=-
 bike: 22,22
 fence: 38,17..21
 tapes: 6,22

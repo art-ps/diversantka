@@ -91,8 +91,9 @@ describe('кадр пролога', () => {
     expect(transitions).toBeGreaterThan(0);
   });
 
-  it('шторм — только в комнатах «sky: storm»', () => {
-    for (const r of rooms.values()) expect(r.meta.sky === 'storm', r.id).toBe(ROUTE.includes(r.id as never));
+  it('шторм — только в комнатах «sky: storm»: пролог и крыша', () => {
+    const open = [...ROUTE, 'roof-2', 'roof-3'];
+    for (const r of rooms.values()) expect(r.meta.sky === 'storm', r.id).toBe(open.includes(r.id));
     const g = createPrologue(rooms);
     const inside = createPrologue(rooms);
     inside.roomId = 'lab-1';
