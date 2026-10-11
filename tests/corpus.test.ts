@@ -119,3 +119,55 @@ it('без лестницы x30 на roof-3 лента на баке недос�
   rooms.set('roof-3', patch(rooms.get('roof-3')!, Array.from({ length: 9 }, (_, i) => [30, 13 + i, '.'] as [number, number, string]).concat([[30, 12, '=']])));
   expect(unreachable(rooms, LANDINGS)).toEqual(['лента roof-3#t0']);
 });
+
+// ---- этаж 2 ----
+
+it('arch-1: лента на верхнем стеллаже — по лестнице x20', () => {
+  const g = at('arch-1', 20.5, 22);
+  climbUntil(g, 'up', () => g.nina.state === 'ground' && bottomOf(g) < 11);
+  expect(bottomOf(g)).toBeCloseTo(10);
+  walkTo(g, 12);
+  expect(g.mission.tapes.has('arch-1#t0')).toBe(true);
+});
+
+it('corr-1: шагом упирается в ящики; прыжками через ящики и кабель — в evm-1 без урона', () => {
+  const g = at('corr-1', 2, 22);
+  run(g, { moveX: 1 }, 120);
+  expect(cx(g)).toBeLessThan(13);
+  walkTo(g, 10.5);
+  jump(g, 1);
+  walkTo(g, 27.5);
+  jump(g, 1);
+  expect(cx(g)).toBeGreaterThan(32.6);
+  run(g, { moveX: 1 }, 300, () => g.roomId === 'evm-1');
+  expect(g.roomId).toBe('evm-1');
+  expect(g.nina.energy).toBe(NINA.energyMax);
+});
+
+it('evm-1: от люка x6 шкаф перепрыгивается — к ЭВМ', () => {
+  const g = at('evm-1', 6.5, 22);
+  run(g, { moveX: 1 }, 60);
+  expect(cx(g)).toBeLessThan(10);
+  walkTo(g, 6.5);
+  jump(g, 1, 30);
+  walkTo(g, 20);
+  expect(Math.abs(cx(g) - 20)).toBeLessThan(0.5);
+  expect(bottomOf(g)).toBeCloseTo(22);
+});
+
+it('office: нож на столе — прыжком на стол и подобрать', () => {
+  const g = at('office', 10, 22);
+  jump(g, 0);
+  expect(bottomOf(g)).toBeCloseTo(19);
+  stepGame(g, I({ throwPressed: true }), DT);
+  expect(g.nina.held).toBe('knife');
+});
+
+it('без лестницы x20 лента архива недостижима', () => {
+  const rooms = loadRoomsFs();
+  const cells: [number, number, string][] = [];
+  for (let r = 11; r <= 21; r++) cells.push([20, r, r === 16 ? '=' : '.']);
+  cells.push([20, 10, '=']);
+  rooms.set('arch-1', patch(rooms.get('arch-1')!, cells));
+  expect(unreachable(rooms, LANDINGS)).toEqual(['лента arch-1#t0']);
+});
