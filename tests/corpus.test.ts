@@ -171,3 +171,61 @@ it('без лестницы x20 лента архива недостижима',
   rooms.set('arch-1', patch(rooms.get('arch-1')!, cells));
   expect(unreachable(rooms, LANDINGS)).toEqual(['лента arch-1#t0']);
 });
+
+// ---- этаж 1, секретная, цоколь ----
+
+it('store-1: ящики ступенями — шагом не пройти, прыжками — в store-2', () => {
+  const g = at('store-1', 20, 22);
+  run(g, { moveX: 1 }, 120);
+  expect(cx(g)).toBeLessThan(28);
+  walkTo(g, 26);
+  jump(g, 1, 20);
+  expect(bottomOf(g)).toBeCloseTo(20);
+  jump(g, 1, 20);
+  expect(bottomOf(g)).toBeCloseTo(18);
+  run(g, { moveX: 1 }, 300, () => g.roomId === 'store-2');
+  expect(g.roomId).toBe('store-2');
+});
+
+it('store-3: лента на штабеле — прыжком с пола; со штабеля по ступеньке — к двери в evm-2', () => {
+  const g = at('store-3', 27.5, 22);
+  jump(g, 1, 20);
+  expect(bottomOf(g)).toBeCloseTo(19);
+  walkTo(g, 31);
+  expect(g.mission.tapes.has('store-3#t0')).toBe(true);
+  run(g, { moveX: 1 }, 300, () => g.roomId === 'evm-2');
+  expect(g.roomId).toBe('evm-2');
+  expect(g.nina.energy).toBe(NINA.energyMax);
+});
+
+it('штабель в 4 клетки без ступеньки — лента store-3 недостижима', () => {
+  const rooms = loadRoomsFs();
+  const store = rooms.get('store-3')!;
+  const cells: [number, number, string][] = [[33, 21, '.'], [34, 21, '.']];
+  for (let c = 30; c <= 32; c++) cells.push([c, 18, '#']);
+  rooms.set('store-3', patch(store, cells, { ...store.meta, tapes: '31,18' }));
+  expect(unreachable(rooms, LANDINGS)).toEqual(['лента store-3#t0']);
+});
+
+it('power-1: трансформатор перепрыгивается — к щитку', () => {
+  const g = at('power-1', 36, 22);
+  run(g, { moveX: -1 }, 120);
+  expect(cx(g)).toBeGreaterThan(30);
+  walkTo(g, 32.5);
+  jump(g, -1, 30);
+  walkTo(g, 20);
+  expect(Math.abs(cx(g) - 20)).toBeLessThan(0.5);
+});
+
+it('boiler: нож за топкой — прыжком; топка жжёт', () => {
+  const g = at('boiler', 16.5, 22);
+  jump(g, 1);
+  expect(cx(g)).toBeGreaterThan(20);
+  expect(g.nina.energy).toBe(NINA.energyMax);
+  walkTo(g, 24);
+  stepGame(g, I({ throwPressed: true }), DT);
+  expect(g.nina.held).toBe('knife');
+  const burn = at('boiler', 16, 22);
+  run(burn, { moveX: 1 }, 40);
+  expect(burn.nina.energy).toBeLessThan(NINA.energyMax);
+});
