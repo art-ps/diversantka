@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { HAZARD, NINA } from '../src/config';
 import type { Room } from '../src/world/room';
 import { loadRoomsFs, roomOf } from './helpers';
-import { FALL_MAX, missionTargets, reachableNodes, targetDamage, unreachable, WATER_PER_CELL } from './reach';
+import { FALL_MAX, missionTargets, reachableNodes, routeDamage, targetDamage, unreachable, WATER_PER_CELL } from './reach';
 
 // Точки посадки пролога: крыша и склон (x — левый край тела).
 const LANDINGS = [{ room: 'roof-1', x: 8, bottom: 22 }, { room: 'slope-1', x: 2, bottom: 14 }];
@@ -117,4 +117,27 @@ it('урон от падения по формуле NINA; падения коп
   expect(2 * hurt(15) + hurt(14)).toBeGreaterThanOrEqual(NINA.energyMax);
   expect(unreachable(tower(24), [{ room: 'a', x: 2, bottom: 5 }])).toEqual(['лента b#t0']);
   expect(targetDamage(tower(18), [{ room: 'a', x: 2, bottom: 5 }]).get('лента b#t0')).toBeCloseTo(2 * hurt(15));
+});
+
+// Модель урона на синтетических комнатах: одна комната 'test'.
+const damageIn = (room: Room, from: { x: number; bottom: number }) => routeDamage(new Map([[room.id, room]]), [{ room: room.id, ...from }]);
+
+it('прыжок: приземление ниже вершины дуги больше safeFall снимает энергию как падение', () => {
+  // Уступ на строке 10 (колонки 0–5), пол на строке 17 только с колонки 14: шагом вниз не попасть, только прыжком с разбега.
+  const room = roomOf({ 10: '######', 17: '#'.repeat(26).padStart(40, '.') });
+  const got = damageIn(room, { x: 2, bottom: 10 });
+  const floor = [...got].filter(([k]) => k.startsWith('S|test|') && k.endsWith('|17'));
+  expect(floor.length).toBeGreaterThan(0);
+  const apexDrop = 17 - (10 - NINA.jumpHeight);
+  expect(apexDrop).toBeGreaterThan(NINA.safeFall);
+  const fall = (apexDrop - NINA.safeFall) * NINA.fallDamagePerCell;
+  for (const [k, d] of floor) expect(d, k).toBeGreaterThanOrEqual(fall - 0.5);
+});
+
+it('Дейкстра: узел пересчитывается, если сухой обход нашёлся позже дорогого падения', () => {
+  // Со старта (уступ на строке 10) прямое падение у правого края даёт 11 клеток — 18 энергии; лесенка уступов влево
+  // спускает на пол (строка 21) бесплатно. Прямое падение находится раньше (обход вправо идёт первым), сухой обход — позже и дешевле.
+  const room = roomOf({ 10: '.'.repeat(31) + '######', 14: '.'.repeat(25) + '######', 21: '#'.repeat(40) });
+  const got = damageIn(room, { x: 34, bottom: 10 });
+  expect(got.get('S|test|37|21')).toBe(0);
 });
