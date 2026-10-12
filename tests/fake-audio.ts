@@ -1,12 +1,16 @@
 // Подделка Web Audio для тестов: узлы запоминают параметры и вызовы, звука нет, браузер не нужен.
 export class FakeParam {
-  value = 0;
+  cur = 0; // текущее значение (последний вызов или присвоение)
+  intrinsic = 0; // присвоено напрямую — то, что остаётся после cancelScheduledValues
+  scheduled = 0; // запланированных событий осталось
   calls: string[] = [];
-  setValueAtTime(v: number) { this.value = v; this.calls.push('set'); return this; }
-  linearRampToValueAtTime(v: number) { this.value = v; this.calls.push('linear'); return this; }
-  exponentialRampToValueAtTime(v: number) { this.value = v; this.calls.push('exp'); return this; }
-  setTargetAtTime(v: number) { this.value = v; this.calls.push('target'); return this; }
-  cancelScheduledValues() { this.calls.push('cancel'); return this; }
+  get value() { return this.cur; }
+  set value(v: number) { this.cur = v; this.intrinsic = v; }
+  setValueAtTime(v: number) { this.cur = v; this.scheduled++; this.calls.push('set'); return this; }
+  linearRampToValueAtTime(v: number) { this.cur = v; this.scheduled++; this.calls.push('linear'); return this; }
+  exponentialRampToValueAtTime(v: number) { this.cur = v; this.scheduled++; this.calls.push('exp'); return this; }
+  setTargetAtTime(v: number) { this.cur = v; this.scheduled++; this.calls.push('target'); return this; }
+  cancelScheduledValues() { this.scheduled = 0; this.cur = this.intrinsic; this.calls.push('cancel'); return this; }
 }
 
 export class FakeNode {
@@ -45,7 +49,8 @@ export class FakeAudio {
 }
 
 // Подделка под тип браузера — для конструктора SoundEngine.
-export const fakeCtx = () => {
+export const fakeCtx = (state = 'running') => {
   const f = new FakeAudio();
+  f.state = state;
   return { f, ctx: f as unknown as BaseAudioContext };
 };

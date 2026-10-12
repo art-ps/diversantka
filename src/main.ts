@@ -76,8 +76,13 @@ async function boot() {
       it = clearPressed(it);
     }
     // Звуки шагов этого кадра и фон комнаты; события забираются, даже пока звук не включён.
-    gate.sound?.play(game.sfx);
-    gate.sound?.update(ambientOf(game), now / 1000, plan.steps * DT);
+    try {
+      gate.sound?.play(game.sfx);
+      gate.sound?.update(ambientOf(game), now / 1000, plan.steps * DT);
+    } catch (err) {
+      gate.sound = null; // сбой звука не должен ронять кадр — дальше игра идёт молча
+      console.warn('Звук отключён из-за ошибки:', err);
+    }
     game.sfx.length = 0;
     if (game.mission.result === 'won' && !saved) {
       saved = true;

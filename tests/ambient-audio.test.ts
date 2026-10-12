@@ -94,3 +94,18 @@ it('фон — по комнате героини: сменился при пе�
   expect(g.roomId).toBe('a');
   expect(ambientOf(g)).toBe('hum');
 });
+
+it('контекст спит: за 600 кадров в шторме и пещере ни грома, ни капель; проснулся — играют', () => {
+  const t = strike();
+  const { f, ctx } = fakeCtx('suspended');
+  const e = new SoundEngine(ctx);
+  for (const kind of ['storm', 'drips'] as const) {
+    e.update(kind, t - 1 / 60, 1 / 60);
+    for (let i = 0; i < 600; i++) e.update(kind, t + (i - 1) / 60, 100);
+  }
+  const beds = [...BEDS.storm, ...BEDS.drips].reduce((n, b) => n + (b.lfo ? 2 : 1), 0); // только фоны (с качанием +1 генератор)
+  expect(f.sources()).toHaveLength(beds);
+  f.state = 'running';
+  e.update('drips', 0, 100);
+  expect(f.sources()).toHaveLength(beds + 1);
+});

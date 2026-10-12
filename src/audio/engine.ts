@@ -54,7 +54,8 @@ export class SoundEngine {
       const loop = Object.hasOwn(LOOP_OF, k) ? LOOP_OF[k] : undefined;
       if (loop) this.loop(loop[0], loop[1]);
       const tones = Object.hasOwn(SOUNDS, k) ? SOUNDS[k] : undefined;
-      if (this.muted || !tones?.length || now - (this.last[k] ?? -Infinity) < AUDIO.minGap) continue;
+      // Контекст спит (вкладка скрыта, нет жеста) — время стоит, звуки не копим.
+      if (this.muted || this.ctx.state !== 'running' || !tones?.length || now - (this.last[k] ?? -Infinity) < AUDIO.minGap) continue;
       let slot = -1;
       for (let i = 0; i < this.ends.length && slot < 0; i++) if (this.ends[i] <= now) slot = i;
       if (slot < 0) continue;

@@ -22,9 +22,10 @@ export class Ambience {
     if (kind !== this.kind) this.change(kind);
     const lit = kind === 'storm' ? flashAt(time).lit : 0;
     const now = this.ctx.currentTime;
-    if (!muted && thunderEdge(this.lit, lit)) for (const t of THUNDER) playTone(this.ctx, this.out, this.noise, t, now + AMBIENT.thunderDelay);
+    const live = !muted && this.ctx.state === 'running'; // спящий контекст не копит гром и капли
+    if (live && thunderEdge(this.lit, lit)) for (const t of THUNDER) playTone(this.ctx, this.out, this.noise, t, now + AMBIENT.thunderDelay);
     this.lit = lit;
-    if (!muted && kind === 'drips' && Math.random() < AMBIENT.dripsPerSec * dt) {
+    if (live && kind === 'drips' && Math.random() < AMBIENT.dripsPerSec * dt) {
       playTone(this.ctx, this.out, this.noise, DRIPS[Math.floor(Math.random() * DRIPS.length)], now);
     }
   }

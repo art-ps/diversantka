@@ -24,6 +24,7 @@ function chain(ctx: BaseAudioContext, out: AudioNode, noise: AudioBuffer, t: Ton
     src = o;
   }
   const amp = ctx.createGain();
+  amp.gain.value = 0.0001; // начальное: cancelScheduledValues при старте и стопе в один момент не возвращает 1
   amp.gain.setValueAtTime(0.0001, at);
   let last: AudioNode = src;
   if (t.filter) {
@@ -51,7 +52,7 @@ export function playTone(ctx: BaseAudioContext, out: AudioNode, noise: AudioBuff
   return end;
 }
 
-export interface Held { src: AudioScheduledSourceNode; amp: GainNode; lfo: OscillatorNode | null }
+export interface Held { src: AudioScheduledSourceNode; amp: GainNode; lfo: OscillatorNode | null; depth: GainNode | null }
 
 // Петля (гул, шипение, фон): нарастает до t.gain за fade с, звучит до release; lfo — качание громкости ±половина.
 export function hold(ctx: BaseAudioContext, out: AudioNode, noise: AudioBuffer, t: Tone, fade: number): Held {
@@ -59,24 +60,28 @@ export function hold(ctx: BaseAudioContext, out: AudioNode, noise: AudioBuffer, 
   const { src, amp } = chain(ctx, out, noise, t, now);
   amp.gain.setTargetAtTime(t.gain, now, fade / 3);
   src.start(now);
-  let lfo: OscillatorNode | null = null;
+  let lfo: OscillatorNode | null = null, depth: GainNode | null = null;
   if (t.lfo) {
     lfo = ctx.createOscillator();
     lfo.frequency.value = t.lfo;
-    const depth = ctx.createGain();
+    depth = ctx.createGain();
     depth.gain.value = t.gain / 2;
     lfo.connect(depth);
     depth.connect(amp.gain);
     lfo.start(now);
   }
-  return { src, amp, lfo };
+  return { src, amp, lfo, depth };
 }
 
 // Гасит петлю за fade с и останавливает источник.
 export function release(ctx: BaseAudioContext, h: Held, fade: number): void {
   const now = ctx.currentTime;
   h.amp.gain.cancelScheduledValues(now);
-  h.amp.gain.setTargetAtTime(0, now, fade / 3);
+  h.amp.gain.setTargetAtTime(0, now, fade / 5);
+  if (h.depth) { // качание подмешивается к громкости — гаснет вместе с ней
+    h.depth.gain.cancelScheduledValues(now);
+    h.depth.gain.setTargetAtTime(0, now, fade / 5);
+  }
   h.src.stop(now + fade);
   h.lfo?.stop(now + fade);
 }
