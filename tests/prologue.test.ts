@@ -141,7 +141,7 @@ it('отцепление в последний кадр перед мачтой 
   expect(g.nina.body.x + g.nina.body.w).toBeLessThanOrEqual(36);
 });
 
-it('после итога или провала «заново» — с пролога; прыжок, начавший заново, и удержание не отцепляют', () => {
+it('после итога или провала «заново» — стартовый экран; прыжок, начавший заново, и удержание его не пропускают', () => {
   for (const result of ['won', 'failed'] as const) {
     const g = fresh();
     flyTo(g, 'roof-1', 15);
@@ -149,10 +149,12 @@ it('после итога или провала «заново» — с прол
     g.mission.result = result;
     run(g, IDLE, Math.round((MISSION.outroTime + MISSION.restartDelay) / DT) + 2);
     stepGame(g, JUMP, DT);
-    expect(g.prologue, result).toEqual({ d: PROLOGUE.startD, phase: 'fly', t: 0 });
+    expect(g.prologue, result).toEqual({ d: PROLOGUE.startD, phase: 'title', t: 0 });
     expect(g.roomId).toBe(ROUTE[0]);
     expect(g.mission.result).toBeNull();
     run(g, I({ jump: true }), 120);
+    expect(g.prologue!.phase).toBe('title');
+    stepGame(g, JUMP, DT);
     expect(g.prologue!.phase).toBe('fly');
     expect(g.mission.timeLeft).toBe(MISSION.time);
   }

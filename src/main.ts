@@ -20,8 +20,8 @@ function fail(msg: string) {
 }
 
 async function boot() {
-  // Звук: по первому нажатию, клику или касанию (на обёртке — кнопка «нажми, чтобы играть»); скрытая вкладка — тишина.
-  // Слушатели — до загрузки шрифта: клик по кнопке обёртки может прийти раньше, чем игра готова.
+  // Звук: по первому нажатию (Пробел на стартовом экране), клику или касанию; скрытая вкладка — тишина.
+  // Слушатели — до загрузки шрифта: нажатие может прийти раньше, чем игра готова.
   const gate = new AudioGate(() => new AudioContext(), loadMuted(storage()));
   for (const ev of ['pointerdown', 'click', 'keydown', 'touchend'] as const) addEventListener(ev, () => gate.unlock());
   document.addEventListener('visibilitychange', () => gate.visible(!document.hidden));
@@ -41,7 +41,7 @@ async function boot() {
   const bloom = new Bloom(gl);
   const input = new InputDevices(window);
   const tracker = new IntentTracker();
-  const game = createPrologue(rooms);
+  const game = createPrologue(rooms, true); // стартовый экран поверх первого кадра пролога
 
   const fit = () => {
     const cell = Math.max(1, Math.floor(Math.min(innerWidth / ROOM_W, innerHeight / ROOM_H)));

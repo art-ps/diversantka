@@ -101,7 +101,7 @@ export function drawSky(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy:
 // Прямоугольник дельтаплана в комнате (в полёте и при ударе), иначе ничего.
 function gliderSkip(g: Game): Rect | undefined {
   const p = g.prologue;
-  if (!p || (p.phase !== 'fly' && p.phase !== 'crash')) return undefined;
+  if (!p || p.phase === 'fall' || p.phase === 'splash') return undefined;
   const { body } = g.nina;
   return gliderRect({ screen: 0, x: body.x + body.w / 2, bottom: body.y + body.h });
 }
@@ -237,7 +237,7 @@ function drawDogs(b: GlyphBatch, g: Game, ox: number, oy: number): void {
 function drawNina(b: GlyphBatch, g: Game, ox: number, oy: number, time: number): void {
   const { body, facing } = g.nina;
   const p = g.prologue;
-  if (p && (p.phase === 'fly' || p.phase === 'crash')) {
+  if (p && p.phase !== 'fall' && p.phase !== 'splash') {
     drawGlider(b, body.x + body.w / 2 + ox, body.y + body.h + oy, HANG);
     return;
   }
@@ -289,7 +289,7 @@ export function drawStatic(b: Pick<GlyphBatch, 'push'>, deadT: number, time: num
 }
 
 // Подсказка в полёте и исход пролога.
-const PROLOGUE_TEXT = { fly: 'ПРЫЖОК — ОТЦЕПИТЬСЯ', fall: '', splash: 'В МОРЕ · ЗАНОВО', crash: 'УДАР О МАЧТУ · ЗАНОВО' } as const;
+const PROLOGUE_TEXT = { title: '', fly: 'ПРЫЖОК — ОТЦЕПИТЬСЯ', fall: '', splash: 'В МОРЕ · ЗАНОВО', crash: 'УДАР О МАЧТУ · ЗАНОВО' } as const;
 
 function drawHud(b: GlyphBatch, g: Game, time: number): void {
   const filled = Math.round((g.nina.energy / NINA.energyMax) * 10);

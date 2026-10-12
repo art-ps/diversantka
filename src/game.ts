@@ -32,8 +32,8 @@ export { TRANSITION_TIME };
 
 export interface Start { room: string; x: number; bottom: number }
 export interface Tape { id: string; x: number; bottom: number }
-// Пролог: d — путь дельтаплана, t — секунд в текущей фазе.
-export interface Prologue { d: number; phase: 'fly' | 'fall' | 'splash' | 'crash'; t: number }
+// Пролог: d — путь дельтаплана, t — секунд в текущей фазе; title — стартовый экран, дельтаплан ждёт прыжка.
+export interface Prologue { d: number; phase: 'title' | 'fly' | 'fall' | 'splash' | 'crash'; t: number }
 
 export interface Game {
   rooms: Map<string, Room>;
@@ -89,10 +89,11 @@ export function createGame(rooms: Map<string, Room>, start: Start): Game {
 }
 
 // Новая игра с пролога: дельтаплан над морем, миссия начнётся после посадки.
-export function createPrologue(rooms: Map<string, Room>): Game {
+// title — сначала стартовый экран (запуск и «заново»); рестарт после всплеска или мачты — сразу полёт.
+export function createPrologue(rooms: Map<string, Room>, title = false): Game {
   const a = gliderAt(PROLOGUE.startD);
   const g = createGame(rooms, { room: ROUTE[a.screen], x: a.x - NINA.w / 2, bottom: a.bottom });
-  g.prologue = { d: PROLOGUE.startD, phase: 'fly', t: 0 };
+  g.prologue = { d: PROLOGUE.startD, phase: title ? 'title' : 'fly', t: 0 };
   g.withPrologue = true;
   return g;
 }
@@ -107,6 +108,10 @@ function beginMission(g: Game): void {
 
 // Полёт: дельтаплан ведёт сам, прыжок — отцепиться; всплеск и удар — пролог заново.
 function stepPrologue(g: Game, p: Prologue, it: Intent, dt: number): void {
+  if (p.phase === 'title') {
+    if (it.jumpPressed) p.phase = 'fly'; // это нажатие не отцепляет: полёт начинается с t = 0, окно armTime
+    return;
+  }
   p.t += dt;
   g.particles = stepParticles(g.particles, dt);
   if (p.phase !== 'fly') {
@@ -213,7 +218,7 @@ function stepEnd(g: Game, it: Intent, dt: number): void {
   const shown = g.mission.result === 'won' ? MISSION.outroTime : 0;
   if (g.endT < shown) return;
   if (g.mission.result === 'won' && it.usePressed) g.clip = missionResult(g.mission).line;
-  if (it.jumpPressed && g.endT >= shown + MISSION.restartDelay) Object.assign(g, g.withPrologue ? createPrologue(g.rooms) : createGame(g.rooms, g.start));
+  if (it.jumpPressed && g.endT >= shown + MISSION.restartDelay) Object.assign(g, g.withPrologue ? createPrologue(g.rooms, true) : createGame(g.rooms, g.start));
 }
 
 // Источник: касание — энергия больше не убывает до конца миссии; чекпоинт этого не откатывает.
