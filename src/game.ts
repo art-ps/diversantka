@@ -24,6 +24,7 @@ import { bodyRect, overlap, type Rect } from './sim/rect';
 import { touchesTile, touchHazards } from './sim/hazards';
 import { exitFor } from './sim/transition';
 import type { Dir, Room } from './world/room';
+import { str } from './i18n';
 import { figureGlyphs } from './render/figure';
 import { PAL } from './render/palette';
 import { parseEnemies, parseFence, parseItems, parsePoints, parseTerminals, type AndroidSpawn, type DogSpawn, type Fence, type FlamerSpawn, type Point, type TerminalSpawn } from './world/spawns';
@@ -227,7 +228,7 @@ function touchSource(g: Game, s: Point, nr: Rect, dt: number): void {
     g.mission.secret = true;
     g.nina.immortal = true;
     g.sfx.push('source');
-    spawnFloater(g.floaters, 'ИСТОЧНИК НАЙДЕН', s.x, s.bottom - 3, 'enemy');
+    spawnFloater(g.floaters, str().sourceFound, s.x, s.bottom - 3, 'enemy');
   }
   if (Math.random() < SOURCE.sparksPerSec * dt) {
     g.particles.push({ ch: Math.random() < 0.5 ? '.' : '*', x: s.x + (Math.random() - 0.5), y: s.bottom - 1, vx: (Math.random() - 0.5) * 0.6, vy: -SOURCE.sparkRise, t: 0, life: SOURCE.sparkLife, gravity: 0, size: 0.5, color: PAL.source });
@@ -437,7 +438,7 @@ function stepWorld(g: Game, it: Intent, dt: number): void {
         g.sfx.push('bike');
         return; // выезд — дальше stepEnd
       }
-      spawnFloater(g.floaters, 'ЗАБОР ПОД ТОКОМ', g.bike.x, g.bike.bottom - 2.5, 'damage');
+      spawnFloater(g.floaters, str().fenceLive, g.bike.x, g.bike.bottom - 2.5, 'damage');
       g.sfx.push('zap');
       if (g.fence) for (let y = g.fence.top; y <= g.fence.bottom; y += 2) sparks(g.particles, g.fence.x + 0.5, y + 0.5, PAL.fireHot, 3);
     } else callLift(g);
@@ -474,7 +475,7 @@ function stepWorld(g: Game, it: Intent, dt: number): void {
     if (!overlap(itemRect(t), nr)) continue;
     g.mission.tapes.add(t.id);
     g.sfx.push('tape');
-    spawnFloater(g.floaters, `ЛЕНТА ${g.mission.tapes.size}/${MISSION.tapes}`, t.x, t.bottom - 1.5, 'enemy');
+    spawnFloater(g.floaters, str().tapeFloat(g.mission.tapes.size, MISSION.tapes), t.x, t.bottom - 1.5, 'enemy');
   }
   g.tapes = g.tapes.filter(t => !g.mission.tapes.has(t.id));
   if (g.source) touchSource(g, g.source, nr, dt);
@@ -540,7 +541,7 @@ function stepWorld(g: Game, it: Intent, dt: number): void {
     const a = g.androids.find(x => x.id === e.id);
     const d = a ? undefined : g.dogs.find(x => x.id === e.id)!;
     const body = (a ?? d)!.body;
-    const text = e.result === 'killed' ? 'ВЫВЕДЕН' : e.result === 'blocked' ? 'блок' : '-1';
+    const text = e.result === 'killed' ? str().killed : e.result === 'blocked' ? str().blocked : '-1';
     const cx = body.x + body.w / 2;
     spawnFloater(g.floaters, text, cx, body.y - 0.6, e.result === 'blocked' ? 'blocked' : 'enemy');
     const s = HIT_SFX[e.result];

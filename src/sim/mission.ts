@@ -1,4 +1,5 @@
 import { MISSION } from '../config';
+import { str } from '../i18n';
 
 // x — левый край тела, как в createNina.
 export interface Spot { room: string; x: number; bottom: number }
@@ -56,15 +57,15 @@ export function tickTimer(m: Mission, dt: number): void {
 
 // Главная ЭВМ: принимает только все ленты сразу.
 export function enterTapes(m: Mission): string {
-  if (m.tapes.size < MISSION.tapes) return `НЕДОСТАТОЧНО ЛЕНТ ${m.tapes.size}/${MISSION.tapes}`;
+  if (m.tapes.size < MISSION.tapes) return str().notEnoughTapes(m.tapes.size, MISSION.tapes);
   m.tapesIn = true;
-  return 'ЛЕНТЫ ВВЕДЕНЫ';
+  return str().tapesIn;
 }
 
 export function useSwitch(m: Mission): string {
-  if (!m.tapesIn) return 'ДОСТУП ЗАКРЫТ';
+  if (!m.tapesIn) return str().accessDenied;
   m.fenceOff = true;
-  return 'ЗАБОР ВЫКЛЮЧЕН';
+  return str().fenceOff;
 }
 
 // Мотоцикл: при включённом заборе не едет; поехал — миссия выполнена, таймер встал.
@@ -83,6 +84,6 @@ export function formatTime(sec: number): string {
 export function missionResult(m: Mission): MissionResult {
   const time = formatTime(MISSION.time - m.timeLeft);
   const tapes = `${m.tapes.size}/${MISSION.tapes}`;
-  const line = `Диверсантка · миссия выполнена за ${time} · ленты ${tapes} · ударов ${m.hits} · источник найден: ${m.secret ? 'да' : 'нет'}`;
+  const line = str().resultLine(time, tapes, m.hits, m.secret);
   return { time, tapes, hits: m.hits, secret: m.secret, line };
 }

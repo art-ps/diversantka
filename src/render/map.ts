@@ -1,5 +1,6 @@
 import { ROOM_W } from '../config';
 import type { Game } from '../game';
+import { str } from '../i18n';
 import { layoutMap, mapIcons, type MapIcon } from '../world/map';
 import type { Color, GlyphBatch } from './glyphs';
 import { PAL } from './palette';
@@ -10,22 +11,16 @@ export const MAP_PX = 3, MAP_PY = 2;
 const STEP = 0.6; // шаг букв, как в HUD
 const SLOTS = 4; // значков в блоке комнаты — верхний ряд полклеток
 
-const ICON: Record<MapIcon, { ch: string; color: Color }> = {
-  terminal: { ch: 'Т', color: PAL.hud },
-  main: { ch: 'Э', color: PAL.item },
-  switch: { ch: 'Щ', color: PAL.hud },
-  bike: { ch: 'Г', color: PAL.item },
-  tape: { ch: '▓', color: PAL.tape },
-};
-export const MAP_TITLE = 'ПАУЗА · КАРТА';
-export const MAP_LEGEND = 'Т ТЕРМИНАЛ  Э ЭВМ  Щ ЩИТОК  Г ГАРАЖ  ▓ ЛЕНТА';
-export const MAP_HINT = 'ESC/START — ПРОДОЛЖИТЬ · M — ЗВУК';
+// Цвета значков; буквы — str().mapIcons (первые буквы слов легенды), лента — «▓» во всех языках.
+const ICON_COLOR: Record<MapIcon, Color> = { terminal: PAL.hud, main: PAL.item, switch: PAL.hud, bike: PAL.item, tape: PAL.tape };
+const iconChar = (icon: MapIcon) => (icon === 'tape' ? '▓' : str().mapIcons[icon]);
 
 const centered = (b: Pick<GlyphBatch, 'text'>, y: number, s: string, c: Color) => b.text((ROOM_W - s.length * STEP) / 2, y, s, c, STEP);
 
 // Пауза: открытые комнаты по раскладке из выходов, связи между ними, текущая мигает; значки в блоках.
 export function drawMap(b: Pick<GlyphBatch, 'push' | 'text'>, g: Game, time: number): void {
-  centered(b, 2, MAP_TITLE, PAL.hud);
+  const s = str();
+  centered(b, 2, s.mapTitle, PAL.hud);
   const { pos } = layoutMap(g.rooms, g.start.room);
   const seen = [...g.seen].filter(id => pos.has(id));
   if (seen.length) {
@@ -47,12 +42,12 @@ export function drawMap(b: Pick<GlyphBatch, 'push' | 'text'>, g: Game, time: num
         for (let i = 0; i < SLOTS; i++) {
           const icon = j === 0 ? icons[i] : undefined;
           const gx = x + 0.25 + i / 2 - 0.5, gy = y + 0.25 + j / 2 - 0.5;
-          if (icon) b.push(gx, gy, ICON[icon].ch, ICON[icon].color, 0.5);
+          if (icon) b.push(gx, gy, iconChar(icon), ICON_COLOR[icon], 0.5);
           else b.push(gx, gy, lit ? '▓' : '░', lit ? PAL.hud : PAL.hudDim, 0.5);
         }
       }
     }
   }
-  centered(b, 22, MAP_LEGEND, PAL.hudDim);
-  centered(b, 23, MAP_HINT, PAL.hudDim);
+  centered(b, 22, s.mapLegend, PAL.hudDim);
+  centered(b, 23, s.mapHint, PAL.hudDim);
 }

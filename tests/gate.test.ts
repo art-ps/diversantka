@@ -2,9 +2,11 @@ import { expect, it } from 'vitest';
 import { AUDIO } from '../src/config';
 import { AudioGate } from '../src/audio/gate';
 import { CHARSET } from '../src/render/atlas';
-import { MAP_HINT } from '../src/render/map';
+import { STR } from '../src/i18n';
 import { loadMuted, SAVE, saveMuted } from '../src/save';
 import { FakeAudio } from './fake-audio';
+
+const MAP_HINT = STR.ru.mapHint;
 
 const gateOf = (muted = false) => {
   const made: FakeAudio[] = [];

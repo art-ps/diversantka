@@ -4,9 +4,12 @@ import { createPrologue, stepGame, type Game } from '../src/game';
 import { IDLE } from '../src/input/intent';
 import { CHARSET } from '../src/render/atlas';
 import { drawGame } from '../src/render/scene';
-import { TITLE_BOX, TITLE_FOCUS, TITLE_KEYS, TITLE_NAME, TITLE_START, TITLE_TASK } from '../src/render/screens';
+import { STR } from '../src/i18n';
+import { TITLE_BOX } from '../src/render/screens';
 import { gliderAt, gliderRect } from '../src/sim/glider';
 import { loadRoomsFs } from './helpers';
+
+const { titleName: TITLE_NAME, titleTask: TITLE_TASK, titleKeys: TITLE_KEYS, titleStart: TITLE_START, titleFocus: TITLE_FOCUS } = STR.ru;
 
 type P = { x: number; y: number; ch: string };
 type T = { x: number; y: number; s: string; step: number };

@@ -3,11 +3,14 @@ import { DT } from '../src/config';
 import { createGame, stepGame } from '../src/game';
 import { IDLE } from '../src/input/intent';
 import { CHARSET } from '../src/render/atlas';
-import { drawMap, MAP_AREA, MAP_HINT, MAP_LEGEND, MAP_TITLE } from '../src/render/map';
+import { STR } from '../src/i18n';
+import { drawMap, MAP_AREA } from '../src/render/map';
 import { drawGame } from '../src/render/scene';
 import { layoutMap, mapIcons } from '../src/world/map';
 import type { Room } from '../src/world/room';
 import { loadRoomsFs, roomOf } from './helpers';
+
+const { mapTitle: MAP_TITLE, mapLegend: MAP_LEGEND, mapHint: MAP_HINT } = STR.ru;
 
 const R = (id: string, exits: Room['exits']): Room => ({ ...roomOf({}, exits), id });
 

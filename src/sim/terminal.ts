@@ -1,4 +1,5 @@
 import { MISSION } from '../config';
+import { str } from '../i18n';
 import type { Intent } from '../input/intent';
 import type { TerminalSpawn } from '../world/spawns';
 import { enterTapes, type Mission } from './mission';
@@ -10,21 +11,14 @@ export type MenuItem =
   | { label: string; act: 'tapes' }
   | { label: string; act: 'exit' };
 
-// Лог загрузки ЭВМ (по мотивам boot-log из ascii.rest), печатается за MISSION.bootTime.
-export const BOOT_LOG = [
-  'НИИ-7 · ЭВМ СЕРИИ 2 · МОНИТОР В3.1',
-  'ТЕСТ ОЗУ ............. 64К ОК',
-  'ЛЕНТОПРОТЯЖКА ........... ОК',
-  'СВЯЗЬ С ПУЛЬТОМ ......... ОК',
-  'ЧЕКПОИНТ ЗАПИСАН',
-];
-
-// Видимая часть лога через t секунд: символы появляются равномерно.
+// Видимая часть лога загрузки ЭВМ (str().bootLog, по мотивам boot-log из ascii.rest) через t секунд:
+// символы появляются равномерно, весь лог — за MISSION.bootTime.
 export function bootLines(t: number): string[] {
-  const total = BOOT_LOG.reduce((n, l) => n + l.length, 0);
+  const log = str().bootLog;
+  const total = log.reduce((n, l) => n + l.length, 0);
   let left = Math.floor((Math.min(t, MISSION.bootTime) / MISSION.bootTime) * total);
   const out: string[] = [];
-  for (const l of BOOT_LOG) {
+  for (const l of log) {
     if (left <= 0) break;
     out.push(l.slice(0, left));
     left -= l.length;
@@ -34,9 +28,9 @@ export function bootLines(t: number): string[] {
 
 export function menuItems(term: TerminalSpawn): MenuItem[] {
   return [
-    ...term.controls.map(room => ({ label: `ОТКЛ. ОГНЕМЁТ ${room}`, act: 'flamer' as const, room })),
-    ...(term.main ? [{ label: 'ВВЕСТИ ЛЕНТЫ', act: 'tapes' as const }] : []),
-    { label: 'ВЫХОД', act: 'exit' as const },
+    ...term.controls.map(room => ({ label: str().menuFlamer(room), act: 'flamer' as const, room })),
+    ...(term.main ? [{ label: str().menuTapes, act: 'tapes' as const }] : []),
+    { label: str().menuExit, act: 'exit' as const },
   ];
 }
 
@@ -55,7 +49,7 @@ export function stepScreen(s: Screen, m: Mission, it: Intent, dt: number): 'stay
   if (item.act === 'tapes') s.msg = enterTapes(m);
   else {
     m.flamersOff.add(item.room);
-    s.msg = `ОГНЕМЁТ ${item.room} ОТКЛЮЧЁН`;
+    s.msg = str().flamerOff(item.room);
   }
   return 'changed';
 }

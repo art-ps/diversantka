@@ -1,5 +1,6 @@
 import { BIKE, MISSION, ROOM_W, TITLE } from '../config';
 import type { Pose } from '../anim/clip';
+import { str } from '../i18n';
 import type { MissionResult } from '../sim/mission';
 import { bootLines, menuItems, type Screen } from '../sim/terminal';
 import { BIKE_DIR, BIKE_PIPE, bikeGlyphs, riderGlyphs } from './bike';
@@ -35,7 +36,7 @@ export function drawScreen(b: Pick<GlyphBatch, 'push' | 'text'>, s: Screen): voi
     b.text(X0 + 2, Y0 + 9 + i, (on ? '> ' : '  ') + item.label, on ? PAL.item : PAL.hud, STEP);
   });
   if (s.msg) b.text(X0 + 2, Y1 - 3, s.msg, PAL.item, STEP);
-  b.text(X0 + 2, Y1 - 1, 'СТРЕЛКИ — ВЫБОР · ПРЫЖОК/E — ДА', PAL.hudDim, STEP);
+  b.text(X0 + 2, Y1 - 1, str().screenHint, PAL.hudDim, STEP);
 }
 
 // Перенос по словам: строка итога шире рамки.
@@ -56,48 +57,34 @@ const WIDE = Math.floor((X1 - X0 - 3) / STEP); // букв в строке вн�
 
 export function drawResult(b: Pick<GlyphBatch, 'push' | 'text'>, r: MissionResult, copied: boolean): void {
   drawFrame(b, PAL.hudDim);
-  const rows = ['МИССИЯ ВЫПОЛНЕНА', '', `ВРЕМЯ   ${r.time}`, `ЛЕНТЫ   ${r.tapes}`, `УДАРОВ  ${r.hits}`, `ИСТОЧНИК НАЙДЕН: ${r.secret ? 'ДА' : 'НЕТ'}`];
+  const rows = [str().won, '', ...str().resultRows(r.time, r.tapes, r.hits, r.secret)];
   rows.forEach((s, i) => b.text(X0 + 2, Y0 + 2 + i, s, i === 0 ? PAL.item : PAL.hud, STEP));
   wrap(r.line, WIDE).forEach((s, i) => b.text(X0 + 2, Y0 + 10 + i, s, PAL.hudDim, STEP));
-  b.text(X0 + 2, Y1 - 1, copied ? 'СКОПИРОВАНО · ПРЫЖОК — ЗАНОВО' : 'E/Y — СКОПИРОВАТЬ · ПРЫЖОК — ЗАНОВО', PAL.hudDim, STEP);
+  b.text(X0 + 2, Y1 - 1, copied ? str().copiedHint : str().copyHint, PAL.hudDim, STEP);
 }
 
 export function drawFailed(b: Pick<GlyphBatch, 'text'>): void {
-  const title = 'МИССИЯ ПРОВАЛЕНА', hint = 'ПРЫЖОК — ЗАНОВО';
+  const title = str().failed, hint = str().failedHint;
   b.text((ROOM_W - title.length * STEP) / 2, 11, title, PAL.danger, STEP);
   b.text((ROOM_W - hint.length * STEP) / 2, 13, hint, PAL.hudDim, STEP);
 }
 
 // Стартовый экран: рамка справа от дельтаплана (он висит в колонках 0–6), под ней шторм не рисуется.
 export const TITLE_BOX: Box = { x0: 9, x1: 38, y0: 1, y1: 18 };
-export const TITLE_NAME = 'ДИВЕРСАНТКА';
-export const TITLE_TASK = `${MISSION.tapes} ЛЕНТ · ЭВМ · ЗАБОР · МОТОЦИКЛ. ${MISSION.time / 60} МИНУТ`;
-// Действие · клавиатура · геймпад (KEYMAP и fromGamepad в src/input/intent.ts); первая строка — шапка.
-export const TITLE_KEYS: readonly [string, string, string][] = [
-  ['', 'КЛАВИАТУРА', 'ГЕЙМПАД'],
-  ['ХОД', 'СТРЕЛКИ/WASD', 'СТИК/КРЕСТ'],
-  ['ПРЫЖОК', 'ПРОБЕЛ', 'A'],
-  ['УДАР', 'J', 'X'],
-  ['БРОСОК', 'K', 'B'],
-  ['ТЕРМИНАЛ/ЛИФТ', 'E', 'Y'],
-  ['ПАУЗА', 'ESC', 'START'],
-  ['ЗВУК', 'M', '—'],
-];
-export const TITLE_START = 'ПРОБЕЛ — НАЧАТЬ';
-export const TITLE_FOCUS = 'КЛИК ПО ЭКРАНУ, ЕСЛИ КЛАВИШИ НЕ РАБОТАЮТ';
+// Тексты — str(): название, задача, таблица клавиш (KEYMAP и fromGamepad в src/input/intent.ts), старт, подсказка про фокус.
 const KEY_COLS = [0, 14, 27]; // начала колонок таблицы, в буквах
 
 export function drawTitle(b: Pick<GlyphBatch, 'push' | 'text'>, time: number): void {
-  const f = TITLE_BOX, mid = (f.x0 + f.x1 + 1) / 2, left = f.x0 + 2;
+  const txt = str(), f = TITLE_BOX, mid = (f.x0 + f.x1 + 1) / 2, left = f.x0 + 2;
   const centered = (y: number, s: string, c: Color, step = STEP) => b.text(mid - (s.length * step) / 2, y, s, c, step);
   drawFrame(b, PAL.hudDim, f);
-  centered(f.y0 + 2, TITLE_NAME, PAL.item, 1);
-  centered(f.y0 + 4, TITLE_TASK, PAL.hud);
-  TITLE_KEYS.forEach((row, i) => row.forEach((s, j) => {
-    if (s) b.text(left + KEY_COLS[j] * STEP, f.y0 + 6 + i, s, i === 0 || j === 0 ? PAL.hudDim : PAL.hud, STEP);
+  centered(f.y0 + 2, txt.titleName, PAL.item, 1);
+  centered(f.y0 + 4, txt.titleTask, PAL.hud);
+  txt.titleKeys.forEach((row, i) => row.forEach((cell, j) => {
+    if (cell) b.text(left + KEY_COLS[j] * STEP, f.y0 + 6 + i, cell, i === 0 || j === 0 ? PAL.hudDim : PAL.hud, STEP);
   }));
-  if (Math.floor(time * TITLE.blinkHz * 2) % 2 === 0) centered(f.y1 - 2, TITLE_START, PAL.item);
-  centered(f.y1 - 1, TITLE_FOCUS, PAL.hudDim);
+  if (Math.floor(time * TITLE.blinkHz * 2) % 2 === 0) centered(f.y1 - 2, txt.titleStart, PAL.item);
+  centered(f.y1 - 1, txt.titleFocus, PAL.hudDim);
 }
 
 // Выезд: ночная дорога, столб ворот, Нина на мотоцикле разгоняется влево (BIKE_DIR) и уходит за край.

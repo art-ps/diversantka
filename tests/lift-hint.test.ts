@@ -3,9 +3,12 @@ import { DT, NINA } from '../src/config';
 import { createGame, enterRoom, liftCall, liftHint, stepGame, type Game } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
 import { CHARSET } from '../src/render/atlas';
-import { drawGame, drawLifts, LIFT_HINT, liftPanels } from '../src/render/scene';
+import { STR } from '../src/i18n';
+import { drawGame, drawLifts, liftPanels } from '../src/render/scene';
 import { openScreen } from '../src/sim/terminal';
 import { loadRoomsFs } from './helpers';
+
+const LIFT_HINT = STR.ru.liftHint;
 
 // Шахта лифта — колонки 26..28, этаж каждой комнаты шахты — строка 22. Враги не мешают.
 const I = (p: Partial<Intent> = {}): Intent => ({ ...IDLE, ...p });

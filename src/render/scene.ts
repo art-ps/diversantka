@@ -5,6 +5,7 @@ import { dogGlyphs } from '../anim/dog';
 import { simplePose } from '../anim/simple';
 import { FX, LIFT, MISSION, NINA, ROOM_H, ROOM_W, SOURCE } from '../config';
 import { liftHint, TRANSITION_TIME, type Game } from '../game';
+import { LANGS, STR, str, type Strings } from '../i18n';
 import { fireCells, heatColor, type Fire } from '../fx/fires';
 import { HEAT_RAMP } from '../fx/heat';
 import { stormGlyphs } from '../fx/storm';
@@ -44,19 +45,20 @@ function isWall(room: Room, c: number, r: number) {
 }
 
 // Клетки строки 0 под HUD (с полем в одну клетку) комната не рисует: свечение складывается, подложки нет.
-const CREDIT = 'движения: mocap.cs.cmu.edu';
-
 const HUD_STEP = 0.6; // шаг символов HUD — буквы уже клетки
 export const hudWidth = (s: string) => s.length * HUD_STEP;
-const ENERGY_LABEL = 'ЭНЕРГИЯ ';
-const LEFT_END = 1 + hudWidth(ENERGY_LABEL) + 10 * HUD_STEP;
-const MID_HALF = Math.ceil(hudWidth('ЛЕНТЫ 0/6 · 00:00') / 2); // ленты и таймер — по центру строки 0
+// Ширины подписей HUD — по самому длинному языку: вычищенные клетки и шкала энергии от языка не зависят.
+const widest = (f: (s: Strings) => string) => Math.max(...LANGS.map(l => hudWidth(f(STR[l]))));
+const ENERGY_W = widest(s => s.energy);
+const CREDIT_W = widest(s => s.credit);
+const LEFT_END = 1 + ENERGY_W + 10 * HUD_STEP;
+const MID_HALF = Math.ceil(widest(s => s.hudTapes(0, MISSION.tapes) + '00:00') / 2); // ленты и таймер — по центру строки 0
 
 export const hudCell = (x: number, y: number, hudId: string, time: number) =>
   (Math.round(y) === 0 &&
     (Math.round(x) <= Math.ceil(LEFT_END) || Math.abs(Math.round(x) - ROOM_W / 2) <= MID_HALF ||
       Math.round(x) >= Math.floor(ROOM_W - 1 - hudWidth(hudId)) - 1)) ||
-  (time < 8 && Math.round(y) === ROOM_H - 1 && Math.round(x) >= Math.floor(ROOM_W - 0.5 - hudWidth(CREDIT)) - 1);
+  (time < 8 && Math.round(y) === ROOM_H - 1 && Math.round(x) >= Math.floor(ROOM_W - 0.5 - CREDIT_W) - 1);
 
 export function drawRoom(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy: number, time: number, hudId: string): void {
   for (let r = 0; r < ROOM_H; r++) {
@@ -187,15 +189,12 @@ export function drawLifts(b: Pick<GlyphBatch, 'push'>, lifts: Lift[], room: Room
   }
 }
 
-export const LIFT_HINT = 'E — ВЫЗВАТЬ ЛИФТ';
-
 // Подсказка над головой героини, по центру над ней, не за краем экрана.
 export function drawLiftHint(b: Pick<GlyphBatch, 'text'>, g: Game, ox: number, oy: number): void {
-  const n = g.nina.body, w = hudWidth(LIFT_HINT);
+  const s = str().liftHint, n = g.nina.body, w = hudWidth(s);
   const x = Math.min(Math.max(n.x + n.w / 2 - w / 2, 0.5), ROOM_W - 0.5 - w);
-  b.text(x + ox, n.y - 1.5 + oy, LIFT_HINT, PAL.hud, HUD_STEP);
+  b.text(x + ox, n.y - 1.5 + oy, s, PAL.hud, HUD_STEP);
 }
-
 // Перфолента — мелкий блок своего цвета.
 export function drawTapes(b: Pick<GlyphBatch, 'push'>, tapes: Point[], ox: number, oy: number): void {
   for (const t of tapes) b.push(t.x + ox - 0.5, t.bottom - 0.25 + oy - 0.5, '▓', PAL.tape, 0.5);
@@ -288,34 +287,30 @@ export function drawStatic(b: Pick<GlyphBatch, 'push'>, deadT: number, time: num
   }
 }
 
-// Подсказка в полёте и исход пролога.
-const PROLOGUE_TEXT = { title: '', fly: 'ПРЫЖОК — ОТЦЕПИТЬСЯ', fall: '', splash: 'В МОРЕ · ЗАНОВО', crash: 'УДАР О МАЧТУ · ЗАНОВО' } as const;
-
 function drawHud(b: GlyphBatch, g: Game, time: number): void {
+  const s = str();
   const filled = Math.round((g.nina.energy / NINA.energyMax) * 10);
-  const barX = 1 + hudWidth(ENERGY_LABEL);
-  b.text(1, 0, ENERGY_LABEL, PAL.hud, HUD_STEP);
+  const barX = 1 + ENERGY_W;
+  b.text(1, 0, s.energy, PAL.hud, HUD_STEP);
   const bar = g.mission.secret ? PAL.source : g.nina.energy < NINA.lowEnergy ? PAL.danger : PAL.hud;
   b.text(barX, 0, '█'.repeat(filled), bar, HUD_STEP);
   b.text(barX + hudWidth('█'.repeat(filled)), 0, '░'.repeat(10 - filled), PAL.hudDim, HUD_STEP);
   b.text(ROOM_W - 1 - hudWidth(g.roomId), 0, g.roomId, PAL.hudDim, HUD_STEP);
-  const tapes = `ЛЕНТЫ ${g.mission.tapes.size}/${MISSION.tapes} · `;
+  const tapes = s.hudTapes(g.mission.tapes.size, MISSION.tapes);
   const clock = formatTime(g.mission.timeLeft);
   const mx = (ROOM_W - hudWidth(tapes + clock)) / 2;
   b.text(mx, 0, tapes, PAL.hud, HUD_STEP);
   b.text(mx + hudWidth(tapes), 0, clock, g.mission.timeLeft < MISSION.lowTime ? PAL.danger : PAL.hud, HUD_STEP);
   if (g.nina.dead && !g.mission.result) {
-    const msg = 'ПОГИБЛА · ПРЫЖОК — ЗАНОВО';
-    b.text((ROOM_W - hudWidth(msg)) / 2, 12, msg, PAL.danger, HUD_STEP);
+    b.text((ROOM_W - hudWidth(s.dead)) / 2, 12, s.dead, PAL.danger, HUD_STEP);
   }
-  if (time < 8) b.text(ROOM_W - 0.5 - hudWidth(CREDIT), ROOM_H - 1, CREDIT, PAL.hudDim, HUD_STEP);
+  if (time < 8) b.text(ROOM_W - 0.5 - hudWidth(s.credit), ROOM_H - 1, s.credit, PAL.hudDim, HUD_STEP);
   const p = g.prologue;
   if (p) {
-    const msg = PROLOGUE_TEXT[p.phase];
+    const msg = s.prologue[p.phase]; // подсказка в полёте и исход пролога
     if (msg) b.text((ROOM_W - hudWidth(msg)) / 2, p.phase === 'fly' ? 2 : 12, msg, p.phase === 'fly' ? PAL.hud : PAL.danger, HUD_STEP);
   }
 }
-
 function drawFlamers(b: GlyphBatch, g: Game, ox: number, oy: number): void {
   for (const f of g.flamers) {
     const hot = flamerPhase(f) !== 'off';

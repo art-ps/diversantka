@@ -3,8 +3,11 @@ import { DT, MISSION } from '../src/config';
 import { IDLE, IntentTracker, clearPressed, fromGamepad, fromKeyboard, type Buttons, type Intent, type PadSnapshot } from '../src/input/intent';
 import { CHARSET } from '../src/render/atlas';
 import { createMission } from '../src/sim/mission';
-import { BOOT_LOG, bootLines, menuItems, openScreen, stepScreen, type Screen } from '../src/sim/terminal';
+import { STR } from '../src/i18n';
+import { bootLines, menuItems, openScreen, stepScreen, type Screen } from '../src/sim/terminal';
 import { parseTerminals, type TerminalSpawn } from '../src/world/spawns';
+
+const BOOT_LOG = STR.ru.bootLog;
 
 const pad = (axes: number[], pressed: number[] = []): PadSnapshot => ({
   axes,

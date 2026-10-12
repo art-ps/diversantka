@@ -2,6 +2,7 @@ import { ambientOf } from './audio/ambient';
 import { AudioGate } from './audio/gate';
 import { DT, ROOM_H, ROOM_W } from './config';
 import { createPrologue, stepGame } from './game';
+import { str } from './i18n';
 import { InputDevices } from './input/devices';
 import { IDLE, IntentTracker, clearPressed, orPressed } from './input/intent';
 import { planSteps } from './loop';
@@ -28,7 +29,7 @@ async function boot() {
 
   const canvas = document.getElementById('screen') as HTMLCanvasElement;
   const gl = canvas.getContext('webgl2', { antialias: false, alpha: false });
-  if (!gl) return fail('Браузер не поддерживает WebGL2. Откройте игру в свежем Chrome или Safari.');
+  if (!gl) return fail(str().noWebgl);
 
   let rooms;
   try {
