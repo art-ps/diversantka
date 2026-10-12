@@ -24,7 +24,7 @@ import { bodyRect, overlap, type Rect } from './sim/rect';
 import { touchesTile, touchHazards } from './sim/hazards';
 import { exitFor } from './sim/transition';
 import type { Dir, Room } from './world/room';
-import { str } from './i18n';
+import { setLang, str } from './i18n';
 import { figureGlyphs } from './render/figure';
 import { PAL } from './render/palette';
 import { parseEnemies, parseFence, parseItems, parsePoints, parseTerminals, type AndroidSpawn, type DogSpawn, type Fence, type FlamerSpawn, type Point, type TerminalSpawn } from './world/spawns';
@@ -110,6 +110,9 @@ function beginMission(g: Game): void {
 // Полёт: дельтаплан ведёт сам, прыжок — отцепиться; всплеск и удар — пролог заново.
 function stepPrologue(g: Game, p: Prologue, it: Intent, dt: number): void {
   if (p.phase === 'title') {
+    // Строка «< ENGLISH · РУССКИЙ >»: влево — English, вправо — русский; удержание ничего не листает.
+    if (it.moveX < 0) setLang('en');
+    else if (it.moveX > 0) setLang('ru');
     if (it.jumpPressed) p.phase = 'fly'; // это нажатие не отцепляет: полёт начинается с t = 0, окно armTime
     return;
   }

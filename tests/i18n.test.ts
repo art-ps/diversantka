@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, expect, it } from 'vitest';
 import { MISSION, ROOM_W } from '../src/config';
 import { createGame, createPrologue, type Game } from '../src/game';
-import { lang, LANGS, setLang, STR, str, type Strings } from '../src/i18n';
+import { lang, LANG_NAMES, LANGS, setLang, STR, str, type Strings } from '../src/i18n';
 import { CHARSET } from '../src/render/atlas';
 import { drawGame, hudWidth } from '../src/render/scene';
 import { KEY_COLS, TITLE_BOX, WIDE, wrap } from '../src/render/screens';
@@ -142,11 +142,11 @@ const frames = (): Record<string, Game> => {
   return { title, fly, splash, crash, hud, dead, evm, map, won, failed };
 };
 
-it('English: на экранах игры нет русских букв — стартовый, пролог, HUD, гибель, ЭВМ, пауза, итог, провал', () => {
+it('English: на экранах игры нет русских букв (кроме «РУССКИЙ» в строке выбора) — стартовый, пролог, HUD, гибель, ЭВМ, пауза, итог, провал', () => {
   setLang('en');
   for (const [name, g] of Object.entries(frames())) {
     const s = shot(g);
-    const chars = [...s.pushes, ...s.texts.flatMap(t => [...t.s])];
+    const chars = [...s.pushes, ...s.texts.filter(t => t.s !== LANG_NAMES.ru).flatMap(t => [...t.s])];
     expect(chars.filter(ch => CYR.test(ch)), name).toEqual([]);
   }
 });

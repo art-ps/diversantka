@@ -2,7 +2,7 @@ import { ambientOf } from './audio/ambient';
 import { AudioGate } from './audio/gate';
 import { DT, ROOM_H, ROOM_W } from './config';
 import { createPrologue, stepGame } from './game';
-import { str } from './i18n';
+import { lang, setLang, str } from './i18n';
 import { InputDevices } from './input/devices';
 import { IDLE, IntentTracker, clearPressed, orPressed } from './input/intent';
 import { planSteps } from './loop';
@@ -11,7 +11,7 @@ import { Bloom } from './render/bloom';
 import { GlyphBatch } from './render/glyphs';
 import { PAL } from './render/palette';
 import { drawGame } from './render/scene';
-import { loadMuted, saveMuted, saveResult, storage } from './save';
+import { loadLang, loadMuted, saveLang, saveMuted, saveResult, storage } from './save';
 import { loadWorld } from './world';
 
 function fail(msg: string) {
@@ -21,6 +21,10 @@ function fail(msg: string) {
 }
 
 async function boot() {
+  // Язык: выбранный в прошлый раз, иначе по языку браузера. Стартовый экран меняет его стрелками — тогда запоминаем.
+  setLang(loadLang(storage(), navigator.language));
+  let savedLang = lang();
+
   // Звук: по первому нажатию (Пробел на стартовом экране), клику или касанию; скрытая вкладка — тишина.
   // Слушатели — до загрузки шрифта: нажатие может прийти раньше, чем игра готова.
   const gate = new AudioGate(() => new AudioContext(), loadMuted(storage()));
@@ -85,6 +89,10 @@ async function boot() {
       console.warn('Звук отключён из-за ошибки:', err);
     }
     game.sfx.length = 0;
+    if (lang() !== savedLang) {
+      savedLang = lang();
+      saveLang(storage(), savedLang);
+    }
     if (game.mission.result === 'won' && !saved) {
       saved = true;
       saveResult(storage(), game.mission.secret);

@@ -3,6 +3,8 @@ import { MISSION } from './config';
 // Языки игры. Порядок — как в строке выбора на стартовом экране.
 export type Lang = 'en' | 'ru';
 export const LANGS: readonly Lang[] = ['en', 'ru'];
+// Названия языков в строке выбора — каждое на своём языке, поэтому вне словаря.
+export const LANG_NAMES: Record<Lang, string> = { en: 'ENGLISH', ru: 'РУССКИЙ' };
 
 // Все тексты, которые видит игрок. Функции — тексты с числами и id комнат (id не переводятся).
 export interface Strings {

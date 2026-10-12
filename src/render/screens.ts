@@ -1,6 +1,6 @@
 import { BIKE, MISSION, ROOM_W, TITLE } from '../config';
 import type { Pose } from '../anim/clip';
-import { str } from '../i18n';
+import { lang, LANG_NAMES, LANGS, str } from '../i18n';
 import type { MissionResult } from '../sim/mission';
 import { bootLines, menuItems, type Screen } from '../sim/terminal';
 import { BIKE_DIR, BIKE_PIPE, bikeGlyphs, riderGlyphs } from './bike';
@@ -73,12 +73,26 @@ export function drawFailed(b: Pick<GlyphBatch, 'text'>): void {
 export const TITLE_BOX: Box = { x0: 9, x1: 38, y0: 1, y1: 18 };
 // Тексты — str(): название, задача, таблица клавиш (KEYMAP и fromGamepad в src/input/intent.ts), старт, подсказка про фокус.
 export const KEY_COLS = [0, 14, 27]; // начала колонок таблицы, в буквах
+// Над названием — строка выбора языка «< ENGLISH · РУССКИЙ >».
+const LANG_ROW = `< ${LANGS.map(l => LANG_NAMES[l]).join(' · ')} >`;
 
 export function drawTitle(b: Pick<GlyphBatch, 'push' | 'text'>, time: number): void {
   const txt = str(), f = TITLE_BOX, mid = (f.x0 + f.x1 + 1) / 2, left = f.x0 + 2;
   const centered = (y: number, s: string, c: Color, step = STEP) => b.text(mid - (s.length * step) / 2, y, s, c, step);
   drawFrame(b, PAL.hudDim, f);
-  centered(f.y0 + 2, txt.titleName, PAL.item, 1);
+  // Выбранный язык — цветом названия, остальное тускло; куски строки идут подряд.
+  let x = mid - (LANG_ROW.length * STEP) / 2;
+  const part = (p: string, c: Color) => {
+    b.text(x, f.y0 + 1, p, c, STEP);
+    x += p.length * STEP;
+  };
+  part('< ', PAL.hudDim);
+  LANGS.forEach((l, i) => {
+    if (i) part(' · ', PAL.hudDim);
+    part(LANG_NAMES[l], l === lang() ? PAL.item : PAL.hudDim);
+  });
+  part(' >', PAL.hudDim);
+  centered(f.y0 + 3, txt.titleName, PAL.item, 1);
   centered(f.y0 + 4, txt.titleTask, PAL.hud);
   txt.titleKeys.forEach((row, i) => row.forEach((cell, j) => {
     if (cell) b.text(left + KEY_COLS[j] * STEP, f.y0 + 6 + i, cell, i === 0 || j === 0 ? PAL.hudDim : PAL.hud, STEP);

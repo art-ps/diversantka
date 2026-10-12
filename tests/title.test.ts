@@ -1,6 +1,7 @@
-import { expect, it } from 'vitest';
+import { afterEach, expect, it } from 'vitest';
 import { DT, MISSION, PROLOGUE } from '../src/config';
 import { createPrologue, stepGame, type Game } from '../src/game';
+import { setLang } from '../src/i18n';
 import { fromGamepad, IDLE, IntentTracker, type Intent, type PadSnapshot } from '../src/input/intent';
 import { CLIPS } from '../src/anim/clips';
 import { gliderGlyphs, hangPose } from '../src/render/glider';
@@ -14,9 +15,11 @@ const run = (g: Game, it: Intent, n: number, until: () => boolean = () => false)
   for (let i = 0; i < n && !until(); i++) stepGame(g, it, DT);
 };
 const title = () => createPrologue(loadRoomsFs(), true);
+afterEach(() => setLang('ru')); // влево/вправо на стартовом экране меняют язык — вернуть русский
+
 const pad = (pressed: number[]): PadSnapshot => ({ axes: [0, 0], buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: pressed.includes(i) })) });
 
-it('стартовый экран: дельтаплан стоит, таймер стоит, паузы нет; любые кнопки, кроме прыжка, ничего не делают', () => {
+it('стартовый экран: дельтаплан стоит, таймер стоит, паузы нет; кнопки, кроме прыжка, ничего не двигают (влево/вправо — только язык)', () => {
   const g = title();
   expect(g.roomId).toBe('sea-1');
   expect(g.prologue).toEqual({ d: PROLOGUE.startD, phase: 'title', t: 0 });
