@@ -1,5 +1,5 @@
 id: shaft-bot
-exits: left=garage-1 right=- up=shaft-2 down=-
+exits: left=tunnel-1 right=- up=shaft-2 down=-
 enemies: android@8,22 patrol=4..12
 ---
 ##########################...###########

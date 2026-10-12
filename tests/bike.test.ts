@@ -8,6 +8,7 @@ import { drawFenceParts } from '../src/render/scene';
 import { drawOutro, OUTRO_ROAD, outroBikeX, outroSmoke } from '../src/render/screens';
 import { createGame } from '../src/game';
 import { tileAt } from '../src/world/room';
+import { parseFence } from '../src/world/spawns';
 import { loadRoomsFs } from './helpers';
 
 const crouch = CLIPS.get('crouch')!.frames;
@@ -103,9 +104,10 @@ describe('сцена выезда', () => {
   });
 });
 
-it('гараж: мотоцикл стоит на полу, не в стене, лестнице и заборе', () => {
+it('гараж: мотоцикл стоит на полу, не в стене и не на лестнице; забор — во дворе, в проёме ворот', () => {
   const rooms = loadRoomsFs();
   const g = createGame(rooms, { room: 'garage-1', x: 4, bottom: 22 });
+  expect(g.fence).toBeNull();
   const out: { x: number; y: number; s: number }[] = [];
   drawFenceParts({ push: (x, y, _ch, _c, s = 1) => { out.push({ x: x + 0.5, y: y + 0.5, s }); } }, { ...g, fence: null, panel: null }, 0, 0, 0);
   const room = rooms.get('garage-1')!;
@@ -113,6 +115,12 @@ it('гараж: мотоцикл стоит на полу, не в стене, �
   for (const p of out) {
     expect(tileAt(room, Math.floor(p.x), Math.floor(p.y)), `${p.x},${p.y}`).toBe('.');
     expect(p.y + p.s / 2).toBeLessThanOrEqual(g.bike!.bottom + E);
-    expect(p.x + p.s / 2).toBeLessThan(g.fence!.x);
   }
+  const yard = rooms.get('yard')!;
+  const fence = parseFence(yard.meta.fence, 'yard')!;
+  for (let r = fence.top; r <= fence.bottom; r++) {
+    expect(tileAt(yard, fence.x, r), `забор ${r}`).toBe('.');
+    expect(tileAt(yard, 0, r), `ворота ${r}`).toBe('.');
+  }
+  expect(tileAt(yard, fence.x, fence.bottom + 1)).toBe('#');
 });

@@ -1,9 +1,8 @@
 id: garage-1
-exits: left=- right=shaft-bot up=- down=-
+exits: left=yard right=tunnel-1 up=- down=-
 bike: 20,22
 items: wrench@6.5,20
 enemies: android@29,22 patrol=25..33
-fence: 38,17..21
 ---
 ########################################
 ########################################

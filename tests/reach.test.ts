@@ -35,12 +35,13 @@ it('с крыши достижима каждая комната, кроме с�
 });
 
 // Односторонние спуски (трещины леса, провал острова, уступы двора) не запирают: отовсюду есть путь на крышу.
-it('тупиков нет: из секретной, котельной, леса, воды, с камней и из гаража есть путь на крышу', () => {
+it('тупиков нет: из секретной, котельной, леса, грота, воды, двора и с камней есть путь на крышу', () => {
   const rooms = loadRoomsFs();
   const from = [
     { room: 'secret-1', x: 15, bottom: 22 }, { room: 'boiler', x: 4, bottom: 22 }, { room: 'slope-1', x: 33, bottom: 22 },
     { room: 'forest-2', x: 20, bottom: 22 }, { room: 'cave-in', x: 20, bottom: 22 }, { room: 'river-3', x: 20, bottom: 22 },
-    { room: 'river-2', x: 9.5, bottom: 22 }, { room: 'river-1', x: 16, bottom: 22 }, { room: 'garage-1', x: 30, bottom: 22 },
+    { room: 'river-3', x: 3, bottom: 22 }, { room: 'yard', x: 30, bottom: 22 }, { room: 'river-2', x: 9.5, bottom: 22 },
+    { room: 'river-1', x: 16, bottom: 22 },
   ];
   for (const s of from) expect(roomsReached(rooms, [s]).has('roof-1'), `${s.room} ${s.x},${s.bottom}`).toBe(true);
 }, 20_000);

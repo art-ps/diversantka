@@ -40,6 +40,7 @@ const ROOMS = [
   'arch-1', 'boiler', 'cave-1', 'cave-2', 'cave-3', 'cave-in', 'corr-1', 'evm-1', 'evm-2', 'forest-1', 'forest-2', 'forest-3',
   'garage-1', 'hall-1', 'lab-1', 'lab-2', 'lab-3', 'office', 'power-1', 'river-1', 'river-2', 'river-3', 'roof-1', 'roof-2',
   'roof-3', 'sea-1', 'sea-2', 'secret-1', 'shaft-1', 'shaft-2', 'shaft-bot', 'shaft-top', 'slope-1', 'store-1', 'store-2', 'store-3',
+  'tunnel-1', 'yard',
 ];
 
 

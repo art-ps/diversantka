@@ -229,3 +229,74 @@ it('forest-2: колючки бьют', () => {
   run(g, { moveX: -1 }, 30);
   expect(g.nina.energy).toBeLessThan(NINA.energyMax);
 });
+
+// ---- двор, гараж, тоннель ----
+
+it('с острова в провал: грот, жёлоб во двор, уступами вниз — без урона; к гаражу', () => {
+  const g = at('river-3', 6, 14);
+  goUntil(g, -1, onFloor(g, 22));
+  expect(g.roomId).toBe('river-3'); // грот под островом
+  goUntil(g, 1, inRoom(g, 'yard'));
+  expect(bottomOf(g)).toBeCloseTo(5);
+  goUntil(g, 1, onFloor(g, 22));
+  goUntil(g, 1, inRoom(g, 'garage-1'));
+  expect(g.roomId).toBe('garage-1');
+  expect(g.nina.energy).toBe(NINA.energyMax);
+});
+
+it('из грота и со двора наверх не подняться — путь назад только через гараж и лифт', () => {
+  const rooms = loadRoomsFs();
+  const top = rooms.get('shaft-top')!;
+  const { lift: _, ...meta } = top.meta;
+  rooms.set('shaft-top', { ...top, meta });
+  for (const s of [{ room: 'river-3', x: 3, bottom: 22 }, { room: 'yard', x: 30, bottom: 22 }]) {
+    const d = targetDamage(rooms, [s]);
+    expect([...d.keys()], s.room).toEqual(['гараж']);
+  }
+});
+
+it('tunnel-1: огнемёт на трубе бьёт; в паузу проходится без урона', () => {
+  const burn = at('tunnel-1', 12, 22, true);
+  burn.flamers[0].t = FLAMER.off + 0.01; // сразу огонь
+  run(burn, { moveX: 1 }, 30);
+  expect(burn.nina.energy).toBeLessThan(NINA.energyMax);
+  const g = at('tunnel-1', 12, 22, true);
+  const f = g.flamers[0];
+  run(g, {}, 400, () => flamerPhase(f) === 'off' && f.t < 0.05);
+  goUntil(g, 1, inRoom(g, 'shaft-bot'));
+  expect(g.nina.energy).toBe(NINA.energyMax);
+  const back = at('shaft-bot', 3, 22, true);
+  goUntil(back, -1, inRoom(back, 'tunnel-1'));
+  walkTo(back, 28);
+  const b = back.flamers[0];
+  run(back, {}, 400, () => flamerPhase(b) === 'off' && b.t < 0.05);
+  goUntil(back, -1, inRoom(back, 'garage-1'));
+  expect(back.nina.energy).toBe(NINA.energyMax);
+});
+
+it('garage-1: на верстак — прыжком, ключ на верстаке', () => {
+  const g = at('garage-1', 3, 22);
+  run(g, { moveX: 1 }, 60);
+  expect(cx(g)).toBeLessThan(5);
+  walkTo(g, 3);
+  jump(g, 1, 12);
+  expect(bottomOf(g)).toBeCloseTo(20);
+  walkTo(g, 6.5);
+  stepGame(g, I({ throwPressed: true }), DT);
+  expect(g.nina.held).toBe('wrench');
+});
+
+it('мотоцикл в гараже, забор во дворе: под током не едет, после щитка — выезд', () => {
+  const g = at('garage-1', 20, 22);
+  expect(g.fence).toBeNull();
+  enterRoom(g, 'yard');
+  expect(g.fence).toEqual({ x: 1, top: 17, bottom: 21 });
+  enterRoom(g, 'garage-1');
+  stepGame(g, I({ usePressed: true }), DT);
+  expect(g.mission.result).toBeNull();
+  g.mission.tapesIn = true;
+  g.mission.fenceOff = true;
+  run(g, {}, 5);
+  stepGame(g, I({ usePressed: true }), DT);
+  expect(g.mission.result).toBe('won');
+});
