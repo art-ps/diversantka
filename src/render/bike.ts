@@ -4,7 +4,7 @@ import { figureGlyphs, type Glyph } from './figure';
 import type { Color, GlyphBatch } from './glyphs';
 import { PAL } from './palette';
 
-// Дорожный мотоцикл 80-х (ИЖ/Ява), вид сбоку, фара справа. Символ — полклетки:
+// Дорожный мотоцикл 80-х (ИЖ/Ява), вид сбоку; рисунок — фарой вправо, dir −1 — зеркально. Символ — полклетки:
 // строка — 0.5 клетки по Y, шаг по X — STEP (буквы уже клетки, как в тексте). Ступицы — спицы.
 export const BIKE_ART = [
   '            ___   ',
@@ -22,6 +22,11 @@ export const BIKE_H = BIKE_ART.length / 2; // 3 клетки
 const HUBS = [[4, 2], [4, 15]];
 const SPOKES = '-\\|/'; // поворот по часовой стрелке на экране — колесо катится вправо
 const WHEEL: Color = [PAL.item[0] * 0.7, PAL.item[1] * 0.7, PAL.item[2] * 0.7, PAL.item[3]];
+// Мотоцикл смотрит влево — к двору и воротам: в гараже и в сцене выезда.
+export const BIKE_DIR = -1 as const;
+// Зеркальная пара символа; остальные симметричны.
+const MIRROR: Record<string, string> = { '/': '\\', '\\': '/', '<': '>', '>': '<', '(': ')', ')': '(' };
+const flip = (ch: string, dir: 1 | -1) => (dir < 0 ? MIRROR[ch] ?? ch : ch);
 
 const isWheel = (r: number, c: number) => r >= 4 && (c <= 4 || c >= COLS - 5);
 // Центр символа (r, c); x — центр мотоцикла, bottom — верх пола под колёсами.
@@ -39,21 +44,22 @@ export function spokeGlyph(dist: number): string {
   return SPOKES[((k % 4) + 4) % 4];
 }
 
-export function bikeGlyphs(x: number, bottom: number, dist: number): Glyph[] {
+// dir 1 — фарой вправо, −1 — зеркально, фарой влево (спицы тоже зеркальны — колесо катится влево).
+export function bikeGlyphs(x: number, bottom: number, dist: number, dir: 1 | -1 = 1): Glyph[] {
   const spoke = spokeGlyph(dist);
   const out: Glyph[] = [];
   BIKE_ART.forEach((row, r) => {
     [...row].forEach((c0, c) => {
       const ch = HUBS.some(([hr, hc]) => hr === r && hc === c) ? spoke : c0;
       if (ch === ' ') return;
-      out.push({ x: colX(x, c), y: rowY(bottom, r), ch, color: isWheel(r, c) ? WHEEL : PAL.item, size: 0.5 });
+      out.push({ x: x + dir * colX(0, c), y: rowY(bottom, r), ch: flip(ch, dir), color: isWheel(r, c) ? WHEEL : PAL.item, size: 0.5 });
     });
   });
   return out;
 }
 
-export function drawBike(b: Pick<GlyphBatch, 'push'>, x: number, bottom: number, dist: number): void {
-  for (const g of bikeGlyphs(x, bottom, dist)) b.push(g.x - 0.5, g.y - 0.5, g.ch, g.color, g.size);
+export function drawBike(b: Pick<GlyphBatch, 'push'>, x: number, bottom: number, dist: number, dir: 1 | -1 = 1): void {
+  for (const g of bikeGlyphs(x, bottom, dist, dir)) b.push(g.x - 0.5, g.y - 0.5, g.ch, g.color, g.size);
 }
 
 // Нина в седле: последняя поза приседа, таз на сиденье, кисти на руле, локти чуть вверх.
@@ -70,8 +76,8 @@ export function ridePose(crouch: Pose): Pose {
   return p;
 }
 
-// Нина на мотоцикле в точке (x, bottom); pose — из ridePose.
-export function riderGlyphs(x: number, bottom: number, pose: Pose): Glyph[] {
+// Нина на мотоцикле в точке (x, bottom); pose — из ridePose; dir — как у мотоцикла.
+export function riderGlyphs(x: number, bottom: number, pose: Pose, dir: 1 | -1 = 1): Glyph[] {
   const px = pose[2 * J.pelvis], py = pose[2 * J.pelvis + 1];
-  return figureGlyphs(pose, x + BIKE_SEAT.dx - px, bottom + BIKE_SEAT.dy + py, 1, PAL.nina);
+  return figureGlyphs(pose, x + dir * (BIKE_SEAT.dx - px), bottom + BIKE_SEAT.dy + py, dir, PAL.nina);
 }

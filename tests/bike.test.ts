@@ -3,7 +3,7 @@ import { CLIPS } from '../src/anim/clips';
 import { J } from '../src/anim/clip';
 import { BIKE, MISSION } from '../src/config';
 import { CHARSET } from '../src/render/atlas';
-import { BIKE_ART, BIKE_BAR, BIKE_H, BIKE_SEAT, BIKE_W, bikeGlyphs, ridePose, riderGlyphs, spokeGlyph } from '../src/render/bike';
+import { BIKE_ART, BIKE_BAR, BIKE_DIR, BIKE_H, BIKE_SEAT, BIKE_W, bikeGlyphs, ridePose, riderGlyphs, spokeGlyph } from '../src/render/bike';
 import { drawFenceParts } from '../src/render/scene';
 import { drawOutro, OUTRO_ROAD, outroBikeX, outroSmoke } from '../src/render/screens';
 import { createGame } from '../src/game';
@@ -43,6 +43,22 @@ describe('рисунок мотоцикла', () => {
     expect(new Set([0, 0.6, 1.2, 1.8].map(spokeGlyph)).size).toBe(4);
   });
 
+  it('зеркальный (dir −1): отражение рисунка вокруг x, фара слева, колёса на полу, символы из атласа', () => {
+    expect(BIKE_DIR).toBe(-1); // к двору и воротам
+    const MIR: Record<string, string> = { '/': '\\', '\\': '/', '<': '>', '>': '<', '(': ')', ')': '(' };
+    const right = bikeGlyphs(10, 20, 0.7, 1), left = bikeGlyphs(10, 20, 0.7, -1);
+    expect(left).toHaveLength(right.length);
+    left.forEach((g, i) => {
+      expect(g.x - 10).toBeCloseTo(10 - right[i].x);
+      expect(g.y).toBeCloseTo(right[i].y);
+      expect(g.ch).toBe(MIR[right[i].ch] ?? right[i].ch);
+      expect(CHARSET).toContain(g.ch);
+      expect(g.y + g.size / 2).toBeLessThanOrEqual(20 + E);
+    });
+    expect(Math.max(...left.map(g => g.y + g.size / 2))).toBeCloseTo(20);
+    expect(left.find(g => g.ch === '>')!.x).toBeLessThan(10); // фара — впереди, слева
+  });
+
   it('колёса тусклее рамы', () => {
     const gs = bikeGlyphs(10, 20, 0);
     const lowest = gs.filter(g => g.y > 19.5);
@@ -67,6 +83,18 @@ describe('Нина в седле', () => {
     expect(head.x).toBeGreaterThan(10 + BIKE_SEAT.dx); // наклонилась вперёд, к рулю
     expect(head.y).toBeLessThan(20 - BIKE_H);
   });
+
+  it('зеркально (dir −1): та же посадка, отражённая вокруг x — таз на сиденье, голова к рулю слева', () => {
+    const right = riderGlyphs(10, 20, RIDER, 1), left = riderGlyphs(10, 20, RIDER, -1);
+    const key = (gs: { x: number; y: number }[], m: 1 | -1) => gs.map(g => `${(m * (g.x - 10)).toFixed(4)},${g.y.toFixed(4)}`).sort();
+    expect(key(left, -1)).toEqual(key(right, 1));
+    for (const g of left) {
+      expect(CHARSET).toContain(g.ch);
+      expect(g.y + g.size / 2).toBeLessThanOrEqual(20 + E);
+    }
+    const head = left.find(g => g.ch === 'O')!;
+    expect(head.x).toBeLessThan(10 - BIKE_SEAT.dx);
+  });
 });
 
 describe('сцена выезда', () => {
@@ -80,8 +108,9 @@ describe('сцена выезда', () => {
   it('Нина едет вместе с мотоциклом: голова над сиденьем при любом t', () => {
     for (const t of [0, 0.5, 1.5, 2.5]) {
       const head = shot(t).find(p => p.ch === 'O')!;
-      const lamp = shot(t).find(p => p.ch === '<')!;
-      expect(lamp.x - head.x, `t=${t}`).toBeCloseTo(shot(0).find(p => p.ch === '<')!.x - shot(0).find(p => p.ch === 'O')!.x);
+      const lamp = shot(t).find(p => p.ch === '>')!;
+      expect(lamp.x, `t=${t}`).toBeLessThan(head.x); // едет влево — фара впереди, слева
+      expect(lamp.x - head.x, `t=${t}`).toBeCloseTo(shot(0).find(p => p.ch === '>')!.x - shot(0).find(p => p.ch === 'O')!.x);
       expect(head.x - outroBikeX(t), `t=${t}`).toBeCloseTo(shot(0).find(p => p.ch === 'O')!.x - outroBikeX(0));
     }
   });
@@ -100,27 +129,31 @@ describe('сцена выезда', () => {
       expect(g.color[3]).toBeGreaterThan(0);
     }
     expect(s.length).toBeLessThanOrEqual(Math.ceil(BIKE.smokeLife / BIKE.smokeEvery) + 1);
-    expect(outroBikeX(MISSION.outroTime)).toBeGreaterThan(40 + BIKE_W / 2);
+    expect(outroBikeX(1)).toBeLessThan(outroBikeX(0));
+    expect(outroBikeX(MISSION.outroTime)).toBeLessThan(-BIKE_W / 2); // ушёл за левый край
+    for (const g of s) expect(g.x).toBeGreaterThan(outroBikeX(1) - BIKE_W / 2); // дым — позади, справа от мотоцикла
   });
 });
 
-it('гараж: мотоцикл стоит на полу, не в стене и не на лестнице; забор — во дворе, в проёме ворот', () => {
+it('гараж: мотоцикл стоит на полу фарой к двору, не в стене; забор — во дворе, за ним стена', () => {
   const rooms = loadRoomsFs();
   const g = createGame(rooms, { room: 'garage-1', x: 4, bottom: 22 });
   expect(g.fence).toBeNull();
-  const out: { x: number; y: number; s: number }[] = [];
-  drawFenceParts({ push: (x, y, _ch, _c, s = 1) => { out.push({ x: x + 0.5, y: y + 0.5, s }); } }, { ...g, fence: null, panel: null }, 0, 0, 0);
+  const out: { x: number; y: number; s: number; ch: string }[] = [];
+  drawFenceParts({ push: (x, y, ch, _c, s = 1) => { out.push({ x: x + 0.5, y: y + 0.5, s, ch }); } }, { ...g, fence: null, panel: null }, 0, 0, 0);
   const room = rooms.get('garage-1')!;
   expect(out.length).toBe(bikeGlyphs(0, 0, 0).length);
   for (const p of out) {
     expect(tileAt(room, Math.floor(p.x), Math.floor(p.y)), `${p.x},${p.y}`).toBe('.');
     expect(p.y + p.s / 2).toBeLessThanOrEqual(g.bike!.bottom + E);
   }
+  expect(out.find(p => p.ch === '>')!.x).toBeLessThan(g.bike!.x); // фара — к левому выходу, во двор
+  expect(out.some(p => p.ch === '<')).toBe(false);
   const yard = rooms.get('yard')!;
   const fence = parseFence(yard.meta.fence, 'yard')!;
   for (let r = fence.top; r <= fence.bottom; r++) {
     expect(tileAt(yard, fence.x, r), `забор ${r}`).toBe('.');
-    expect(tileAt(yard, 0, r), `ворота ${r}`).toBe('.');
+    expect(tileAt(yard, 0, r), `стена за забором ${r}`).toBe('#');
   }
   expect(tileAt(yard, fence.x, fence.bottom + 1)).toBe('#');
 });

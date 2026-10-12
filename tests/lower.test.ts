@@ -1,9 +1,9 @@
 import { expect, it } from 'vitest';
-import { DT, FLAMER, NINA } from '../src/config';
+import { DT, FLAMER, MISSION, NINA } from '../src/config';
 import { createGame, enterRoom, stepGame, type Game } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
 import { flamerPhase } from '../src/sim/flamer';
-import type { Room } from '../src/world/room';
+import { tileAt, type Room } from '../src/world/room';
 import { loadRoomsFs } from './helpers';
 import { reachableNodes, targetDamage, unreachable } from './reach';
 
@@ -274,16 +274,35 @@ it('tunnel-1: огнемёт на трубе бьёт; в паузу прохо�
   expect(back.nina.energy).toBe(NINA.energyMax);
 });
 
-it('garage-1: на верстак — прыжком, ключ на верстаке', () => {
+it('garage-1: перед мотоциклом ровный пол; ключ на полу, дальше useRange от мотоцикла — подобрать', () => {
   const g = at('garage-1', 3, 22);
-  run(g, { moveX: 1 }, 60);
-  expect(cx(g)).toBeLessThan(5);
-  walkTo(g, 3);
-  jump(g, 1, 12);
-  expect(bottomOf(g)).toBeCloseTo(20);
+  const room = g.rooms.get('garage-1')!;
+  for (const r of [20, 21]) for (let c = 0; c < 40; c++) expect(tileAt(room, c, r), `${c},${r}`).toBe('.');
+  const wrench = g.items.find(i => i.kind === 'wrench')!;
+  expect(wrench).toMatchObject({ x: 6.5, bottom: 22 });
+  expect(Math.abs(wrench.x - g.bike!.x)).toBeGreaterThan(MISSION.useRange);
   walkTo(g, 6.5);
+  expect(bottomOf(g)).toBeCloseTo(22);
   stepGame(g, I({ throwPressed: true }), DT);
   expect(g.nina.held).toBe('wrench');
+});
+
+it('двор: за забор под током не выйти — слева стена, и с пола, и с площадки над забором', () => {
+  const fence = { x: 1, top: 17, bottom: 21 };
+  const g = at('yard', 10, 22);
+  expect(g.fence).toEqual(fence);
+  run(g, { moveX: -1 }, 300);
+  expect(g.roomId).toBe('yard');
+  expect(g.nina.body.x).toBeGreaterThanOrEqual(fence.x - 1e-6); // не левее забора
+  expect(g.nina.body.x).toBeLessThan(fence.x + 0.5); // дошла до него и упёрлась
+  const top = at('yard', 2.5, 16); // площадка «=» над забором
+  expect(bottomOf(top)).toBeCloseTo(16);
+  run(top, { moveX: -1 }, 120);
+  stepGame(top, I({ moveX: -1, jump: true, jumpPressed: true }), DT);
+  run(top, { moveX: -1, jump: true }, 40);
+  run(top, { moveX: -1 }, 120);
+  expect(top.roomId).toBe('yard');
+  expect(top.nina.body.x).toBeGreaterThanOrEqual(fence.x - 1e-6);
 });
 
 it('мотоцикл в гараже, забор во дворе: под током не едет, после щитка — выезд', () => {

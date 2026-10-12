@@ -105,13 +105,13 @@ describe('экраны конца', () => {
     return g;
   };
 
-  it('выезд: мотоцикл едет вправо', () => {
+  it('выезд: мотоцикл едет влево — от ворот гаража по дороге', () => {
     const g = won();
     const bikeX = () => Math.min(...texts(g).at.filter(p => p.ch === 'o').map(p => p.x));
     wait(g, 0.5);
     const x0 = bikeX();
     wait(g, 1.5);
-    expect(bikeX()).toBeGreaterThan(x0);
+    expect(bikeX()).toBeLessThan(x0);
   });
 
   it('итог: заголовок, время, ленты, удары, источник, строка; символы — из атласа', () => {

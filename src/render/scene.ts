@@ -18,7 +18,7 @@ import { particleAlpha, type Particle } from '../sim/particles';
 import type { Rect } from '../sim/rect';
 import type { Room } from '../world/room';
 import type { Point, TerminalSpawn } from '../world/spawns';
-import { drawBike, ridePose } from './bike';
+import { BIKE_DIR, drawBike, ridePose } from './bike';
 import { drawFigure } from './figure';
 import { drawGlider, hangPose } from './glider';
 import { drawMap } from './map';
@@ -128,7 +128,7 @@ export function drawTerminals(b: Pick<GlyphBatch, 'push'>, ts: TerminalSpawn[], 
 export function drawFenceParts(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number, time: number): void {
   const on = !g.mission.fenceOff;
   if (g.panel) b.push(g.panel.x - 0.5 + ox, g.panel.bottom - 2.5 + oy, '▓', on ? PAL.danger : PAL.hud);
-  if (g.bike) drawBike(b, g.bike.x + ox, g.bike.bottom + oy, 0);
+  if (g.bike) drawBike(b, g.bike.x + ox, g.bike.bottom + oy, 0, BIKE_DIR);
   if (g.fence) {
     for (let y = g.fence.top; y <= g.fence.bottom; y++) {
       const flick = on && Math.floor(time * 15 + y * 7) % 3 === 0;
