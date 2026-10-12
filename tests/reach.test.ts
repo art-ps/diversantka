@@ -21,7 +21,7 @@ it('приёмка №3: с крыши и со склона достижимы 6
   const rooms = loadRoomsFs();
   expect(missionTargets(rooms).map(t => t.what).sort()).toEqual([
     'ЭВМ', 'гараж', 'источник',
-    'лента arch-1#t0', 'лента cave-3#t0', 'лента garage-1#t0', 'лента lab-3#t0', 'лента roof-3#t0', 'лента store-3#t0',
+    'лента arch-1#t0', 'лента cave-3#t0', 'лента lab-3#t0', 'лента river-3#t0', 'лента roof-3#t0', 'лента store-3#t0',
     'щиток',
   ]);
   for (const s of LANDINGS) expect(unreachable(rooms, [s]), s.room).toEqual([]);
@@ -33,11 +33,12 @@ it('с крыши достижима каждая комната корпуса'
   expect([...roomsReached(rooms, [LANDINGS[0]])].sort()).toEqual(all);
 });
 
-it('тупиков нет: из секретной, котельной, пещер и гаража есть путь назад на крышу', () => {
+it('тупиков нет: из секретной, котельной, пещер, воды, с камней и из гаража есть путь на крышу', () => {
   const rooms = loadRoomsFs();
   const from = [
     { room: 'secret-1', x: 15, bottom: 22 }, { room: 'boiler', x: 4, bottom: 22 }, { room: 'cave-3', x: 30, bottom: 22 },
-    { room: 'garage-1', x: 30, bottom: 22 }, { room: 'shaft-2', x: 10, bottom: 22 },
+    { room: 'river-3', x: 20, bottom: 22 }, { room: 'river-2', x: 9.5, bottom: 22 }, { room: 'river-1', x: 16, bottom: 22 },
+    { room: 'garage-1', x: 30, bottom: 22 },
   ];
   for (const s of from) expect(roomsReached(rooms, [s]).has('roof-1'), `${s.room} ${s.x},${s.bottom}`).toBe(true);
 }, 20_000);
@@ -47,7 +48,7 @@ it('без лифта shaft-top низ с крыши недостижим', () =
   const top = rooms.get('shaft-top')!;
   const { lift: _, ...meta } = top.meta;
   rooms.set('shaft-top', { ...top, meta });
-  expect(unreachable(rooms, [LANDINGS[0]]).sort()).toEqual(['гараж', 'лента cave-3#t0', 'лента garage-1#t0']);
+  expect(unreachable(rooms, [LANDINGS[0]]).sort()).toEqual(['гараж', 'лента cave-3#t0', 'лента river-3#t0']);
 });
 
 it('фальш-пол и фальш-стена S проходимы, стена # — нет: заложены оба входа — источник недостижим', () => {

@@ -111,3 +111,77 @@ it('без нижних ступеней лента cave-3 недостижим�
   rooms.set('cave-3', patch(rooms.get('cave-3')!, cells));
   expect(unreachable(rooms, LANDINGS)).toEqual(['лента cave-3#t0']);
 });
+
+// ---- река ----
+
+it('cave-3 ↔ river-3 и cave-2 ↔ river-2 по лестницам, без урона', () => {
+  for (const [top, x, low, b] of [['cave-3', 34.5, 'river-3', 14], ['cave-2', 19.5, 'river-2', 17]] as const) {
+    const g = at(top, x, 22);
+    climbUntil(g, 'down', () => g.roomId === low && g.nina.state === 'ground');
+    expect(g.roomId, top).toBe(low);
+    expect(bottomOf(g), top).toBeCloseTo(b);
+    climbUntil(g, 'up', () => g.roomId === top && g.nina.state === 'ground');
+    expect(g.roomId, low).toBe(top);
+    expect(bottomOf(g), low).toBeCloseTo(22);
+    expect(g.nina.energy, top).toBe(NINA.energyMax);
+  }
+});
+
+it('river-3: брод на остров неизбежен и стоит 20–30 энергии; лента на острове', () => {
+  const g = at('river-3', 31.5, 14);
+  run(g, { moveX: -1 }, 120, () => bottomOf(g) > 21.9 && g.nina.state === 'ground');
+  walkTo(g, 10.5);
+  climbUntil(g, 'up', () => g.nina.state === 'ground' && bottomOf(g) < 14.1);
+  expect(bottomOf(g)).toBeCloseTo(14);
+  const lost = NINA.energyMax - g.nina.energy;
+  expect(lost).toBeGreaterThan(20);
+  expect(lost).toBeLessThan(30);
+  walkTo(g, 6);
+  expect(g.mission.tapes.has('river-3#t0')).toBe(true);
+});
+
+it('river-3: с берега протоку не перепрыгнуть; из воды — по лестницам на оба берега', () => {
+  const j = at('river-3', 31.5, 14);
+  jump(j, -1, 40);
+  expect(bottomOf(j)).toBeCloseTo(22); // в воде
+  for (const [L, side] of [[31.5, 'берег'], [10.5, 'остров']] as const) {
+    const g = at('river-3', 20, 22);
+    walkTo(g, L);
+    climbUntil(g, 'up', () => g.nina.state === 'ground' && bottomOf(g) < 14.1);
+    expect(bottomOf(g), side).toBeCloseTo(14);
+  }
+});
+
+it('модель: брод стоит не меньше настоящего; без лестницы на остров лента недостижима', () => {
+  const rooms = loadRoomsFs();
+  const bank = [{ room: 'river-3', x: 33, bottom: 14 }];
+  const d = targetDamage(rooms, bank).get('лента river-3#t0')!;
+  expect(d).toBeGreaterThan(20);
+  expect(d).toBeLessThan(NINA.energyMax / 2);
+  const cells: [number, number, string][] = [[10, 14, '.']];
+  for (let r = 15; r <= 21; r++) cells.push([10, r, '~']);
+  rooms.set('river-3', patch(rooms.get('river-3')!, cells));
+  expect(unreachable(rooms, LANDINGS)).toEqual(['лента river-3#t0']);
+});
+
+it('по камням: shaft-2 → river-1 → river-2 → river-3 сухой ногой', () => {
+  const g = at('shaft-2', 20, 22);
+  goUntil(g, -1, inRoom(g, 'river-1'));
+  walkTo(g, 34);
+  hop(g, -1, 0.6); // на уступ
+  expect(bottomOf(g)).toBeCloseTo(20);
+  for (const c of [31, 25, 19, 13, 7]) {
+    walkTo(g, c);
+    hop(g, -1, 0.8);
+    expect(bottomOf(g), `river-1 с ${c}`).toBeCloseTo(19);
+  }
+  goUntil(g, -1, inRoom(g, 'river-2'));
+  for (const [c, mx, b] of [[37, 1, 19], [31, 1, 19], [25, 1, 17], [19, 0.7, 19], [13, 1, 17], [7, 1, 14]] as const) {
+    walkTo(g, c);
+    hop(g, -1, mx);
+    expect(bottomOf(g), `river-2 с ${c}`).toBeCloseTo(b);
+  }
+  goUntil(g, -1, inRoom(g, 'river-3'));
+  expect(bottomOf(g)).toBeCloseTo(14);
+  expect(g.nina.energy).toBe(NINA.energyMax);
+});

@@ -1,5 +1,5 @@
 id: cave-2
-exits: left=cave-3 right=cave-1 up=- down=-
+exits: left=cave-3 right=cave-1 up=- down=river-2
 ---
 ########################################
 ########################################

@@ -21,7 +21,8 @@ it('раскладка карты по выходам: соседи — в со�
     'store-1': [0, 2], 'store-2': [1, 2], 'store-3': [2, 2], 'evm-2': [3, 2],
     'secret-1': [1, 3], 'power-1': [2, 3], 'shaft-top': [3, 3], boiler: [4, 3],
     'cave-3': [0, 4], 'cave-2': [1, 4], 'cave-1': [2, 4], 'shaft-1': [3, 4],
-    'shaft-2': [3, 5], 'garage-1': [2, 6], 'shaft-bot': [3, 6],
+    'river-3': [0, 5], 'river-2': [1, 5], 'river-1': [2, 5], 'shaft-2': [3, 5],
+    'garage-1': [2, 6], 'shaft-bot': [3, 6],
   });
 });
 
@@ -49,7 +50,8 @@ it('значки: терминал, главная ЭВМ, щиток, гара�
   expect(mapIcons(rooms.get('arch-1')!, none)).toEqual(['tape']);
   expect(mapIcons(rooms.get('arch-1')!, new Set(['arch-1#t0']))).toEqual([]);
   expect(mapIcons(rooms.get('power-1')!, none)).toEqual(['switch']);
-  expect(mapIcons(rooms.get('garage-1')!, none)).toEqual(['bike', 'tape']);
+  expect(mapIcons(rooms.get('garage-1')!, none)).toEqual(['bike']);
+  expect(mapIcons(rooms.get('river-3')!, none)).toEqual(['tape']);
   expect(mapIcons(rooms.get('secret-1')!, none)).toEqual([]);
 });
 

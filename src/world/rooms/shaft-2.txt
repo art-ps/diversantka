@@ -1,5 +1,5 @@
 id: shaft-2
-exits: left=- right=- up=shaft-1 down=shaft-bot
+exits: left=river-1 right=- up=shaft-1 down=shaft-bot
 ---
 ##########################...###########
 ##########################...###########
