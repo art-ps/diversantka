@@ -11,7 +11,7 @@ import { loadRoomsFs, roomOf } from './helpers';
 
 const R = (id: string, exits: Room['exits']): Room => ({ ...roomOf({}, exits), id });
 
-it('раскладка корпуса по выходам: соседи — в соседних клетках, пролог без выходов не попадает', () => {
+it('раскладка карты по выходам: соседи — в соседних клетках, пролог без выходов не попадает', () => {
   const { pos, conflicts } = layoutMap(loadRoomsFs(), 'lab-1');
   expect(conflicts).toEqual([]);
   expect(Object.fromEntries([...pos].map(([id, c]) => [id, [c.x, c.y]]))).toEqual({
@@ -20,7 +20,7 @@ it('раскладка корпуса по выходам: соседи — в �
     'arch-1': [0, 1], office: [1, 1], 'corr-1': [2, 1], 'evm-1': [3, 1],
     'store-1': [0, 2], 'store-2': [1, 2], 'store-3': [2, 2], 'evm-2': [3, 2],
     'secret-1': [1, 3], 'power-1': [2, 3], 'shaft-top': [3, 3], boiler: [4, 3],
-    'cave-1': [3, 4], 'garage-1': [3, 5],
+    'cave-1': [2, 4], 'shaft-1': [3, 4], 'shaft-2': [3, 5], 'garage-1': [2, 6], 'shaft-bot': [3, 6],
   });
 });
 

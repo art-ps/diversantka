@@ -17,6 +17,7 @@ const run = (g: Game, p: Partial<Intent>, n: number, until: () => boolean = () =
   for (let i = 0; i < n && !until(); i++) stepGame(g, I(p), DT);
 };
 const bottomOf = (g: Game) => g.nina.body.y + g.nina.body.h;
+const cx = (g: Game) => g.nina.body.x + g.nina.body.w / 2;
 // Героиня центром в x на полу bottom комнаты room; враги не мешают, огнемёты выключены — проверяем тайлы и переходы.
 const at = (room: string, x: number, bottom: number) => {
   const g = createGame(loadRoomsFs(), { room, x: x - NINA.w / 2, bottom });
@@ -36,10 +37,12 @@ const climbTo = (g: Game, dir: 'up' | 'down', to: string) => {
 
 const ROOMS = [
   'arch-1', 'boiler', 'cave-1', 'corr-1', 'evm-1', 'evm-2', 'garage-1', 'hall-1', 'lab-1', 'lab-2', 'lab-3', 'office',
-  'power-1', 'roof-1', 'roof-2', 'roof-3', 'sea-1', 'sea-2', 'secret-1', 'shaft-top', 'slope-1', 'store-1', 'store-2', 'store-3',
+  'power-1', 'roof-1', 'roof-2', 'roof-3', 'sea-1', 'sea-2', 'secret-1', 'shaft-1', 'shaft-2', 'shaft-bot', 'shaft-top', 'slope-1',
+  'store-1', 'store-2', 'store-3',
 ];
 
-it('комнаты корпуса читаются и связаны взаимно', () => {
+
+it('комнаты карты читаются и связаны взаимно', () => {
   const rooms = loadRoomsFs();
   expect([...rooms.keys()].sort()).toEqual(ROOMS);
   expect(validateWorld(rooms)).toEqual([]);
@@ -135,15 +138,17 @@ it('враги в комнатах шахты лифта не видят его 
   }
 });
 
-it('карта паузы: все комнаты корпуса раскладываются без конфликтов и влезают в область карты', () => {
+it('карта паузы: все комнаты раскладываются без конфликтов от крыши и от склона и влезают в область карты', () => {
   const rooms = loadRoomsFs();
-  const { pos, conflicts } = layoutMap(rooms, 'roof-1');
-  expect(conflicts).toEqual([]);
-  expect([...rooms.keys()].filter(id => !pos.has(id)).sort()).toEqual(['sea-1', 'sea-2']);
-  const xs = [...pos.values()].map(p => p.x), ys = [...pos.values()].map(p => p.y);
-  const w = (Math.max(...xs) - Math.min(...xs)) * MAP_PX + 2, h = (Math.max(...ys) - Math.min(...ys)) * MAP_PY + 1;
-  expect(w).toBeLessThanOrEqual(MAP_AREA.x1 - MAP_AREA.x0 + 1);
-  expect(h).toBeLessThanOrEqual(MAP_AREA.y1 - MAP_AREA.y0 + 1);
+  for (const root of ['roof-1', 'slope-1']) {
+    const { pos, conflicts } = layoutMap(rooms, root);
+    expect(conflicts, root).toEqual([]);
+    expect([...rooms.keys()].filter(id => !pos.has(id)).sort(), root).toEqual(['sea-1', 'sea-2']);
+    const xs = [...pos.values()].map(p => p.x), ys = [...pos.values()].map(p => p.y);
+    const w = (Math.max(...xs) - Math.min(...xs)) * MAP_PX + 2, h = (Math.max(...ys) - Math.min(...ys)) * MAP_PY + 1;
+    expect(w, root).toBeLessThanOrEqual(MAP_AREA.x1 - MAP_AREA.x0 + 1);
+    expect(h, root).toBeLessThanOrEqual(MAP_AREA.y1 - MAP_AREA.y0 + 1);
+  }
 });
 
 // Проходимость связей — настоящей физикой.
@@ -202,28 +207,52 @@ it('вертикальные связи по лестницам — вниз и 
   }
 });
 
-it('лифт shaft-top → cave-1 → garage-1 и назад без урона; E в гараже вызывает лифт', () => {
+it('лифт shaft-top → shaft-1 → shaft-2 → shaft-bot: остановка на каждом этаже, назад наверх без урона', () => {
   const g = at('shaft-top', 27.5, 22);
   const lift = g.lifts[0];
-  expect(lift).toMatchObject({ id: 'shaft-top', y: 22, stops: [22, 48, 72], rooms: ['shaft-top', 'cave-1', 'garage-1'] });
-  run(g, { down: true }, 900, () => g.roomId === 'cave-1' && lift.target === null && !g.transition);
-  run(g, {}, 40);
-  expect(g.roomId).toBe('cave-1');
-  expect(bottomOf(g)).toBeCloseTo(23);
-  run(g, { down: true }, 900, () => g.roomId === 'garage-1' && lift.target === null && !g.transition);
-  run(g, {}, 40);
-  expect(g.roomId).toBe('garage-1');
-  expect(bottomOf(g)).toBeCloseTo(22);
-  run(g, { up: true }, 1500, () => g.roomId === 'shaft-top' && lift.target === null && !g.transition);
+  expect(lift).toMatchObject({ id: 'shaft-top', y: 22, stops: [22, 47, 72, 97], rooms: ['shaft-top', 'shaft-1', 'shaft-2', 'shaft-bot'] });
+  for (const room of ['shaft-1', 'shaft-2', 'shaft-bot']) {
+    run(g, { down: true }, 900, () => g.roomId === room && lift.target === null && !g.transition);
+    run(g, {}, 40);
+    expect(g.roomId).toBe(room);
+    expect(bottomOf(g), room).toBeCloseTo(22);
+  }
+  run(g, { up: true }, 3000, () => g.roomId === 'shaft-top' && lift.target === null && !g.transition);
   run(g, {}, 40);
   expect(g.roomId).toBe('shaft-top');
   expect(bottomOf(g)).toBeCloseTo(22);
   expect(g.nina.energy).toBe(NINA.energyMax);
-  // лифт наверху, героиня в гараже: E у шахты — приезжает
-  const c = at('garage-1', 25, 22);
-  run(c, { usePressed: true }, 1);
-  run(c, {}, 900, () => c.lifts[0].target === null && c.lifts[0].y === 72);
-  expect(c.lifts[0].y).toBe(72);
+});
+
+it('shaft-1: шахта без лифта — пропасть; E у края вызывает лифт, на нём стоят', () => {
+  const fall = at('shaft-1', 25, 22);
+  run(fall, { moveX: 1 }, 600, () => fall.nina.dead);
+  expect(fall.nina.dead).toBe(true);
+  const g = at('shaft-1', 25, 22);
+  run(g, { usePressed: true }, 1);
+  run(g, {}, 900, () => g.lifts[0].target === null && g.lifts[0].y === 47);
+  expect(g.lifts[0].y).toBe(47);
+  run(g, {}, 40);
+  run(g, { moveX: 0.3 }, 60, () => cx(g) > 27.3);
+  run(g, {}, 30);
+  expect(bottomOf(g)).toBeCloseTo(22);
+  expect(g.nina.dead).toBe(false);
+});
+
+it('shaft-bot: из ямы под лифтом — выпрыгнуть на пол и вызвать лифт', () => {
+  const g = at('shaft-bot', 27.5, 22);
+  run(g, {}, 30);
+  expect(bottomOf(g)).toBeCloseTo(23); // лифт наверху — на дне шахты ступенька вниз
+  run(g, { usePressed: true }, 1);
+  run(g, {}, 30);
+  expect(g.lifts[0].target).toBeNull(); // из ямы E не вызывает
+  run(g, { moveX: -0.3, jump: true, jumpPressed: true }, 1);
+  run(g, { moveX: -0.3, jump: true }, 20);
+  run(g, {}, 20);
+  expect(bottomOf(g)).toBeCloseTo(22);
+  run(g, { usePressed: true }, 1);
+  run(g, {}, 1500, () => g.lifts[0].target === null && g.lifts[0].y === 97);
+  expect(g.lifts[0].y).toBe(97);
 });
 
 it('store-2 → secret-1 сквозь фальш-пол без урона, к источнику, сквозь фальш-стену в power-1 и обратно', () => {

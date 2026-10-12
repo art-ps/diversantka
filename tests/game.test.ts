@@ -141,7 +141,7 @@ it('убитый андроид не возвращается после сме�
 });
 
 it('потеря энергии от падения всплывает числом над героиней', () => {
-  const g = createGame(loadRoomsFs(), { room: 'cave-1', x: 30, bottom: 2 }); // высоко над полом пещеры
+  const g = createGame(loadRoomsFs(), { room: 'cave-1', x: 34, bottom: 12 }); // высоко над полом пещеры
   for (let i = 0; i < 120 && g.floaters.length === 0; i++) stepGame(g, I(), DT); // число живёт 0.8 с — смотрим сразу после приземления
   const dmg = g.floaters.filter(f => f.kind === 'damage');
   expect(dmg).toHaveLength(1);
@@ -149,7 +149,7 @@ it('потеря энергии от падения всплывает числ�
 });
 
 it('восстановление энергии не рождает чисел', () => {
-  const g = createGame(loadRoomsFs(), { room: 'cave-1', x: 30, bottom: 23 });
+  const g = createGame(loadRoomsFs(), { room: 'cave-1', x: 30, bottom: 22 });
   g.nina.energy = 50;
   for (let i = 0; i < 60; i++) stepGame(g, I(), DT);
   expect(g.floaters).toHaveLength(0);
@@ -211,7 +211,7 @@ it('огонь: энергия убывает, число всплывает н�
 });
 
 it('убитая собака рассыпается и не возвращается', () => {
-  const g = createGame(loadRoomsFs(), { room: 'cave-1', x: 4, bottom: 23 });
+  const g = createGame(loadRoomsFs(), { room: 'cave-1', x: 4, bottom: 22 });
   expect(g.dogs).toHaveLength(1);
   const d = g.dogs[0];
   g.projectiles.push({ kind: 'stone', x: d.body.x + 0.8, y: d.body.y + 0.7, vx: 0.1, vy: 0, from: 'nina', damage: 1, alive: true, hitWall: false });

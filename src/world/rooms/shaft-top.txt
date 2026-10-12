@@ -1,6 +1,6 @@
 id: shaft-top
-exits: left=power-1 right=boiler up=evm-2 down=cave-1
-lift: 26 22..72 floors=48
+exits: left=power-1 right=boiler up=evm-2 down=shaft-1
+lift: 26 22..97 floors=47,72
 ---
 ###########.H.##########################
 #...........H...........#######........#

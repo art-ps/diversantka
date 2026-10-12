@@ -35,17 +35,19 @@ it('с крыши достижима каждая комната корпуса'
 
 it('тупиков нет: из секретной, котельной, пещеры и гаража есть путь назад на крышу', () => {
   const rooms = loadRoomsFs();
-  for (const s of [{ room: 'secret-1', x: 15, bottom: 22 }, { room: 'boiler', x: 4, bottom: 22 }, { room: 'cave-1', x: 3, bottom: 23 }, { room: 'garage-1', x: 26.9, bottom: 22 }]) {
-    expect(roomsReached(rooms, [s]).has('roof-1'), s.room).toBe(true);
-  }
-});
+  const from = [
+    { room: 'secret-1', x: 15, bottom: 22 }, { room: 'boiler', x: 4, bottom: 22 }, { room: 'cave-1', x: 30, bottom: 22 },
+    { room: 'garage-1', x: 30, bottom: 22 }, { room: 'shaft-2', x: 10, bottom: 22 },
+  ];
+  for (const s of from) expect(roomsReached(rooms, [s]).has('roof-1'), `${s.room} ${s.x},${s.bottom}`).toBe(true);
+}, 20_000);
 
-it('без лифта shaft-top пещера и гараж недостижимы', () => {
+it('без лифта shaft-top низ с крыши недостижим', () => {
   const rooms = loadRoomsFs();
   const top = rooms.get('shaft-top')!;
   const { lift: _, ...meta } = top.meta;
   rooms.set('shaft-top', { ...top, meta });
-  expect(unreachable(rooms, LANDINGS)).toEqual(['лента cave-1#t0', 'лента garage-1#t0', 'гараж']);
+  expect(unreachable(rooms, [LANDINGS[0]]).sort()).toEqual(['гараж', 'лента cave-1#t0', 'лента garage-1#t0']);
 });
 
 it('фальш-пол и фальш-стена S проходимы, стена # — нет: заложены оба входа — источник недостижим', () => {
