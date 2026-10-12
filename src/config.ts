@@ -1,3 +1,5 @@
+import type { Sfx } from './sim/sfx';
+
 export const ROOM_W = 40;
 export const ROOM_H = 25;
 export const DT = 1 / 60;
@@ -217,4 +219,73 @@ export const SFX = {
   ladderStride: 1.5, // ступенька лестницы
   landMin: 1, // приземление с меньшей высоты — без звука
   typeEvery: 0.06, // щелчок печати лога ЭВМ
+};
+
+// Звук: громкости 0..1, время — с, частоты — Гц. Синтез на слух не проверен — крутить здесь.
+export const AUDIO = {
+  master: 0.6, // общая громкость; M — 0
+  maxVoices: 12, // коротких звуков одновременно; лишние пропускаются
+  minGap: 0.04, // один и тот же звук не чаще
+  attack: 0.005, // нарастание каждого слоя
+  loopFade: 0.08, // петли (лифт, струя) нарастают и гаснут за
+};
+
+export type Wave = 'noise' | 'sine' | 'square' | 'sawtooth' | 'triangle';
+
+// Слой звука: генератор (частота f → to за dur) или белый шум; фильтр (срез cut, добротность q); громкость gain; начало at от события.
+export interface Tone {
+  wave: Wave;
+  f: number;
+  to?: number;
+  dur: number;
+  gain: number;
+  at?: number;
+  filter?: 'lowpass' | 'highpass' | 'bandpass';
+  cut?: number;
+  q?: number;
+  lfo?: number; // только петли: качание громкости, Гц (порывы, волны)
+}
+
+const hiss = (dur: number, gain: number, filter: Tone['filter'], cut: number, q = 1, at = 0): Tone => ({ wave: 'noise', f: 0, dur, gain, filter, cut, q, at });
+
+// Короткие звуки событий (src/sim/sfx.ts). liftStop и jetOff только гасят петли — своих слоёв нет.
+export const SOUNDS: Record<Sfx, Tone[]> = {
+  stepFloor: [hiss(0.05, 0.22, 'lowpass', 900), { wave: 'sine', f: 110, to: 60, dur: 0.05, gain: 0.18 }],
+  stepWater: [hiss(0.12, 0.22, 'bandpass', 1400, 1.5)],
+  stepLadder: [{ wave: 'square', f: 220, to: 200, dur: 0.04, gain: 0.07, filter: 'lowpass', cut: 1200 }, hiss(0.03, 0.1, 'highpass', 3000)],
+  jump: [{ wave: 'square', f: 180, to: 360, dur: 0.12, gain: 0.1, filter: 'lowpass', cut: 1500 }],
+  land: [hiss(0.08, 0.3, 'lowpass', 400), { wave: 'sine', f: 90, to: 50, dur: 0.1, gain: 0.25 }],
+  landHard: [hiss(0.2, 0.45, 'lowpass', 300), { wave: 'sine', f: 70, to: 35, dur: 0.25, gain: 0.45 }],
+  punch: [hiss(0.06, 0.28, 'bandpass', 1000, 0.8)],
+  kick: [hiss(0.1, 0.32, 'bandpass', 600, 0.8)],
+  hit: [{ wave: 'square', f: 160, to: 80, dur: 0.08, gain: 0.2, filter: 'lowpass', cut: 1200 }, hiss(0.05, 0.28, 'lowpass', 2000)],
+  block: [{ wave: 'triangle', f: 900, to: 850, dur: 0.1, gain: 0.16 }, { wave: 'square', f: 1300, dur: 0.05, gain: 0.04, filter: 'highpass', cut: 1000 }],
+  kill: [{ wave: 'sawtooth', f: 300, to: 40, dur: 0.45, gain: 0.2, filter: 'lowpass', cut: 1500 }, hiss(0.4, 0.22, 'lowpass', 1200)],
+  hurt: [{ wave: 'square', f: 400, to: 200, dur: 0.15, gain: 0.15, filter: 'lowpass', cut: 1600 }],
+  bite: [hiss(0.07, 0.28, 'bandpass', 2500, 2), { wave: 'square', f: 300, to: 150, dur: 0.07, gain: 0.1, filter: 'lowpass', cut: 2000 }],
+  death: [{ wave: 'triangle', f: 440, to: 55, dur: 1, gain: 0.28 }, hiss(0.8, 0.12, 'lowpass', 600)],
+  pickup: [{ wave: 'square', f: 660, to: 990, dur: 0.08, gain: 0.1, filter: 'lowpass', cut: 3000 }],
+  tape: [523, 659, 784].map((f, i) => ({ wave: 'triangle' as const, f, dur: 0.45 - i * 0.06, gain: 0.13, at: i * 0.06 })),
+  source: [{ wave: 'sine', f: 220, to: 440, dur: 1.2, gain: 0.18 }, { wave: 'triangle', f: 330, to: 660, dur: 1.2, gain: 0.1 }],
+  splash: [hiss(0.3, 0.3, 'lowpass', 1800), hiss(0.2, 0.2, 'bandpass', 600)],
+  type: [{ wave: 'square', f: 1800, dur: 0.015, gain: 0.04, filter: 'highpass', cut: 1000 }],
+  menuMove: [{ wave: 'square', f: 880, dur: 0.04, gain: 0.07 }],
+  menuSelect: [{ wave: 'square', f: 880, dur: 0.05, gain: 0.07 }, { wave: 'square', f: 1320, dur: 0.07, gain: 0.07, at: 0.06 }],
+  liftStart: [hiss(0.15, 0.28, 'lowpass', 250)],
+  liftStop: [],
+  liftFloor: [hiss(0.12, 0.35, 'lowpass', 300), { wave: 'sine', f: 80, to: 50, dur: 0.15, gain: 0.3 }],
+  flamerWarn: [hiss(0.25, 0.1, 'highpass', 4000), { wave: 'square', f: 2400, dur: 0.05, gain: 0.03 }],
+  jetOn: [hiss(0.15, 0.3, 'lowpass', 900)],
+  jetOff: [],
+  switch: [{ wave: 'square', f: 120, dur: 0.03, gain: 0.18 }, hiss(0.04, 0.18, 'highpass', 2000)],
+  zap: [{ wave: 'sawtooth', f: 60, dur: 0.3, gain: 0.18 }, hiss(0.3, 0.14, 'highpass', 3000)],
+  bike: [{ wave: 'sawtooth', f: 70, to: 160, dur: 2.5, gain: 0.22, filter: 'lowpass', cut: 700 }, { wave: 'square', f: 35, to: 80, dur: 2.5, gain: 0.1, filter: 'lowpass', cut: 400 }],
+  mast: [hiss(0.6, 0.45, 'lowpass', 1200), { wave: 'square', f: 200, to: 40, dur: 0.4, gain: 0.18 }, { wave: 'triangle', f: 1200, to: 1100, dur: 0.8, gain: 0.07 }],
+  seaSplash: [hiss(0.9, 0.45, 'lowpass', 1500), hiss(1.2, 0.35, 'lowpass', 300)],
+};
+
+// Петли, пока событие не погасит: гул лифта в пути (liftStart…liftStop), шипение струи (jetOn…jetOff).
+export const LOOPS: Record<'lift' | 'jet', Tone> = {
+  lift: { wave: 'sawtooth', f: 55, dur: 0, gain: 0.2, filter: 'lowpass', cut: 260 },
+  jet: hiss(0, 0.25, 'bandpass', 1800, 0.7),
 };
