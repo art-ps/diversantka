@@ -19,7 +19,7 @@ const ICON: Record<MapIcon, { ch: string; color: Color }> = {
 };
 export const MAP_TITLE = 'ПАУЗА · КАРТА';
 export const MAP_LEGEND = 'Т ТЕРМИНАЛ  Э ЭВМ  Щ ЩИТОК  Г ГАРАЖ  ▓ ЛЕНТА';
-export const MAP_HINT = 'ESC/START — ПРОДОЛЖИТЬ';
+export const MAP_HINT = 'ESC/START — ПРОДОЛЖИТЬ · M — ЗВУК';
 
 const centered = (b: Pick<GlyphBatch, 'text'>, y: number, s: string, c: Color) => b.text((ROOM_W - s.length * STEP) / 2, y, s, c, STEP);
 

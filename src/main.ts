@@ -1,3 +1,5 @@
+import { ambientOf } from './audio/ambient';
+import { AudioGate } from './audio/gate';
 import { DT, ROOM_H, ROOM_W } from './config';
 import { createPrologue, stepGame } from './game';
 import { InputDevices } from './input/devices';
@@ -8,7 +10,7 @@ import { Bloom } from './render/bloom';
 import { GlyphBatch } from './render/glyphs';
 import { PAL } from './render/palette';
 import { drawGame } from './render/scene';
-import { saveResult, storage } from './save';
+import { loadMuted, saveMuted, saveResult, storage } from './save';
 import { loadWorld } from './world';
 
 function fail(msg: string) {
@@ -18,6 +20,12 @@ function fail(msg: string) {
 }
 
 async function boot() {
+  // Звук: по первому нажатию, клику или касанию (на обёртке — кнопка «нажми, чтобы играть»); скрытая вкладка — тишина.
+  // Слушатели — до загрузки шрифта: клик по кнопке обёртки может прийти раньше, чем игра готова.
+  const gate = new AudioGate(() => new AudioContext(), loadMuted(storage()));
+  for (const ev of ['pointerdown', 'click', 'keydown', 'touchend'] as const) addEventListener(ev, () => gate.unlock());
+  document.addEventListener('visibilitychange', () => gate.visible(!document.hidden));
+
   const canvas = document.getElementById('screen') as HTMLCanvasElement;
   const gl = canvas.getContext('webgl2', { antialias: false, alpha: false });
   if (!gl) return fail('Браузер не поддерживает WebGL2. Откройте игру в свежем Chrome или Safari.');
@@ -49,6 +57,7 @@ async function boot() {
   let glow = true;
   addEventListener('keydown', e => {
     if (e.code === 'KeyB') glow = !glow;
+    if (e.code === 'KeyM' && !e.repeat) saveMuted(storage(), gate.toggleMute());
     if (e.code === 'KeyF') (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {});
   });
 
@@ -66,6 +75,10 @@ async function boot() {
       stepGame(game, it, DT);
       it = clearPressed(it);
     }
+    // Звуки шагов этого кадра и фон комнаты; события забираются, даже пока звук не включён.
+    gate.sound?.play(game.sfx);
+    gate.sound?.update(ambientOf(game), now / 1000, plan.steps * DT);
+    game.sfx.length = 0;
     if (game.mission.result === 'won' && !saved) {
       saved = true;
       saveResult(storage(), game.mission.secret);
