@@ -1,4 +1,4 @@
-import { FIRE, FLAMER, FX, LIFT, MISSION, NINA, PROLOGUE, ROOM_H, ROOM_W, SOURCE, TRANSITION_TIME } from './config';
+import { ANIM, FIRE, FLAMER, FX, LIFT, MISSION, NINA, PROLOGUE, ROOM_H, ROOM_W, SFX, SOURCE, TRANSITION_TIME } from './config';
 import { jetFire, pitFires, stepFires, type Fire } from './fx/fires';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { dogGlyphs } from './anim/dog';
@@ -15,7 +15,9 @@ import { gliderAt, gliderHits, ROUTE, ROUTE_LEN } from './sim/glider';
 import { createLifts, LIFT_W, liftRect, liftTop, nextStop, stepLift, type Lift } from './sim/lift';
 import { createMission, missionResult, restoreCheckpoint, saveCheckpoint, startBike, tickTimer, useSwitch, type Mission } from './sim/mission';
 import { openScreen, stepScreen, type Screen } from './sim/terminal';
-import { burnNina, createNina, updateNina, type Nina } from './sim/nina';
+import { burnNina, createNina, updateNina, type Nina, type NinaState } from './sim/nina';
+import type { Attack } from './sim/combat';
+import type { Sfx } from './sim/sfx';
 import { crumble, smoke, sparks, splash, stepParticles, type Particle } from './sim/particles';
 import { overTop } from './sim/physics';
 import { bodyRect, overlap, type Rect } from './sim/rect';
@@ -70,13 +72,15 @@ export interface Game {
   lifts: Lift[]; // лифты всей карты: где платформа, сохраняется между комнатами
   paused: boolean; // пауза с картой: мир и таймер стоят
   seen: Set<string>; // комнаты, где героиня побывала за миссию (для карты); чекпоинт не откатывает
+  sfx: Sfx[]; // звуковые события с прошлого кадра — забирает и очищает main.ts
+  stepAcc: number; // путь с прошлого звука шага, клетки
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
     items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
-    lifts: createLifts(rooms), paused: false, seen: new Set(),
+    lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0,
   };
   enterRoom(g, start.room);
   return g;
@@ -214,6 +218,7 @@ function touchSource(g: Game, s: Point, nr: Rect, dt: number): void {
   if (!g.mission.secret && overlap({ x: s.x - 0.5, y: s.bottom - 2, w: 1, h: 2 }, nr)) {
     g.mission.secret = true;
     g.nina.immortal = true;
+    g.sfx.push('source');
     spawnFloater(g.floaters, 'ИСТОЧНИК НАЙДЕН', s.x, s.bottom - 3, 'enemy');
   }
   if (Math.random() < SOURCE.sparksPerSec * dt) {
@@ -273,6 +278,44 @@ function stepLifts(g: Game, it: Intent, dt: number): void {
 // Рядом с объектом: стоит на его уровне, центр не дальше useRange.
 const near = (n: Nina, p: Point) =>
   n.state === 'ground' && Math.abs(n.body.x + n.body.w / 2 - p.x) <= MISSION.useRange && Math.abs(n.body.y + n.body.h - p.bottom) < 0.5;
+
+// Звуки тела за шаг героини: прыжок (скорость стала вверх), приземление по высоте падения, начало удара.
+function bodySfx(g: Game, state0: NinaState, vy0: number, peak0: number, atk0: Attack | null): void {
+  const n = g.nina, b = n.body;
+  if (vy0 >= 0 && b.vy < 0) g.sfx.push('jump');
+  if (state0 === 'air' && n.state === 'ground') {
+    const fall = b.y - peak0;
+    if (fall > NINA.safeFall) g.sfx.push('landHard');
+    else if (fall >= SFX.landMin) g.sfx.push('land');
+  }
+  if (n.attack && n.attack !== atk0) g.sfx.push(n.attack.kind === 'punch' ? 'punch' : 'kick');
+}
+
+// Шаги: звук через каждые SFX.stride клеток пути по полу или воде, SFX.ladderStride — по лестнице; в воздухе счёт сначала.
+function stepSfx(g: Game, y0: number, dt: number): void {
+  const n = g.nina, b = n.body;
+  if (n.state === 'ladder') {
+    g.stepAcc += Math.abs(b.y - y0);
+    if (g.stepAcc >= SFX.ladderStride) {
+      g.stepAcc -= SFX.ladderStride;
+      g.sfx.push('stepLadder');
+    }
+  } else if (n.state === 'ground' && Math.abs(b.vx) > ANIM.moveEps) {
+    g.stepAcc += Math.abs(b.vx) * dt;
+    if (g.stepAcc >= SFX.stride) {
+      g.stepAcc -= SFX.stride;
+      g.sfx.push(g.inWater ? 'stepWater' : 'stepFloor');
+    }
+  } else if (n.state === 'air') g.stepAcc = 0;
+}
+
+const bites = (dogs: Dog[]) => {
+  let k = 0;
+  for (const d of dogs) if (d.bit) k++;
+  return k;
+};
+
+const HIT_SFX = { hit: 'hit', blocked: 'block', killed: 'kill', none: null } as const;
 
 export function stepGame(g: Game, it: Intent, dt: number): void {
   const p = g.prologue;
@@ -355,12 +398,16 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     } else callLift(g);
   }
   stepLifts(g, it, dt);
+  const state0 = g.nina.state, vy0 = g.nina.body.vy, y0 = g.nina.body.y, peak0 = g.nina.peakY, atk0 = g.nina.attack;
   updateNina(g.nina, it, room, dt, NINA, liftTops(g));
+  bodySfx(g, state0, vy0, peak0, atk0);
   touchHazards(g.nina, room, dt);
   const wet = touchesTile(g.nina, room, '~');
   const feet = g.nina.body;
-  if (wet && !g.inWater) splash(g.particles, feet.x + feet.w / 2, feet.y + feet.h - 0.3, FX.splashBurst);
-  else if (wet && Math.abs(feet.vx) > 1) {
+  if (wet && !g.inWater) {
+    splash(g.particles, feet.x + feet.w / 2, feet.y + feet.h - 0.3, FX.splashBurst);
+    if (!g.prologue) g.sfx.push('splash'); // в прологе море — свой всплеск
+  } else if (wet && Math.abs(feet.vx) > 1) {
     g.splashAcc += FX.splashPerSec * dt;
     if (g.splashAcc >= 1) {
       g.splashAcc -= 1;
@@ -368,10 +415,12 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     }
   } else g.splashAcc = 0;
   g.inWater = wet;
+  stepSfx(g, y0, dt);
   const { picked, thrown } = useThrowButton(g.nina, it, g.items);
   if (picked) {
     g.taken.add(picked.id);
     g.items = g.items.filter(i => i !== picked);
+    g.sfx.push('pickup');
   }
   if (thrown) g.projectiles.push(thrown);
   // Ленты — в сумку касанием, руки остаются свободными.
@@ -379,6 +428,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   for (const t of g.tapes) {
     if (!overlap(itemRect(t), nr)) continue;
     g.mission.tapes.add(t.id);
+    g.sfx.push('tape');
     spawnFloater(g.floaters, `ЛЕНТА ${g.mission.tapes.size}/${MISSION.tapes}`, t.x, t.bottom - 1.5, 'enemy');
   }
   g.tapes = g.tapes.filter(t => !g.mission.tapes.has(t.id));
@@ -391,7 +441,9 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   for (const d of g.dogs) updateDog(d, g.nina, room, dt);
   const events: HitEvent[] = [];
   for (const id of resolveCombat(g.nina, g.androids, g.projectiles, room, events)) g.killed.add(id);
+  const bit0 = bites(g.dogs);
   for (const id of resolveDogs(g.nina, g.dogs, g.projectiles, events)) g.killed.add(id);
+  if (bites(g.dogs) > bit0) g.sfx.push('bite');
   for (const f of g.flamers) {
     stepFlamer(f, dt);
     const r = flameRect(f);
@@ -408,7 +460,10 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     }
   }
   stepFires(g.fires, g.flamers, dt);
-  if (g.nina.invulnT > inv0) g.mission.hits++;
+  if (g.nina.invulnT > inv0) {
+    g.mission.hits++;
+    g.sfx.push('hurt');
+  }
   // Дым: над ямами — всегда, над концом струи — пока она горит.
   for (const fire of g.fires) {
     if (fire.kind === 'pit') {
@@ -441,6 +496,8 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     const text = e.result === 'killed' ? 'ВЫВЕДЕН' : e.result === 'blocked' ? 'блок' : '-1';
     const cx = body.x + body.w / 2;
     spawnFloater(g.floaters, text, cx, body.y - 0.6, e.result === 'blocked' ? 'blocked' : 'enemy');
+    const s = HIT_SFX[e.result];
+    if (s) g.sfx.push(s);
     sparks(g.particles, cx, body.y + 1, PAL.spark);
     if (e.result === 'killed') {
       if (a) {
@@ -464,6 +521,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   }
   g.floaters = stepFloaters(g.floaters, dt);
   g.particles = stepParticles(g.particles, dt);
+  if (g.nina.dead) g.sfx.push('death'); // гибель — в этом шаге: мёртвая героиня сюда больше не доходит
   const ex = exitFor(g.nina.body, room, id => g.rooms.get(id));
   if (ex) {
     g.nina.body.x += ex.dx;
