@@ -24,7 +24,7 @@ import { drawGlider, hangPose } from './glider';
 import { drawMap } from './map';
 import type { Color, GlyphBatch } from './glyphs';
 import { PAL } from './palette';
-import { drawFailed, drawOutro, drawResult, drawScreen } from './screens';
+import { drawFailed, drawOutro, drawResult, drawScreen, drawTitle, TITLE_BOX, type Box } from './screens';
 
 const WALL_GLYPHS = '#%&8';
 const crouch = CLIPS.get('crouch')!.frames;
@@ -346,6 +346,15 @@ function drawWorld(b: GlyphBatch, g: Game, ox: number, oy: number, time: number)
   if (liftHint(g)) drawLiftHint(b, g, ox, oy);
 }
 
+// Пропускает символы с центром в рамке f: под текстом стартового экрана нет ни дождя, ни моря, ни сетки
+// (символы складываются по яркости — сквозь них текст не читается).
+const outside = (b: Pick<GlyphBatch, 'push'>, f: Box): Pick<GlyphBatch, 'push'> => ({
+  push: (x, y, ch, c, s) => {
+    const cx = x + 0.5, cy = y + 0.5;
+    if (cx < f.x0 || cx > f.x1 + 1 || cy < f.y0 || cy > f.y1 + 1) b.push(x, y, ch, c, s);
+  },
+});
+
 export function drawGame(b: GlyphBatch, g: Game, time: number): void {
   if (g.mission.result === 'won') {
     if (g.endT < MISSION.outroTime) drawOutro(b, g.endT, RIDER);
@@ -365,6 +374,7 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     return;
   }
   const cur = g.rooms.get(g.roomId)!;
+  const title = g.prologue?.phase === 'title';
   if (g.transition) {
     const p = Math.min(1, g.transition.t / TRANSITION_TIME);
     const e = p * p * (3 - 2 * p);
@@ -377,12 +387,14 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     drawRoom(b, cur, ox, oy, time, g.roomId);
     drawWorld(b, g, ox, oy, time);
   } else {
-    drawSky(b, cur, 0, 0, time, gliderSkip(g));
-    drawRoom(b, cur, 0, 0, time, g.roomId);
+    const back = title ? outside(b, TITLE_BOX) : b;
+    drawSky(back, cur, 0, 0, time, gliderSkip(g));
+    drawRoom(back, cur, 0, 0, time, g.roomId);
     drawWorld(b, g, 0, 0, time);
   }
   const failed = g.mission.result === 'failed';
   if (g.nina.dead || failed) drawStatic(b, failed ? FX.staticIn : g.nina.deadT, time);
   drawHud(b, g, time);
   if (failed) drawFailed(b);
+  if (title) drawTitle(b, time);
 }

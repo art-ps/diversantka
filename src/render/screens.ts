@@ -1,4 +1,4 @@
-import { BIKE, MISSION, ROOM_W } from '../config';
+import { BIKE, MISSION, ROOM_W, TITLE } from '../config';
 import type { Pose } from '../anim/clip';
 import type { MissionResult } from '../sim/mission';
 import { bootLines, menuItems, type Screen } from '../sim/terminal';
@@ -10,15 +10,18 @@ import { PAL } from './palette';
 const STEP = 0.6; // шаг букв, как в HUD
 const X0 = 4, X1 = 35, Y0 = 3, Y1 = 21; // рамка экранов
 
-export function drawFrame(b: Pick<GlyphBatch, 'push'>, c: Color): void {
-  for (let x = X0; x <= X1; x++) {
-    const ch = x === X0 || x === X1 ? '+' : '=';
-    b.push(x, Y0, ch, c);
-    b.push(x, Y1, ch, c);
+// Рамка в клетках, включительно: углы «+», верх и низ «=», бока «|».
+export interface Box { x0: number; x1: number; y0: number; y1: number }
+
+export function drawFrame(b: Pick<GlyphBatch, 'push'>, c: Color, f: Box = { x0: X0, x1: X1, y0: Y0, y1: Y1 }): void {
+  for (let x = f.x0; x <= f.x1; x++) {
+    const ch = x === f.x0 || x === f.x1 ? '+' : '=';
+    b.push(x, f.y0, ch, c);
+    b.push(x, f.y1, ch, c);
   }
-  for (let y = Y0 + 1; y < Y1; y++) {
-    b.push(X0, y, '|', c);
-    b.push(X1, y, '|', c);
+  for (let y = f.y0 + 1; y < f.y1; y++) {
+    b.push(f.x0, y, '|', c);
+    b.push(f.x1, y, '|', c);
   }
 }
 
@@ -63,6 +66,38 @@ export function drawFailed(b: Pick<GlyphBatch, 'text'>): void {
   const title = 'МИССИЯ ПРОВАЛЕНА', hint = 'ПРЫЖОК — ЗАНОВО';
   b.text((ROOM_W - title.length * STEP) / 2, 11, title, PAL.danger, STEP);
   b.text((ROOM_W - hint.length * STEP) / 2, 13, hint, PAL.hudDim, STEP);
+}
+
+// Стартовый экран: рамка справа от дельтаплана (он висит в колонках 0–6), под ней шторм не рисуется.
+export const TITLE_BOX: Box = { x0: 9, x1: 38, y0: 1, y1: 18 };
+export const TITLE_NAME = 'ДИВЕРСАНТКА';
+export const TITLE_TASK = `${MISSION.tapes} ЛЕНТ · ЭВМ · ЗАБОР · МОТОЦИКЛ. ${MISSION.time / 60} МИНУТ`;
+// Действие · клавиатура · геймпад (KEYMAP и fromGamepad в src/input/intent.ts); первая строка — шапка.
+export const TITLE_KEYS: readonly [string, string, string][] = [
+  ['', 'КЛАВИАТУРА', 'ГЕЙМПАД'],
+  ['ХОД', 'СТРЕЛКИ/WASD', 'СТИК/КРЕСТ'],
+  ['ПРЫЖОК', 'ПРОБЕЛ', 'A'],
+  ['УДАР', 'J', 'X'],
+  ['БРОСОК', 'K', 'B'],
+  ['ТЕРМИНАЛ/ЛИФТ', 'E', 'Y'],
+  ['ПАУЗА', 'ESC', 'START'],
+  ['ЗВУК', 'M', '—'],
+];
+export const TITLE_START = 'ПРОБЕЛ — НАЧАТЬ';
+export const TITLE_FOCUS = 'КЛИК ПО ЭКРАНУ, ЕСЛИ КЛАВИШИ НЕ РАБОТАЮТ';
+const KEY_COLS = [0, 14, 27]; // начала колонок таблицы, в буквах
+
+export function drawTitle(b: Pick<GlyphBatch, 'push' | 'text'>, time: number): void {
+  const f = TITLE_BOX, mid = (f.x0 + f.x1 + 1) / 2, left = f.x0 + 2;
+  const centered = (y: number, s: string, c: Color, step = STEP) => b.text(mid - (s.length * step) / 2, y, s, c, step);
+  drawFrame(b, PAL.hudDim, f);
+  centered(f.y0 + 2, TITLE_NAME, PAL.item, 1);
+  centered(f.y0 + 4, TITLE_TASK, PAL.hud);
+  TITLE_KEYS.forEach((row, i) => row.forEach((s, j) => {
+    if (s) b.text(left + KEY_COLS[j] * STEP, f.y0 + 6 + i, s, i === 0 || j === 0 ? PAL.hudDim : PAL.hud, STEP);
+  }));
+  if (Math.floor(time * TITLE.blinkHz * 2) % 2 === 0) centered(f.y1 - 2, TITLE_START, PAL.item);
+  centered(f.y1 - 1, TITLE_FOCUS, PAL.hudDim);
 }
 
 // Выезд: ночная дорога, столб ворот, Нина на мотоцикле разгоняется влево (BIKE_DIR) и уходит за край.
