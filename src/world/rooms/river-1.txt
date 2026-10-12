@@ -1,5 +1,6 @@
 id: river-1
 exits: left=river-2 right=shaft-2 up=- down=-
+ambient: river
 ---
 ########################################
 ########################################

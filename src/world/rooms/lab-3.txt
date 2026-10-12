@@ -2,6 +2,7 @@ id: lab-3
 exits: left=lab-2 right=hall-1 up=- down=-
 enemies: android@20,22 patrol=14..30
 tapes: 28,10
+ambient: hum
 ---
 ########################################
 #................##....................#

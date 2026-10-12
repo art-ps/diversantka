@@ -1,5 +1,6 @@
 id: shaft-2
 exits: left=river-1 right=- up=shaft-1 down=shaft-bot
+ambient: hum
 ---
 ##########################...###########
 ##########################...###########

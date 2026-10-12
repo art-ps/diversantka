@@ -1,6 +1,7 @@
 id: yard
 exits: left=- right=garage-1 up=river-3 down=-
 fence: 1,17..21
+ambient: wind
 ---
 #####..#################################
 #............###########################

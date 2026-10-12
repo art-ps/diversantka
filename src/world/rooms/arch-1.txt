@@ -1,6 +1,7 @@
 id: arch-1
 exits: left=- right=office up=- down=store-1
 tapes: 12,10
+ambient: hum
 ---
 ########################################
 #......................................#

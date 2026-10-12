@@ -3,6 +3,7 @@ exits: left=lab-1 right=lab-3 up=roof-1 down=office
 items: stone@25,14 ; wrench@12,22
 enemies: flamer@38,19 dir=left
 terminals: 26,22 controls=lab-2
+ambient: hum
 ---
 ##.H.###################################
 #..H...................................#

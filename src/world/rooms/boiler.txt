@@ -2,6 +2,7 @@ id: boiler
 exits: left=shaft-top right=- up=- down=-
 items: knife@24,22
 enemies: android@13,22 patrol=10..16
+ambient: hum
 ---
 ########################################
 #...............................##.....#

@@ -1,6 +1,7 @@
 id: forest-3
 exits: left=- right=- up=forest-2 down=cave-in
 enemies: dog@15,22 patrol=8..22
+ambient: wind
 ---
 ##..####################################
 #.............#######.........##########

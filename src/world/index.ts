@@ -1,7 +1,7 @@
 import { MISSION, NINA, ROOM_H } from '../config';
 import { LIFT_W, shaftRooms } from '../sim/lift';
 import { parseRoom, tileAt, validateWorld, type Room } from './room';
-import { parseEnemies, parseFence, parseItems, parseLift, parsePoints, parseTerminals } from './spawns';
+import { parseAmbient, parseEnemies, parseFence, parseItems, parseLift, parsePoints, parseTerminals } from './spawns';
 
 const files = import.meta.glob('./rooms/*.txt', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
@@ -14,7 +14,7 @@ export function loadWorld(): Map<string, Room> {
     if (rooms.has(room.id)) throw new Error(`${path}: повтор id ${room.id}`);
     rooms.set(room.id, room);
   }
-  const errors = [...validateWorld(rooms), ...validateMission(rooms), ...validateLifts(rooms)];
+  const errors = [...validateWorld(rooms), ...validateMission(rooms), ...validateLifts(rooms), ...validateAmbient(rooms)];
   if (errors.length) throw new Error(errors.join('\n'));
   return rooms;
 }
@@ -63,6 +63,19 @@ export function validateLifts(rooms: Map<string, Room>): string[] {
       for (let c = s.x; c < s.x + LIFT_W; c++) {
         if (tileAt(room, c, y % ROOM_H) !== '.') errors.push(`${room.id}: в шахте лифта ${r.id} клетка ${c},${y % ROOM_H} не пустая`);
       }
+    }
+  }
+  return errors;
+}
+
+// Звуковой фон: у каждой комнаты карты — «ambient:» из AMBIENTS.
+export function validateAmbient(rooms: Map<string, Room>): string[] {
+  const errors: string[] = [];
+  for (const r of rooms.values()) {
+    try {
+      if (!parseAmbient(r.meta.ambient, r.id)) errors.push(`${r.id}: нет фона «ambient:»`);
+    } catch (e) {
+      errors.push((e as Error).message);
     }
   }
   return errors;

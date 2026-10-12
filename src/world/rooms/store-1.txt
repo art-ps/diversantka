@@ -1,6 +1,7 @@
 id: store-1
 exits: left=- right=store-2 up=arch-1 down=-
 terminals: 20,22
+ambient: hum
 ---
 ###.H.##################################
 #...H..................................#

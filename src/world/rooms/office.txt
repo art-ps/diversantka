@@ -2,6 +2,7 @@ id: office
 exits: left=arch-1 right=corr-1 up=lab-2 down=-
 terminals: 20,22
 items: knife@10,19
+ambient: hum
 ---
 ##################################.H.###
 #.............###########..........H...#

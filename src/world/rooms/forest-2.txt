@@ -1,5 +1,6 @@
 id: forest-2
 exits: left=- right=- up=forest-1 down=forest-3
+ambient: wind
 ---
 ####################################..##
 #.....#######.......#####..............#

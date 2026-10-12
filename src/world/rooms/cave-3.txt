@@ -2,6 +2,7 @@ id: cave-3
 exits: left=cave-in right=cave-2 up=- down=river-3
 tapes: 19,16
 enemies: dog@28,22 patrol=25..31
+ambient: drips
 ---
 ########################################
 ########################################

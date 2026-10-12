@@ -1,6 +1,7 @@
 id: store-2
 exits: left=store-1 right=store-3 up=- down=secret-1
 enemies: android@12,22 patrol=7..18
+ambient: hum
 ---
 ########################################
 #..##########..........................#

@@ -1,6 +1,7 @@
 id: shaft-top
 exits: left=power-1 right=boiler up=evm-2 down=shaft-1
 lift: 26 22..97 floors=47,72
+ambient: hum
 ---
 ###########.H.##########################
 #...........H...........#######........#

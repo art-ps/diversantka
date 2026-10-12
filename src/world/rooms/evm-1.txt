@@ -1,6 +1,7 @@
 id: evm-1
 exits: left=corr-1 right=- up=hall-1 down=evm-2
 terminals: 20,22 main controls=hall-1
+ambient: hum
 ---
 ##################################.H.###
 #..................................H...#

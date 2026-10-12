@@ -1,6 +1,7 @@
 id: river-3
 exits: left=- right=river-2 up=cave-3 down=yard
 tapes: 6,14
+ambient: river
 ---
 #################################.H.####
 #################################.H.####

@@ -1,6 +1,7 @@
 id: shaft-bot
 exits: left=tunnel-1 right=- up=shaft-2 down=-
 enemies: android@8,22 patrol=4..12
+ambient: hum
 ---
 ##########################...###########
 ##########################...###########

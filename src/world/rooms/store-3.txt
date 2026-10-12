@@ -2,6 +2,7 @@ id: store-3
 exits: left=store-2 right=evm-2 up=- down=-
 enemies: dog@22,22 patrol=14..27
 tapes: 31,19
+ambient: hum
 ---
 ########################################
 #......................................#

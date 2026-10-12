@@ -32,6 +32,17 @@ export function parsePoints(s: string | undefined, file: string, what: string): 
   });
 }
 
+export const AMBIENTS = ['storm', 'hum', 'drips', 'river', 'wind'] as const;
+export type Ambient = (typeof AMBIENTS)[number];
+
+// «ambient: слово» — звуковой фон комнаты; пусто — без фона, чужое слово — ошибка.
+export function parseAmbient(s: string | undefined, file: string): Ambient | null {
+  const v = (s ?? '').trim();
+  if (!v) return null;
+  if (!(AMBIENTS as readonly string[]).includes(v)) throw new Error(`${file}: неизвестный фон «${v}»`);
+  return v as Ambient;
+}
+
 export interface Fence { x: number; top: number; bottom: number }
 
 // «x,верх..низ» — столбец забора в клетках.

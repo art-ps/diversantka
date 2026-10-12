@@ -1,6 +1,7 @@
 id: tunnel-1
 exits: left=garage-1 right=shaft-bot up=- down=-
 enemies: flamer@20,18.5 dir=left
+ambient: hum
 ---
 ########################################
 ########################################

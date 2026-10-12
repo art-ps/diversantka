@@ -2,6 +2,7 @@ id: hall-1
 exits: left=lab-3 right=- up=- down=evm-1
 items: stone@14,14
 enemies: flamer@38,19 dir=left
+ambient: hum
 ---
 ########################################
 #........................##............#

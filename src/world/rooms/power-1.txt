@@ -1,6 +1,7 @@
 id: power-1
 exits: left=secret-1 right=shaft-top up=- down=-
 switch: 20,22
+ambient: hum
 ---
 ########################################
 #......................................#

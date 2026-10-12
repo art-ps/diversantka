@@ -1,6 +1,7 @@
 id: slope-1
 exits: left=- right=- up=- down=forest-1
 sky: storm
+ambient: storm
 ---
 ........................................
 ........................................

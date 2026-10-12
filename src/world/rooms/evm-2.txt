@@ -1,5 +1,6 @@
 id: evm-2
 exits: left=store-3 right=- up=evm-1 down=shaft-top
+ambient: hum
 ---
 #####.H.################################
 #.....H................................#

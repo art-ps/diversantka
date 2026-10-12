@@ -1,6 +1,7 @@
 id: cave-in
 exits: left=- right=cave-3 up=forest-3 down=-
 items: knife@22,22
+ambient: drips
 ---
 ####################################..##
 ###########################............#

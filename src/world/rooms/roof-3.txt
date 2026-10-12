@@ -2,6 +2,7 @@ id: roof-3
 exits: left=roof-2 right=- up=- down=-
 sky: storm
 tapes: 33,12
+ambient: storm
 ---
 ........................................
 ........................................

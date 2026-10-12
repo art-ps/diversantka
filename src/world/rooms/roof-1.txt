@@ -1,6 +1,7 @@
 id: roof-1
 exits: left=- right=roof-2 up=- down=lab-2
 sky: storm
+ambient: storm
 ---
 ........................................
 ........................................

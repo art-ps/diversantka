@@ -1,5 +1,6 @@
 id: river-2
 exits: left=river-3 right=river-1 up=cave-2 down=-
+ambient: river
 ---
 ##################.H.###################
 ##################.H.###################
