@@ -1,4 +1,5 @@
 import type { Sfx } from './sim/sfx';
+import type { Ambient } from './world/spawns';
 
 export const ROOM_W = 40;
 export const ROOM_H = 25;
@@ -289,3 +290,22 @@ export const LOOPS: Record<'lift' | 'jet', Tone> = {
   lift: { wave: 'sawtooth', f: 55, dur: 0, gain: 0.2, filter: 'lowpass', cut: 260 },
   jet: hiss(0, 0.25, 'bandpass', 1800, 0.7),
 };
+
+// Фон по месту (ключ шапки «ambient:»): тихие петли, смена при переходе экрана, гром в такт молнии, капель.
+export const AMBIENT = {
+  fade: 0.8, // старый фон гаснет, новый нарастает за, с
+  thunderLit: 0.95, // вспышка ярче — главный разряд (flashAt из src/fx/storm.ts)
+  thunderDelay: 0.3, // гром после разряда, с
+  dripsPerSec: 1.5, // капель в пещере
+};
+
+export const BEDS: Record<Ambient, Tone[]> = {
+  storm: [hiss(0, 0.16, 'lowpass', 2500), { ...hiss(0, 0.08, 'highpass', 5000), lfo: 0.3 }], // ливень
+  hum: [{ wave: 'sawtooth', f: 50, dur: 0, gain: 0.05, filter: 'lowpass', cut: 180 }, { wave: 'sine', f: 100, dur: 0, gain: 0.04 }], // машинный зал
+  drips: [hiss(0, 0.03, 'lowpass', 300)], // гулкая тишина пещеры
+  river: [{ ...hiss(0, 0.14, 'bandpass', 500, 0.6), lfo: 0.4 }, hiss(0, 0.06, 'lowpass', 200)], // течение
+  wind: [{ ...hiss(0, 0.12, 'bandpass', 700, 1.2), lfo: 0.15 }], // ветер порывами
+};
+
+export const THUNDER: Tone[] = [hiss(2.5, 0.45, 'lowpass', 160), hiss(1.2, 0.25, 'lowpass', 600, 1, 0.05)];
+export const DRIPS: Tone[] = [1400, 1100, 1700].map(f => ({ wave: 'sine' as const, f, to: f / 2, dur: 0.12, gain: 0.07 }));

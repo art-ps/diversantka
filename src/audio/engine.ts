@@ -1,5 +1,7 @@
 import { AUDIO, LOOPS, SOUNDS } from '../config';
 import type { Sfx } from '../sim/sfx';
+import type { Ambient } from '../world/spawns';
+import { Ambience } from './ambient';
 import { hold, noiseBuffer, playTone, release, type Held } from './voices';
 
 type LoopName = keyof typeof LOOPS;
@@ -15,6 +17,7 @@ export class SoundEngine {
   private ends: Float64Array; // когда освободится каждый голос
   private last: Partial<Record<string, number>> = {}; // когда звук играл последний раз
   private loops: Partial<Record<LoopName, Held>> = {};
+  readonly ambience: Ambience;
 
   constructor(readonly ctx: BaseAudioContext) {
     this.master = ctx.createGain();
@@ -22,6 +25,12 @@ export class SoundEngine {
     this.master.connect(ctx.destination);
     this.noise = noiseBuffer(ctx);
     this.ends = new Float64Array(AUDIO.maxVoices);
+    this.ambience = new Ambience(ctx, this.master, this.noise);
+  }
+
+  // Раз в кадр: фон комнаты, гром и капель. time — часы отрисовки (как у drawGame), dt — с прошлого кадра.
+  update(kind: Ambient | null, time: number, dt: number): void {
+    this.ambience.update(kind, time, dt, this.muted);
   }
 
   setMuted(m: boolean): void {
