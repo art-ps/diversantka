@@ -27,18 +27,20 @@ it('приёмка №3: с крыши и со склона достижимы 6
   for (const s of LANDINGS) expect(unreachable(rooms, [s]), s.room).toEqual([]);
 });
 
-it('с крыши достижима каждая комната корпуса', () => {
+it('с крыши достижима каждая комната, кроме склона и леса — туда только ранним прыжком', () => {
   const rooms = loadRoomsFs();
-  const all = [...rooms.keys()].filter(id => !id.startsWith('sea-')).sort();
+  const early = ['forest-1', 'forest-2', 'forest-3', 'slope-1'];
+  const all = [...rooms.keys()].filter(id => !id.startsWith('sea-') && !early.includes(id)).sort();
   expect([...roomsReached(rooms, [LANDINGS[0]])].sort()).toEqual(all);
 });
 
-it('тупиков нет: из секретной, котельной, пещер, воды, с камней и из гаража есть путь на крышу', () => {
+// Односторонние спуски (трещины леса, провал острова, уступы двора) не запирают: отовсюду есть путь на крышу.
+it('тупиков нет: из секретной, котельной, леса, воды, с камней и из гаража есть путь на крышу', () => {
   const rooms = loadRoomsFs();
   const from = [
-    { room: 'secret-1', x: 15, bottom: 22 }, { room: 'boiler', x: 4, bottom: 22 }, { room: 'cave-3', x: 30, bottom: 22 },
-    { room: 'river-3', x: 20, bottom: 22 }, { room: 'river-2', x: 9.5, bottom: 22 }, { room: 'river-1', x: 16, bottom: 22 },
-    { room: 'garage-1', x: 30, bottom: 22 },
+    { room: 'secret-1', x: 15, bottom: 22 }, { room: 'boiler', x: 4, bottom: 22 }, { room: 'slope-1', x: 33, bottom: 22 },
+    { room: 'forest-2', x: 20, bottom: 22 }, { room: 'cave-in', x: 20, bottom: 22 }, { room: 'river-3', x: 20, bottom: 22 },
+    { room: 'river-2', x: 9.5, bottom: 22 }, { room: 'river-1', x: 16, bottom: 22 }, { room: 'garage-1', x: 30, bottom: 22 },
   ];
   for (const s of from) expect(roomsReached(rooms, [s]).has('roof-1'), `${s.room} ${s.x},${s.bottom}`).toBe(true);
 }, 20_000);

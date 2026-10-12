@@ -185,3 +185,47 @@ it('по камням: shaft-2 → river-1 → river-2 → river-3 сухой н
   expect(bottomOf(g)).toBeCloseTo(14);
   expect(g.nina.energy).toBe(NINA.energyMax);
 });
+
+// ---- лес ----
+
+it('лес: склон → forest-1 → forest-2 → forest-3 → cave-in → cave-3 без урона, колючки — прыжком', () => {
+  const g = at('slope-1', 34, 22);
+  goUntil(g, 1, inRoom(g, 'forest-1'));
+  expect(bottomOf(g)).toBeCloseTo(5);
+  goUntil(g, -1, onFloor(g, 22));
+  goUntil(g, 1, inRoom(g, 'forest-2'));
+  goUntil(g, -1, onFloor(g, 16));
+  goUntil(g, 1, onFloor(g, 22));
+  walkTo(g, 11);
+  jump(g, -1, 30); // колючки x8..9
+  goUntil(g, -1, inRoom(g, 'forest-3'));
+  goUntil(g, 1, onFloor(g, 16));
+  goUntil(g, -1, onFloor(g, 22));
+  walkTo(g, 28);
+  jump(g, 1, 30); // колючки x30..31
+  goUntil(g, 1, inRoom(g, 'cave-in'));
+  goUntil(g, -1, onFloor(g, 22));
+  goUntil(g, 1, inRoom(g, 'cave-3'));
+  expect(g.roomId).toBe('cave-3');
+  expect(g.nina.energy).toBe(NINA.energyMax);
+});
+
+it('со склона в корпус — только через лес, низ и лифт: без лифта корпус недостижим', () => {
+  const rooms = loadRoomsFs();
+  const top = rooms.get('shaft-top')!;
+  const { lift: _, ...meta } = top.meta;
+  rooms.set('shaft-top', { ...top, meta });
+  const reached = new Set([...reachableNodes(rooms, [LANDINGS[1]])].map(k => k.split('|')[1]));
+  expect(reached.has('cave-3') && reached.has('river-3')).toBe(true);
+  const corpus = [
+    'arch-1', 'boiler', 'corr-1', 'evm-1', 'evm-2', 'hall-1', 'lab-1', 'lab-2', 'lab-3', 'office', 'power-1',
+    'roof-1', 'roof-2', 'roof-3', 'secret-1', 'shaft-top', 'store-1', 'store-2', 'store-3',
+  ];
+  expect(corpus.filter(id => reached.has(id))).toEqual([]);
+});
+
+it('forest-2: колючки бьют', () => {
+  const g = at('forest-2', 12, 22);
+  run(g, { moveX: -1 }, 30);
+  expect(g.nina.energy).toBeLessThan(NINA.energyMax);
+});

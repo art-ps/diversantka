@@ -1,10 +1,11 @@
 import { expect, it } from 'vitest';
 import { ANDROID, DOG, DT, MISSION, NINA } from '../src/config';
-import { createGame, enterRoom, stepGame, type Game } from '../src/game';
+import { createGame, createPrologue, enterRoom, stepGame, type Game } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
 import { MAP_AREA, MAP_PX, MAP_PY } from '../src/render/map';
 import { PAL } from '../src/render/palette';
 import { drawRoom } from '../src/render/scene';
+import { gliderAt } from '../src/sim/glider';
 import { createLifts, LIFT_W } from '../src/sim/lift';
 import { loadWorld, validateLifts, validateMission } from '../src/world';
 import { layoutMap } from '../src/world/map';
@@ -36,9 +37,9 @@ const climbTo = (g: Game, dir: 'up' | 'down', to: string) => {
 };
 
 const ROOMS = [
-  'arch-1', 'boiler', 'cave-1', 'cave-2', 'cave-3', 'corr-1', 'evm-1', 'evm-2', 'garage-1', 'hall-1', 'lab-1', 'lab-2',
-  'lab-3', 'office', 'power-1', 'river-1', 'river-2', 'river-3', 'roof-1', 'roof-2', 'roof-3', 'sea-1', 'sea-2', 'secret-1',
-  'shaft-1', 'shaft-2', 'shaft-bot', 'shaft-top', 'slope-1', 'store-1', 'store-2', 'store-3',
+  'arch-1', 'boiler', 'cave-1', 'cave-2', 'cave-3', 'cave-in', 'corr-1', 'evm-1', 'evm-2', 'forest-1', 'forest-2', 'forest-3',
+  'garage-1', 'hall-1', 'lab-1', 'lab-2', 'lab-3', 'office', 'power-1', 'river-1', 'river-2', 'river-3', 'roof-1', 'roof-2',
+  'roof-3', 'sea-1', 'sea-2', 'secret-1', 'shaft-1', 'shaft-2', 'shaft-bot', 'shaft-top', 'slope-1', 'store-1', 'store-2', 'store-3',
 ];
 
 
@@ -300,18 +301,33 @@ it('фальш-пол store-2 и фальш-стена power-1 — стена н
   expect(PAL.fake).not.toEqual(PAL.wall);
 });
 
-it('slope-1: со скалы вниз по уступам и в дверь lab-1 — без урона', () => {
+it('slope-1: дверь в lab-1 заложена; со скалы по уступам и в трещину — в forest-1 без урона', () => {
   const g = createGame(loadRoomsFs(), { room: 'slope-1', x: 2, bottom: 14 });
   run(g, {}, 5);
-  run(g, { moveX: 1 }, 600, () => g.roomId === 'lab-1');
+  run(g, { moveX: 1 }, 600, () => g.roomId === 'forest-1' && g.nina.state === 'ground');
   run(g, {}, 30);
-  expect(g.roomId).toBe('lab-1');
-  expect(bottomOf(g)).toBeCloseTo(22);
+  expect(g.roomId).toBe('forest-1');
+  expect(bottomOf(g)).toBeCloseTo(5);
   expect(g.nina.energy).toBe(NINA.energyMax);
-  run(g, { moveX: -1 }, 300, () => g.roomId === 'slope-1');
-  run(g, {}, 30);
-  expect(g.roomId).toBe('slope-1');
-  expect(bottomOf(g)).toBeCloseTo(22);
+  const door = createGame(loadRoomsFs(), { room: 'slope-1', x: 33, bottom: 22 });
+  run(door, { moveX: 1 }, 5);
+  run(door, { moveX: 1, jump: true, jumpPressed: true }, 1);
+  run(door, { moveX: 1 }, 120);
+  expect(door.roomId).not.toBe('lab-1');
+});
+
+it('пролог: отцепление над любым местом склона — посадка на склоне, не в трещине', () => {
+  const rooms = loadRoomsFs();
+  for (const x of [8, 16, 24, 30, 33, 35, 36.5, 38, 39.5]) {
+    const g = createPrologue(rooms);
+    run(g, {}, 3000, () => g.roomId === 'slope-1' && !g.transition && gliderAt(g.prologue!.d).x >= x);
+    run(g, { jump: true, jumpPressed: true }, 1);
+    run(g, {}, 600, () => !g.prologue);
+    run(g, {}, 60);
+    expect(g.roomId, `${x}`).toBe('slope-1');
+    expect(g.nina.state, `${x}`).toBe('ground');
+    expect(g.mission.checkpoint.room, `${x}`).toBe('slope-1');
+  }
 });
 
 it('slope-1: с козырька над дверью вправо не пройти — в lab-1 там стена', () => {
