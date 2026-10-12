@@ -1,7 +1,8 @@
 import { expect, it } from 'vitest';
+import { HAZARD, NINA } from '../src/config';
 import type { Room } from '../src/world/room';
-import { loadRoomsFs } from './helpers';
-import { missionTargets, reachableNodes, unreachable } from './reach';
+import { loadRoomsFs, roomOf } from './helpers';
+import { FALL_MAX, missionTargets, reachableNodes, targetDamage, unreachable, WATER_PER_CELL } from './reach';
 
 // Точки посадки пролога: крыша и склон (x — левый край тела).
 const LANDINGS = [{ room: 'roof-1', x: 8, bottom: 22 }, { room: 'slope-1', x: 2, bottom: 14 }];
@@ -55,4 +56,59 @@ it('фальш-пол и фальш-стена S проходимы, стена 
   expect(unreachable(rooms, LANDINGS)).toEqual([]); // через фальш-стену power-1
   rooms.set('power-1', patch(rooms.get('power-1')!, [18, 19, 20, 21].map(r => [0, r, '#'] as [number, number, string])));
   expect(unreachable(rooms, LANDINGS)).toEqual(['источник']);
+});
+
+// ---- модель: урон по маршруту ----
+
+// Комнаты в ряд слева направо (или стопкой сверху вниз): id, строки сетки, шапка.
+const strip = (dir: 'right' | 'down', parts: { id: string; rows: Record<number, string>; meta?: Record<string, string> }[]) => {
+  const back = dir === 'right' ? 'left' : 'up';
+  return new Map(parts.map((p, i) => {
+    const exits: Room['exits'] = {};
+    if (i > 0) exits[back] = parts[i - 1].id;
+    if (i < parts.length - 1) exits[dir] = parts[i + 1].id;
+    return [p.id, { ...roomOf(p.rows, exits), id: p.id, meta: p.meta ?? {} }];
+  }));
+};
+// Коридор высотой в рост героини (прыгать некуда), пол — строка 22, вода `~` в колонках from..to.
+const corridor = (from = 40, to = -1) => {
+  const rows: Record<number, string> = {};
+  for (let r = 0; r <= 17; r++) rows[r] = '#'.repeat(40);
+  for (let r = 18; r <= 21; r++) rows[r] = Array.from({ length: 40 }, (_, c) => (c >= from && c <= to ? '~' : '.')).join('');
+  rows[22] = '#'.repeat(40);
+  return rows;
+};
+
+it('цена воды: клетка пути — HAZARD.waterDps / NINA.climbSpeed энергии', () => {
+  expect(WATER_PER_CELL).toBeCloseTo(HAZARD.waterDps / NINA.climbSpeed);
+  const rooms = strip('right', [{ id: 'a', rows: corridor(10, 19), meta: { tapes: '30,22' } }]);
+  // тело в колонках c, c+1 мокнет на узлах c = 9..19 — 11 шагов в воде
+  expect(targetDamage(rooms, [{ room: 'a', x: 2, bottom: 22 }]).get('лента a#t0')).toBeCloseTo(11 * WATER_PER_CELL);
+});
+
+it('река смертельна: брод в 100 клеток по коридору недостижим, в 60 — проходится', () => {
+  const deadly = strip('right', [
+    { id: 'a', rows: corridor(10, 39) }, { id: 'b', rows: corridor(0, 39) }, { id: 'c', rows: corridor(0, 29), meta: { tapes: '33,22' } },
+  ]);
+  expect(unreachable(deadly, [{ room: 'a', x: 2, bottom: 22 }])).toEqual(['лента c#t0']);
+  const ford = strip('right', [
+    { id: 'a', rows: corridor(10, 39) }, { id: 'b', rows: corridor() }, { id: 'c', rows: corridor(0, 29), meta: { tapes: '33,22' } },
+  ]);
+  expect(unreachable(ford, [{ room: 'a', x: 2, bottom: 22 }])).toEqual([]);
+  expect(targetDamage(ford, [{ room: 'a', x: 2, bottom: 22 }]).get('лента c#t0')).toBeGreaterThan(60 * WATER_PER_CELL);
+});
+
+it('урон от падения по формуле NINA; падения копятся: три по 15 клеток подряд смертельны, хотя каждое не длиннее FALL_MAX', () => {
+  expect(FALL_MAX).toBeGreaterThanOrEqual(15);
+  const one = strip('down', [{ id: 'a', rows: { 5: '#'.repeat(20), 15: '.'.repeat(20) + '#'.repeat(20) }, meta: { tapes: '30,15' } }]);
+  expect(targetDamage(one, [{ room: 'a', x: 2, bottom: 5 }]).get('лента a#t0')).toBeCloseTo((10 - NINA.safeFall) * NINA.fallDamagePerCell);
+  // a: уступ 5 → уступ 20 (15 клеток); b: уступ 10 (15 клеток); дальше — пол b на 24 (14 клеток) или на 18 (8 клеток)
+  const tower = (floor: number) => strip('down', [
+    { id: 'a', rows: { 5: '#'.repeat(20), 20: '.'.repeat(20) + '#'.repeat(10) } },
+    { id: 'b', rows: { 10: '.'.repeat(30) + '#'.repeat(10), [floor]: '#'.repeat(30) }, meta: { tapes: `10,${floor}` } },
+  ]);
+  const hurt = (k: number) => Math.max(0, k - NINA.safeFall) * NINA.fallDamagePerCell;
+  expect(2 * hurt(15) + hurt(14)).toBeGreaterThanOrEqual(NINA.energyMax);
+  expect(unreachable(tower(24), [{ room: 'a', x: 2, bottom: 5 }])).toEqual(['лента b#t0']);
+  expect(targetDamage(tower(18), [{ room: 'a', x: 2, bottom: 5 }]).get('лента b#t0')).toBeCloseTo(2 * hurt(15));
 });
