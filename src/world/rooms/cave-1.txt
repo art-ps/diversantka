@@ -1,7 +1,6 @@
 id: cave-1
-exits: left=- right=shaft-1 up=- down=-
+exits: left=cave-2 right=shaft-1 up=- down=-
 enemies: dog@20,22 patrol=14..26
-tapes: 33,22
 ---
 ########################################
 ########################################
