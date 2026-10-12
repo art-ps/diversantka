@@ -3,8 +3,8 @@ import { CLIPS } from '../anim/clips';
 import { J } from '../anim/clip';
 import { dogGlyphs } from '../anim/dog';
 import { simplePose } from '../anim/simple';
-import { FX, MISSION, NINA, ROOM_H, ROOM_W, SOURCE } from '../config';
-import { TRANSITION_TIME, type Game } from '../game';
+import { FX, LIFT, MISSION, NINA, ROOM_H, ROOM_W, SOURCE } from '../config';
+import { liftHint, TRANSITION_TIME, type Game } from '../game';
 import { fireCells, heatColor, type Fire } from '../fx/fires';
 import { HEAT_RAMP } from '../fx/heat';
 import { stormGlyphs } from '../fx/storm';
@@ -150,11 +150,34 @@ export function drawSource(b: Pick<GlyphBatch, 'push'>, s: Point, ox: number, oy
   }
 }
 
-// Лифты в комнате room: платформа — ряд мелких блоков, над ней трос посередине шахты (сквозь стены не рисуется).
+// Панели вызова лифта l в комнате room: у каждого этажа остановки — с той стороны шахты, где рядом пол
+// (клетка у шахты на уровне этажа — стена, над ней — проход). Центр символа — (x, bottom − 2), на высоте груди героини.
+export function liftPanels(l: Lift, room: Room): Point[] {
+  const k = l.rooms.indexOf(room.id);
+  if (k < 0) return [];
+  const out: Point[] = [];
+  for (const s of l.stops) {
+    const r = s - k * ROOM_H;
+    if (r < 1 || r >= ROOM_H) continue;
+    for (const c of [l.x - 1, l.x + LIFT_W]) {
+      if (room.tiles[r]?.[c] === '#' && room.tiles[r - 1]?.[c] !== '#') out.push({ x: c + 0.5, bottom: r });
+    }
+  }
+  return out;
+}
+
+// Лифты в комнате room: платформа — ряд мелких блоков, над ней трос посередине шахты (сквозь стены не рисуется);
+// панели вызова — мигают, пока лифта на их этаже нет, на этаже с лифтом горят ровно и тускло.
 export function drawLifts(b: Pick<GlyphBatch, 'push'>, lifts: Lift[], room: Room, ox: number, oy: number, time: number): void {
   for (const l of lifts) {
     const top = liftTop(l, room.id);
-    if (top === null || top < -1 || top > ROOM_H) continue;
+    if (top === null) continue;
+    const k = 0.5 + 0.5 * Math.sin(time * 2 * Math.PI * LIFT.panelHz);
+    for (const p of liftPanels(l, room)) {
+      const c: Color = Math.abs(top - p.bottom) < 1e-3 ? PAL.hudDim : [PAL.item[0], PAL.item[1], PAL.item[2], 0.55 + 0.45 * k];
+      b.push(p.x - 0.5 + ox, p.bottom - 2.5 + oy, '█', c, 0.5);
+    }
+    if (top < -1 || top > ROOM_H) continue;
     const cx = l.x + LIFT_W / 2;
     for (let r = 0; r + 1 <= top && r < ROOM_H; r++) {
       if (room.tiles[r][l.x + 1] === '#' || hudCell(cx, r, room.id, time)) continue;
@@ -162,6 +185,15 @@ export function drawLifts(b: Pick<GlyphBatch, 'push'>, lifts: Lift[], room: Room
     }
     for (let i = 0; i < LIFT_W * 2; i++) b.push(l.x + 0.25 + i / 2 - 0.5 + ox, top + 0.25 - 0.5 + oy, '▓', PAL.platform, 0.5);
   }
+}
+
+export const LIFT_HINT = 'E — ВЫЗВАТЬ ЛИФТ';
+
+// Подсказка над головой героини, по центру над ней, не за краем экрана.
+export function drawLiftHint(b: Pick<GlyphBatch, 'text'>, g: Game, ox: number, oy: number): void {
+  const n = g.nina.body, w = hudWidth(LIFT_HINT);
+  const x = Math.min(Math.max(n.x + n.w / 2 - w / 2, 0.5), ROOM_W - 0.5 - w);
+  b.text(x + ox, n.y - 1.5 + oy, LIFT_HINT, PAL.hud, HUD_STEP);
 }
 
 // Перфолента — мелкий блок своего цвета.
@@ -311,6 +343,7 @@ function drawWorld(b: GlyphBatch, g: Game, ox: number, oy: number, time: number)
   drawParticles(b, g.particles, ox, oy);
   drawNina(b, g, ox, oy, time);
   drawFloaters(b, g.floaters, ox, oy);
+  if (liftHint(g)) drawLiftHint(b, g, ox, oy);
 }
 
 export function drawGame(b: GlyphBatch, g: Game, time: number): void {

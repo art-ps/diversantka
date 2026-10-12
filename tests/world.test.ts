@@ -241,20 +241,21 @@ it('shaft-1: шахта без лифта — пропасть; E у края в
   expect(g.nina.dead).toBe(false);
 });
 
-it('shaft-bot: из ямы под лифтом — выпрыгнуть на пол и вызвать лифт', () => {
+it('shaft-bot: ямы под лифтом нет — дно шахты решётка; стоя на ней, E вызывает лифт, героиня на платформе едет наверх', () => {
   const g = at('shaft-bot', 27.5, 22);
+  for (let c = 26; c <= 28; c++) expect(g.rooms.get('shaft-bot')!.tiles[22][c]).toBe('=');
   run(g, {}, 30);
-  expect(bottomOf(g)).toBeCloseTo(23); // лифт наверху — на дне шахты ступенька вниз
+  expect(bottomOf(g)).toBeCloseTo(22); // лифт наверху — стоит на решётке, не в яме
   run(g, { usePressed: true }, 1);
-  run(g, {}, 30);
-  expect(g.lifts[0].target).toBeNull(); // из ямы E не вызывает
-  run(g, { moveX: -0.3, jump: true, jumpPressed: true }, 1);
-  run(g, { moveX: -0.3, jump: true }, 20);
-  run(g, {}, 20);
-  expect(bottomOf(g)).toBeCloseTo(22);
-  run(g, { usePressed: true }, 1);
+  expect(g.lifts[0].target).toBe(97);
   run(g, {}, 1500, () => g.lifts[0].target === null && g.lifts[0].y === 97);
+  run(g, {}, 30);
   expect(g.lifts[0].y).toBe(97);
+  expect(bottomOf(g)).toBeCloseTo(22);
+  expect(g.nina.state).toBe('ground');
+  run(g, { up: true }, 1500, () => g.roomId === 'shaft-2' && g.lifts[0].target === null && !g.transition);
+  expect(g.roomId).toBe('shaft-2');
+  expect(g.nina.energy).toBe(NINA.energyMax);
 });
 
 it('store-2 → secret-1 сквозь фальш-пол без урона, к источнику, сквозь фальш-стену в power-1 и обратно', () => {

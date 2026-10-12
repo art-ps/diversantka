@@ -244,17 +244,29 @@ function liftUnder(g: Game): Lift | undefined {
   });
 }
 
-// E у шахты на этаже, где лифта нет, — вызвать его к себе.
-function callLift(g: Game): void {
+// Кого вызовет E: героиня стоит на этаже лифта у шахты (центр не дальше LIFT.callRange от её середины),
+// лифта на этом этаже нет и он туда не едет. null — вызывать нечего.
+export function liftCall(g: Game): { lift: Lift; stop: number } | null {
   const b = g.nina.body;
-  if (g.nina.state !== 'ground') return;
+  if (g.nina.state !== 'ground') return null;
   for (const l of g.lifts) {
     const k = l.rooms.indexOf(g.roomId);
     if (k < 0 || Math.abs(b.x + b.w / 2 - (l.x + LIFT_W / 2)) > LIFT.callRange) continue;
     const stop = l.stops.find(s => Math.abs(s - k * ROOM_H - (b.y + b.h)) < LIFT_EPS);
-    if (stop !== undefined && Math.abs(l.y - stop) > LIFT_EPS) l.target = stop;
+    if (stop !== undefined && Math.abs(l.y - stop) > LIFT_EPS && l.target !== stop) return { lift: l, stop };
   }
+  return null;
 }
+
+// E у шахты на этаже, где лифта нет, — вызвать его к себе.
+function callLift(g: Game): void {
+  const c = liftCall(g);
+  if (c) c.lift.target = c.stop;
+}
+
+// Подсказка «E — ВЫЗВАТЬ ЛИФТ» над героиней: E сейчас вызовет лифт, и мир идёт (не пауза, не ЭВМ, не переход, не гибель, не конец).
+export const liftHint = (g: Game): boolean =>
+  !g.prologue && !g.paused && !g.screen && !g.transition && !g.nina.dead && !g.mission.result && liftCall(g) !== null;
 
 // Лифты: удержание вверх/вниз на платформе — к следующему этажу. Платформа везёт стоящую героиню и лежащие
 // предметы; поднимаясь, подхватывает падающую героиню, чьи ноги прошла.
