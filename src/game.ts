@@ -74,13 +74,15 @@ export interface Game {
   seen: Set<string>; // комнаты, где героиня побывала за миссию (для карты); чекпоинт не откатывает
   sfx: Sfx[]; // звуковые события с прошлого кадра — забирает и очищает main.ts
   stepAcc: number; // путь с прошлого звука шага, клетки
+  liftHum: boolean; // звучит гул лифта в пути
+  jetHiss: boolean; // звучит струя огнемёта
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
     items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
-    lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0,
+    lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false,
   };
   enterRoom(g, start.room);
   return g;
@@ -137,6 +139,7 @@ function stepPrologue(g: Game, p: Prologue, it: Intent, dt: number): void {
     p.phase = 'crash';
     p.t = 0;
     sparks(g.particles, Math.min(a.x + PROLOGUE.span / 2, ROOM_W), a.bottom - PROLOGUE.height / 2, PAL.spark, 12);
+    g.sfx.push('mast');
   }
 }
 
@@ -261,7 +264,9 @@ function stepLifts(g: Game, it: Intent, dt: number): void {
   const b = g.nina.body;
   for (const l of g.lifts) {
     const before = liftTop(l, g.roomId);
+    const moving = l.target !== null;
     stepLift(l, dt);
+    if (moving && l.target === null && before !== null) g.sfx.push('liftFloor'); // стук на этаже — если шахта в этой комнате
     const after = liftTop(l, g.roomId);
     if (before === null || after === null || after === before) continue;
     const feet = b.y + b.h;
@@ -317,7 +322,19 @@ const bites = (dogs: Dog[]) => {
 
 const HIT_SFX = { hit: 'hit', blocked: 'block', killed: 'kill', none: null } as const;
 
+// Шаг игры и петли звука: гул лифта в пути и шипение струи звучат, пока мир идёт (не пауза, не экран ЭВМ,
+// не конец миссии, не гибель). g мог смениться целиком («заново») — сравнение с тем, что звучало до шага.
 export function stepGame(g: Game, it: Intent, dt: number): void {
+  const lift0 = g.liftHum, jet0 = g.jetHiss;
+  stepWorld(g, it, dt);
+  const live = !g.paused && !g.screen && !g.mission.result && !g.nina.dead;
+  g.liftHum = live && g.lifts.some(l => l.target !== null && liftTop(l, g.roomId) !== null);
+  g.jetHiss = live && g.flamers.some(f => flameRect(f) !== null);
+  if (g.liftHum !== lift0) g.sfx.push(g.liftHum ? 'liftStart' : 'liftStop');
+  if (g.jetHiss !== jet0) g.sfx.push(g.jetHiss ? 'jetOn' : 'jetOff');
+}
+
+function stepWorld(g: Game, it: Intent, dt: number): void {
   const p = g.prologue;
   if (p) {
     // После отцепления: вода — всплеск, опора под ногами — посадка и старт миссии.
@@ -325,6 +342,7 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
       if (g.inWater) {
         p.phase = 'splash';
         p.t = 0;
+        g.sfx.push('seaSplash');
       } else if (g.nina.state === 'ground') beginMission(g);
     }
     if (g.prologue && p.phase !== 'fall') {
@@ -351,7 +369,12 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     return;
   }
   if (g.screen) {
-    const r = stepScreen(g.screen, g.mission, it, dt);
+    const s = g.screen, t0 = s.t, sel0 = s.sel;
+    const r = stepScreen(s, g.mission, it, dt);
+    // Лог печатается — щелчок раз в SFX.typeEvery; меню — писк на шаг курсора и на выбор.
+    if (t0 < MISSION.bootTime && Math.floor(s.t / SFX.typeEvery) > Math.floor(t0 / SFX.typeEvery)) g.sfx.push('type');
+    if (s.sel !== sel0) g.sfx.push('menuMove');
+    if (r !== 'stay') g.sfx.push('menuSelect');
     if (r === 'changed') checkpointAt(g, g.screen.term);
     if (r === 'close') g.screen = null;
     return; // мир стоит; нажатие, закрывшее экран, в мир не уходит
@@ -390,10 +413,15 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
     }
     if (g.panel && near(g.nina, g.panel)) {
       const msg = useSwitch(g.mission);
+      g.sfx.push('switch');
       spawnFloater(g.floaters, msg, g.panel.x, g.panel.bottom - 2.5, g.mission.fenceOff ? 'enemy' : 'blocked');
     } else if (g.bike && near(g.nina, g.bike)) {
-      if (startBike(g.mission)) return; // выезд — дальше stepEnd
+      if (startBike(g.mission)) {
+        g.sfx.push('bike');
+        return; // выезд — дальше stepEnd
+      }
       spawnFloater(g.floaters, 'ЗАБОР ПОД ТОКОМ', g.bike.x, g.bike.bottom - 2.5, 'damage');
+      g.sfx.push('zap');
       if (g.fence) for (let y = g.fence.top; y <= g.fence.bottom; y += 2) sparks(g.particles, g.fence.x + 0.5, y + 0.5, PAL.fireHot, 3);
     } else callLift(g);
   }
@@ -445,7 +473,9 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   for (const id of resolveDogs(g.nina, g.dogs, g.projectiles, events)) g.killed.add(id);
   if (bites(g.dogs) > bit0) g.sfx.push('bite');
   for (const f of g.flamers) {
+    const warned = flamerPhase(f) === 'warn';
     stepFlamer(f, dt);
+    if (!warned && flamerPhase(f) === 'warn') g.sfx.push('flamerWarn');
     const r = flameRect(f);
     if (r && overlap(r, bodyRect(g.nina.body))) burnNina(g.nina, FLAMER.dps * dt);
     if (r) {
