@@ -1,8 +1,8 @@
 import { MISSION } from './config';
 
 // Языки игры. Порядок — как в строке выбора на стартовом экране.
-export type Lang = 'ru';
-export const LANGS: readonly Lang[] = ['ru'];
+export type Lang = 'en' | 'ru';
+export const LANGS: readonly Lang[] = ['en', 'ru'];
 
 // Все тексты, которые видит игрок. Функции — тексты с числами и id комнат (id не переводятся).
 export interface Strings {
@@ -111,7 +111,65 @@ const RU: Strings = {
   noWebgl: 'Браузер не поддерживает WebGL2. Откройте игру в свежем Chrome или Safari.',
 };
 
-export const STR: Record<Lang, Strings> = { ru: RU };
+// English: коротко, заглавными, в тоне терминала 80-х; ЭВМ — COMPUTER, ленты — TAPES.
+const EN: Strings = {
+  energy: 'ENERGY ',
+  hudTapes: (n, total) => `TAPES ${n}/${total} · `,
+  dead: 'KILLED · JUMP — RETRY',
+  credit: 'motion: mocap.cs.cmu.edu',
+  liftHint: 'E — CALL LIFT',
+  prologue: { title: '', fly: 'JUMP — LET GO', fall: '', splash: 'SPLASHDOWN · RETRY', crash: 'HIT THE MAST · RETRY' },
+  tapeFloat: (n, total) => `TAPE ${n}/${total}`,
+  sourceFound: 'SOURCE FOUND',
+  fenceLive: 'FENCE IS LIVE',
+  killed: 'DOWN',
+  blocked: 'block',
+  notEnoughTapes: (n, total) => `NOT ENOUGH TAPES ${n}/${total}`,
+  tapesIn: 'TAPES LOADED',
+  accessDenied: 'ACCESS DENIED',
+  fenceOff: 'FENCE OFF',
+  resultLine: (time, tapes, hits, secret) =>
+    `Diversantka · mission complete in ${time} · tapes ${tapes} · hits ${hits} · source found: ${secret ? 'yes' : 'no'}`,
+  bootLog: [
+    'NII-7 · SERIES 2 COMPUTER · MONITOR V3.1',
+    'RAM TEST ............. 64K OK',
+    'TAPE DRIVE .............. OK',
+    'CONSOLE LINK ............ OK',
+    'CHECKPOINT SAVED',
+  ],
+  menuFlamer: room => `DISABLE FLAMER ${room}`,
+  menuTapes: 'LOAD TAPES',
+  menuExit: 'EXIT',
+  flamerOff: room => `FLAMER ${room} DISABLED`,
+  screenHint: 'ARROWS — SELECT · JUMP/E — OK',
+  won: 'MISSION COMPLETE',
+  resultRows: (time, tapes, hits, secret) => [`TIME    ${time}`, `TAPES   ${tapes}`, `HITS    ${hits}`, `SOURCE FOUND: ${secret ? 'YES' : 'NO'}`],
+  copyHint: 'E/Y — COPY · JUMP — RESTART',
+  copiedHint: 'COPIED · JUMP — RESTART',
+  failed: 'MISSION FAILED',
+  failedHint: 'JUMP — RESTART',
+  mapTitle: 'PAUSED · MAP',
+  mapLegend: 'T TERMINAL  C COMPUTER  S SWITCH  G GARAGE  ▓ TAPE',
+  mapHint: 'ESC/START — RESUME · M — SOUND',
+  mapIcons: { terminal: 'T', main: 'C', switch: 'S', bike: 'G' },
+  titleName: 'DIVERSANTKA',
+  titleTask: `${MISSION.tapes} TAPES · COMPUTER · FENCE · BIKE. ${MISSION.time / 60} MIN`,
+  titleKeys: [
+    ['', 'KEYBOARD', 'GAMEPAD'],
+    ['MOVE', 'ARROWS/WASD', 'STICK/D-PAD'],
+    ['JUMP', 'SPACE', 'A'],
+    ['ATTACK', 'J', 'X'],
+    ['THROW', 'K', 'B'],
+    ['TERMINAL/LIFT', 'E', 'Y'],
+    ['PAUSE', 'ESC', 'START'],
+    ['SOUND', 'M', '—'],
+  ],
+  titleStart: 'SPACE — START',
+  titleFocus: 'CLICK THE SCREEN IF KEYS DO NOT WORK',
+  noWebgl: 'Your browser does not support WebGL2. Open the game in a recent Chrome or Safari.',
+};
+
+export const STR: Record<Lang, Strings> = { en: EN, ru: RU };
 
 // Текущий язык — один на всю игру. По умолчанию русский: тесты, которые язык не трогают, видят прежние тексты.
 // main.ts ставит язык при запуске (save.ts: loadLang), стартовый экран меняет его стрелками.

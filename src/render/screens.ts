@@ -53,7 +53,7 @@ export function wrap(s: string, n: number): string[] {
   return out;
 }
 
-const WIDE = Math.floor((X1 - X0 - 3) / STEP); // букв в строке внутри рамки
+export const WIDE = Math.floor((X1 - X0 - 3) / STEP); // букв в строке внутри рамки
 
 export function drawResult(b: Pick<GlyphBatch, 'push' | 'text'>, r: MissionResult, copied: boolean): void {
   drawFrame(b, PAL.hudDim);
@@ -72,7 +72,7 @@ export function drawFailed(b: Pick<GlyphBatch, 'text'>): void {
 // Стартовый экран: рамка справа от дельтаплана (он висит в колонках 0–6), под ней шторм не рисуется.
 export const TITLE_BOX: Box = { x0: 9, x1: 38, y0: 1, y1: 18 };
 // Тексты — str(): название, задача, таблица клавиш (KEYMAP и fromGamepad в src/input/intent.ts), старт, подсказка про фокус.
-const KEY_COLS = [0, 14, 27]; // начала колонок таблицы, в буквах
+export const KEY_COLS = [0, 14, 27]; // начала колонок таблицы, в буквах
 
 export function drawTitle(b: Pick<GlyphBatch, 'push' | 'text'>, time: number): void {
   const txt = str(), f = TITLE_BOX, mid = (f.x0 + f.x1 + 1) / 2, left = f.x0 + 2;
