@@ -551,6 +551,7 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
     const a = g.androids.find(x => x.id === e.id);
     const d = a ? undefined : g.dogs.find(x => x.id === e.id)!;
     const body = (a ?? d)!.body;
+    if (e.result === 'hit' || e.result === 'killed') g.mission.attacks++; // враг получил урон — для отметки «без боя»
     const text = e.result === 'killed' ? str().killed : e.result === 'blocked' ? str().blocked : '-1';
     const cx = body.x + body.w / 2;
     spawnFloater(g.floaters, text, cx, body.y - 0.6, e.result === 'blocked' ? 'blocked' : 'enemy');

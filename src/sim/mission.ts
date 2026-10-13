@@ -21,15 +21,17 @@ export interface Mission {
   flamersOff: Set<string>; // комнаты, где огнемёты выключены с терминала
   hits: number; // полученные удары за миссию; чекпоинт их не откатывает
   secret: boolean; // источник найден; чекпоинт его не откатывает
+  attacks: number; // попадания героини по врагам (рука, нога, прыжок, бросок); чекпоинт не откатывает
   result: 'won' | 'failed' | null;
   checkpoint: Checkpoint;
 }
 
-export interface MissionResult { time: string; tapes: string; hits: number; secret: boolean; line: string }
+// seconds — время миссии числом (для таблицы рекордов), date — день прохождения «ГГГГ-ММ-ДД» по местному времени.
+export interface MissionResult { time: string; tapes: string; hits: number; secret: boolean; line: string; seconds: number; attacks: number; date: string }
 
 export function createMission(start: Spot): Mission {
   return {
-    timeLeft: MISSION.time, tapes: new Set(), tapesIn: false, fenceOff: false, flamersOff: new Set(), hits: 0, secret: false, result: null,
+    timeLeft: MISSION.time, tapes: new Set(), tapesIn: false, fenceOff: false, flamersOff: new Set(), hits: 0, secret: false, attacks: 0, result: null,
     checkpoint: { ...start, timeLeft: MISSION.time, tapes: [], tapesIn: false, fenceOff: false, flamersOff: [], lifts: {} },
   };
 }
@@ -81,9 +83,12 @@ export function formatTime(sec: number): string {
   return `${pad2(Math.floor(s / 60))}:${pad2(s % 60)}`;
 }
 
-export function missionResult(m: Mission): MissionResult {
-  const time = formatTime(MISSION.time - m.timeLeft);
+export const isoDay = (d: Date): string => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+export function missionResult(m: Mission, now: Date = new Date()): MissionResult {
+  const seconds = MISSION.time - m.timeLeft;
+  const time = formatTime(seconds);
   const tapes = `${m.tapes.size}/${MISSION.tapes}`;
   const line = str().resultLine(time, tapes, m.hits, m.secret);
-  return { time, tapes, hits: m.hits, secret: m.secret, line };
+  return { time, tapes, hits: m.hits, secret: m.secret, line, seconds, attacks: m.attacks, date: isoDay(now) };
 }

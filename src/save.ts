@@ -1,7 +1,8 @@
 import type { Lang } from './i18n';
 
-// Итог между сессиями браузера: пройдена ли миссия, найден ли секрет; звук выключен (M); язык. Только флаги, без личных данных.
-export const SAVE = { done: 'diversantka.done', secret: 'diversantka.secret', mute: 'diversantka.mute', lang: 'diversantka.lang' } as const;
+// Итог между сессиями браузера: пройдена ли миссия, найден ли секрет; звук выключен (M); язык; таблица рекордов.
+// Только флаги и числа, без имён и личных данных. Рекорды второй миссии лягут под ключ diversantka.records.2.
+export const SAVE = { done: 'diversantka.done', secret: 'diversantka.secret', mute: 'diversantka.mute', lang: 'diversantka.lang', records: 'diversantka.records' } as const;
 
 type Store = Pick<Storage, 'setItem'>;
 
@@ -59,4 +60,41 @@ export function saveLang(s: Store | undefined, l: Lang): void {
   } catch {
     // приватный режим — в этой сессии язык всё равно выбран
   }
+}
+
+// Строка таблицы рекордов: время миссии в секундах, полученные удары, попадания по врагам, источник, день «ГГГГ-ММ-ДД».
+export interface RecordRow { seconds: number; hits: number; attacks: number; secret: boolean; date: string }
+export const RECORDS_MAX = 10;
+
+const isRow = (v: unknown): v is RecordRow => {
+  const r = v as RecordRow;
+  return typeof v === 'object' && v !== null && Number.isFinite(r.seconds) && Number.isFinite(r.hits) && Number.isFinite(r.attacks)
+    && typeof r.secret === 'boolean' && typeof r.date === 'string';
+};
+
+// Рекорды по возрастанию времени. Нет хранилища, оно бросает или запись испорчена — рекордов нет.
+export function loadRecords(s: Pick<Storage, 'getItem'> | undefined): RecordRow[] {
+  try {
+    const v: unknown = JSON.parse(s?.getItem(SAVE.records) ?? '[]');
+    return Array.isArray(v) ? v.filter(isRow).sort((a, b) => a.seconds - b.seconds).slice(0, RECORDS_MAX) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Новый результат в таблицу: после всех с тем же временем (раньше записанная — выше). Возвращает место 1–10;
+// null — не вошёл в десятку или хранилище недоступно.
+export function saveRecord(s: Pick<Storage, 'getItem' | 'setItem'> | undefined, r: RecordRow): number | null {
+  if (!s) return null;
+  const list = loadRecords(s);
+  const at = list.findIndex(x => x.seconds > r.seconds);
+  const i = at < 0 ? list.length : at;
+  if (i >= RECORDS_MAX) return null;
+  list.splice(i, 0, { seconds: r.seconds, hits: r.hits, attacks: r.attacks, secret: r.secret, date: r.date });
+  try {
+    s.setItem(SAVE.records, JSON.stringify(list.slice(0, RECORDS_MAX)));
+  } catch {
+    return null; // приватный режим или нет места — игра идёт, места нет
+  }
+  return i + 1;
 }
