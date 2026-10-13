@@ -13,7 +13,7 @@ import { PAL } from './render/palette';
 import { drawGame } from './render/scene';
 import { loadLang, loadMuted, loadRecords, saveLang, saveMuted, saveRecord, saveResult, storage } from './save';
 import { missionResult } from './sim/mission';
-import { packRecord, replayUrl, shareText } from './sim/record';
+import { packRecord, quitsReplay, replayStep, replayUrl, shareText, unpackRecord, type Replay } from './sim/record';
 import { loadWorld } from './world';
 
 function fail(msg: string) {
@@ -50,7 +50,24 @@ async function boot() {
   const bloom = new Bloom(gl);
   const input = new InputDevices(window);
   const tracker = new IntentTracker();
-  const game = createPrologue(rooms, true); // стартовый экран поверх первого кадра пролога
+  // Реплей по ссылке ?r=: шаги берутся из записи, устройства — только чтобы выйти. Запись не читается — обычный старт.
+  const dropParam = () => history.replaceState(null, '', location.pathname + location.hash);
+  const param = new URLSearchParams(location.search).get('r');
+  let replay: Replay | null = null;
+  if (param !== null) {
+    try {
+      replay = { rec: await unpackRecord(param), i: 0 };
+    } catch {
+      dropParam();
+    }
+  }
+  // Стартовый экран поверх первого кадра пролога; реплей — сразу полёт, как начиналась запись.
+  const game = createPrologue(rooms, replay === null);
+  const leaveReplay = () => {
+    replay = null;
+    dropParam();
+    Object.assign(game, createPrologue(rooms, true));
+  };
 
   const fit = () => {
     const cell = Math.max(1, Math.floor(Math.min(innerWidth / ROOM_W, innerHeight / ROOM_H)));
@@ -81,10 +98,25 @@ async function boot() {
     last = now;
     let it = orPressed(tracker.update(input.read()), missed);
     missed = plan.steps === 0 ? it : IDLE;
+    if (replay && quitsReplay(it)) {
+      leaveReplay();
+      it = missed = IDLE; // нажатие, прервавшее реплей, не стартует полёт
+    }
     for (let i = 0; i < plan.steps; i++) {
+      if (replay) {
+        // Запись кончилась: итог есть — досматриваем его, нет (запись обрезана или испорчена) — обычный старт.
+        const step = replayStep(replay, game.mission.result !== null);
+        if (!step) {
+          leaveReplay();
+          break;
+        }
+        stepGame(game, step, DT);
+        continue;
+      }
       stepGame(game, it, DT);
       it = clearPressed(it);
     }
+    game.replay = replay !== null;
     // Звуки шагов этого кадра и фон комнаты; события забираются, даже пока звук не включён.
     try {
       gate.sound?.play(game.sfx);
@@ -101,10 +133,13 @@ async function boot() {
     if (game.mission.result === 'won' && !saved) {
       // Победа: флаги, таблица рекордов (место — для экрана итогов и звука), запись нажатий — в ссылку.
       saved = true;
-      saveResult(storage(), game.mission.secret);
-      const place = saveRecord(storage(), missionResult(game.mission));
-      game.board = { records: loadRecords(storage()), place };
-      share = packRecord(game.rec).then(p => replayUrl(location.href, p), () => null);
+      if (replay) game.board = { records: loadRecords(storage()), place: null }; // чужая игра: в таблицу и флаги не пишем
+      else {
+        saveResult(storage(), game.mission.secret);
+        const place = saveRecord(storage(), missionResult(game.mission));
+        game.board = { records: loadRecords(storage()), place };
+        share = packRecord(game.rec).then(p => replayUrl(location.href, p), () => null);
+      }
     }
     if (!game.mission.result) saved = false;
     if (game.clip) {

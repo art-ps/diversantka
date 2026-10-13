@@ -17,6 +17,7 @@ export interface Strings {
   dead: string;
   credit: string;
   liftHint: string;
+  replayHud: string; // справа в HUD вместо id комнаты, пока идёт реплей по ссылке
   prologue: Record<'title' | 'fly' | 'fall' | 'splash' | 'crash', string>;
   // всплывающие надписи
   tapeFloat: (n: number, total: number) => string;
@@ -73,6 +74,7 @@ const RU: Strings = {
   dead: 'ПОГИБЛА · ПРЫЖОК — ЗАНОВО',
   credit: 'движения: mocap.cs.cmu.edu',
   liftHint: 'E — ВЫЗВАТЬ ЛИФТ',
+  replayHud: 'ЗАПИСЬ · ПРОБЕЛ — ИГРАТЬ',
   prologue: { title: '', fly: 'ПРЫЖОК — ОТЦЕПИТЬСЯ', fall: '', splash: 'В МОРЕ · ЗАНОВО', crash: 'УДАР О МАЧТУ · ЗАНОВО' },
   tapeFloat: (n, total) => `ЛЕНТА ${n}/${total}`,
   sourceFound: 'ИСТОЧНИК НАЙДЕН',
@@ -135,6 +137,7 @@ const EN: Strings = {
   dead: 'KILLED · JUMP — RETRY',
   credit: 'motion: mocap.cs.cmu.edu',
   liftHint: 'E — CALL LIFT',
+  replayHud: 'REPLAY · SPACE — PLAY',
   prologue: { title: '', fly: 'JUMP — LET GO', fall: '', splash: 'SPLASHDOWN · RETRY', crash: 'HIT THE MAST · RETRY' },
   tapeFloat: (n, total) => `TAPE ${n}/${total}`,
   sourceFound: 'SOURCE FOUND',

@@ -1,4 +1,4 @@
-import type { Intent } from '../input/intent';
+import { IDLE, type Intent } from '../input/intent';
 
 // Запись нажатий: по числу на шаг симуляции. Биты 0–8 — флаги в порядке FLAGS, с бита 9 — moveX в сотых
 // со сдвигом +100 (0…200): стик геймпада аналоговый, мир видит ровно то, что записано (stepGame квантует).
@@ -111,3 +111,18 @@ export function replayUrl(href: string, packed: string): string {
 
 // Текст для буфера обмена: строка итога и ссылка на реплей через перевод строки; ссылки нет — только строка.
 export const shareText = (line: string, url: string | null): string => (url ? `${line}\n${url}` : line);
+
+// Зритель реплея хочет играть: прыжок, удар, бросок, E или движение. Пауза и вверх/вниз не считаются.
+export const quitsReplay = (it: Intent): boolean =>
+  it.moveX !== 0 || it.jumpPressed || it.attackPressed || it.throwPressed || it.usePressed;
+
+// Реплей: запись и номер следующего шага.
+export interface Replay { rec: readonly number[]; i: number }
+
+// Намерение следующего шага реплея. ended — у миссии есть итог: дальше покой (выезд и экран итогов идут сами).
+// null — запись кончилась без итога (обрезана или чужая): выход в обычный старт.
+export function replayStep(r: Replay, ended: boolean): Intent | null {
+  if (ended) return IDLE;
+  if (r.i >= r.rec.length) return null;
+  return decodeIntent(r.rec[r.i++]);
+}

@@ -79,6 +79,7 @@ export interface Game {
   stepAcc: number; // путь с прошлого звука шага, клетки
   liftHum: boolean; // звучит гул лифта в пути
   jetHiss: boolean; // звучит струя огнемёта
+  replay: boolean; // идёт реплей по ссылке ?r= — ставит main.ts; HUD показывает подсказку вместо id комнаты
   board: Board | null; // рекорды для экрана итогов — ставит main.ts при победе
   rec: number[]; // запись нажатий с начала полёта (src/sim/record.ts); повтор пролога и «заново» начинают её с нуля
 }
@@ -87,7 +88,7 @@ export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
     items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
-    lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false, board: null, rec: [],
+    lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false, replay: false, board: null, rec: [],
   };
   enterRoom(g, start.room);
   return g;

@@ -168,9 +168,10 @@ export function liftPanels(l: Lift, room: Room): Point[] {
   return out;
 }
 
+// hudId — текст справа в строке 0 (id комнаты или подсказка реплея): под ним трос не рисуется.
 // Лифты в комнате room: платформа — ряд мелких блоков, над ней трос посередине шахты (сквозь стены не рисуется);
 // панели вызова — мигают, пока лифта на их этаже нет, на этаже с лифтом горят ровно и тускло.
-export function drawLifts(b: Pick<GlyphBatch, 'push'>, lifts: Lift[], room: Room, ox: number, oy: number, time: number): void {
+export function drawLifts(b: Pick<GlyphBatch, 'push'>, lifts: Lift[], room: Room, ox: number, oy: number, time: number, hudId = room.id): void {
   for (const l of lifts) {
     const top = liftTop(l, room.id);
     if (top === null) continue;
@@ -182,7 +183,7 @@ export function drawLifts(b: Pick<GlyphBatch, 'push'>, lifts: Lift[], room: Room
     if (top < -1 || top > ROOM_H) continue;
     const cx = l.x + LIFT_W / 2;
     for (let r = 0; r + 1 <= top && r < ROOM_H; r++) {
-      if (room.tiles[r][l.x + 1] === '#' || hudCell(cx, r, room.id, time)) continue;
+      if (room.tiles[r][l.x + 1] === '#' || hudCell(cx, r, hudId, time)) continue;
       for (let j = 0; j < 2; j++) b.push(cx - 0.5 + ox, r + 0.25 + j / 2 - 0.5 + oy, '|', PAL.ladder, 0.5);
     }
     for (let i = 0; i < LIFT_W * 2; i++) b.push(l.x + 0.25 + i / 2 - 0.5 + ox, top + 0.25 - 0.5 + oy, '▓', PAL.platform, 0.5);
@@ -287,6 +288,9 @@ export function drawStatic(b: Pick<GlyphBatch, 'push'>, deadT: number, time: num
   }
 }
 
+// Справа в строке 0: id комнаты, в реплее — подсказка «ЗАПИСЬ · ПРОБЕЛ — ИГРАТЬ».
+export const hudLabel = (g: Game): string => (g.replay ? str().replayHud : g.roomId);
+
 function drawHud(b: GlyphBatch, g: Game, time: number): void {
   const s = str();
   const filled = Math.round((g.nina.energy / NINA.energyMax) * 10);
@@ -295,10 +299,12 @@ function drawHud(b: GlyphBatch, g: Game, time: number): void {
   const bar = g.mission.secret ? PAL.source : g.nina.energy < NINA.lowEnergy ? PAL.danger : PAL.hud;
   b.text(barX, 0, '█'.repeat(filled), bar, HUD_STEP);
   b.text(barX + hudWidth('█'.repeat(filled)), 0, '░'.repeat(10 - filled), PAL.hudDim, HUD_STEP);
-  b.text(ROOM_W - 1 - hudWidth(g.roomId), 0, g.roomId, PAL.hudDim, HUD_STEP);
+  const label = hudLabel(g), rx = ROOM_W - 1 - hudWidth(label);
+  b.text(rx, 0, label, g.replay ? PAL.hud : PAL.hudDim, HUD_STEP);
   const tapes = s.hudTapes(g.mission.tapes.size, MISSION.tapes);
   const clock = formatTime(g.mission.timeLeft);
-  const mx = (ROOM_W - hudWidth(tapes + clock)) / 2;
+  // По центру; длинная подсказка реплея справа сдвигает ленты и таймер левее — между ними хотя бы буква.
+  const mx = Math.min((ROOM_W - hudWidth(tapes + clock)) / 2, rx - HUD_STEP - hudWidth(tapes + clock));
   b.text(mx, 0, tapes, PAL.hud, HUD_STEP);
   b.text(mx + hudWidth(tapes), 0, clock, g.mission.timeLeft < MISSION.lowTime ? PAL.danger : PAL.hud, HUD_STEP);
   if (g.nina.dead && !g.mission.result) {
@@ -327,7 +333,7 @@ function drawWorld(b: GlyphBatch, fig: Pick<GlyphBatch, 'push'>, g: Game, ox: nu
   drawFires(b, g.fires, ox, oy);
   drawFlamers(b, g, ox, oy);
   drawTerminals(b, g.terminals, ox, oy);
-  drawLifts(b, g.lifts, g.rooms.get(g.roomId)!, ox, oy, time);
+  drawLifts(b, g.lifts, g.rooms.get(g.roomId)!, ox, oy, time, hudLabel(g));
   drawFenceParts(b, g, ox, oy, time);
   drawItems(b, g.items, ox, oy);
   drawTapes(b, g.tapes, ox, oy);
@@ -378,14 +384,14 @@ export function drawGame(b: GlyphBatch, g: Game, time: number, fig: Pick<GlyphBa
     const ox = v[0] * ROOM_W * (1 - e), oy = v[1] * ROOM_H * (1 - e);
     const from = g.rooms.get(g.transition.from)!;
     drawSky(b, from, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time);
-    drawRoom(b, from, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time, g.roomId);
+    drawRoom(b, from, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time, hudLabel(g));
     drawSky(b, cur, ox, oy, time, gliderSkip(g));
-    drawRoom(b, cur, ox, oy, time, g.roomId);
+    drawRoom(b, cur, ox, oy, time, hudLabel(g));
     drawWorld(b, fig, g, ox, oy, time);
   } else {
     const back = title ? outside(b, TITLE_BOX) : b;
     drawSky(back, cur, 0, 0, time, gliderSkip(g));
-    drawRoom(back, cur, 0, 0, time, g.roomId);
+    drawRoom(back, cur, 0, 0, time, hudLabel(g));
     drawWorld(b, fig, g, 0, 0, time);
   }
   const failed = g.mission.result === 'failed';

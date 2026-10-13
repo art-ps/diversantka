@@ -20,7 +20,7 @@ const ALL: Mark[] = ['noDamage', 'noFight', 'source'];
 
 // Все тексты языка, которые видит игрок; функции — с самыми длинными аргументами.
 const visible = (s: Strings): string[] => [
-  s.energy, s.hudTapes(N, N) + '15:00', s.dead, s.credit, s.liftHint, ...Object.values(s.prologue),
+  s.energy, s.hudTapes(N, N) + '15:00', s.dead, s.credit, s.liftHint, s.replayHud, ...Object.values(s.prologue),
   s.tapeFloat(N, N), s.sourceFound, s.fenceLive, s.killed, s.blocked,
   s.notEnoughTapes(N - 1, N), s.tapesIn, s.accessDenied, s.fenceOff,
   s.resultLine('15:00', `${N}/${N}`, 999, ALL), s.resultLine('15:00', `${N}/${N}`, 999, []),
@@ -90,6 +90,8 @@ it.each(LANGS)('%s: строки помещаются — HUD, надписи п
   const mid = hudWidth(s.hudTapes(N, N) + '15:00');
   expect(1 + hudWidth(s.energy) + 10 * 0.6).toBeLessThan((ROOM_W - mid) / 2);
   expect((ROOM_W + mid) / 2).toBeLessThan(ROOM_W - 1 - hudWidth(ROOM));
+  // реплей: подсказка справа; ленты с таймером (сдвинутые левее) всё ещё правее шкалы энергии
+  expect(ROOM_W - 1 - hudWidth(s.replayHud) - 0.6 - mid).toBeGreaterThan(1 + hudWidth(s.energy) + 10 * 0.6);
   // по центру экрана, над героиней, внизу справа
   for (const t of [s.dead, s.liftHint, ...Object.values(s.prologue), s.failed, s.failedHint, s.mapTitle, s.mapLegend, s.mapHint, s.credit]) {
     expect(hudWidth(t), t).toBeLessThanOrEqual(ROOM_W - 2);
