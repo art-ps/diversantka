@@ -9,7 +9,7 @@ import { bodyRect, contains, overlap, type Rect } from './rect';
 export interface Item { id: string; kind: ItemKind; x: number; bottom: number }
 
 // Снаряды: брошенные предметы и пуля охранника.
-export type ProjectileKind = ItemKind | 'bullet';
+export type ProjectileKind = Exclude<ItemKind, 'key1' | 'key2' | 'key3'> | 'bullet';
 
 export interface Projectile {
   kind: ProjectileKind;
@@ -36,16 +36,17 @@ export function useThrowButton(n: Nina, it: Intent, items: Item[]): { picked?: I
     return { picked };
   }
   const kind = n.held;
+  if (!(kind in COMBAT.items)) return {}; // ключи не бросают — улетел бы о стену и пропал
   n.held = null;
   n.throwT = COMBAT.throwTime;
-  const cfg = COMBAT.items[kind];
+  const cfg = COMBAT.items[kind as keyof typeof COMBAT.items];
   const a = (COMBAT.throwAngle * Math.PI) / 180;
   const dy = it.up ? -Math.sin(a) : it.down ? Math.sin(a) : 0;
   const dx = dy === 0 ? 1 : Math.cos(a);
   const b = n.body;
   return {
     thrown: {
-      kind, x: n.facing > 0 ? b.x + b.w : b.x, y: b.y + 0.3 * b.h,
+      kind: kind as ProjectileKind, x: n.facing > 0 ? b.x + b.w : b.x, y: b.y + 0.3 * b.h,
       vx: dx * n.facing * cfg.speed, vy: dy * cfg.speed, from: 'nina', damage: cfg.damage, alive: true, hitWall: false,
     },
   };

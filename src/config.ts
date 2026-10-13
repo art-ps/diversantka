@@ -69,10 +69,6 @@ export const COMBAT = {
     knife: { speed: 24, gravity: 0, damage: 1 },
     stone: { speed: 16, gravity: 30, damage: 1 },
     wrench: { speed: 18, gravity: 30, damage: 1 },
-    // ключи бросаются как нож, но летят по дуге, как камень
-    key1: { speed: 16, gravity: 30, damage: 1 },
-    key2: { speed: 16, gravity: 30, damage: 1 },
-    key3: { speed: 16, gravity: 30, damage: 1 },
   },
 };
 

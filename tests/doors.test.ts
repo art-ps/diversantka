@@ -93,6 +93,17 @@ describe('двери в игре', () => {
     expect(g.nina.held).toBe('key2');
   });
 
+  it('ключ нельзя бросить: K с ключом в руках — ключ остаётся, снарядов нет', () => {
+    const g = createGame(world(), { room: 'a', x: 2, bottom: 22 });
+    standAt(g, 10);
+    press(g, { throwPressed: true });
+    expect(g.nina.held).toBe('key1');
+    press(g, { throwPressed: true });
+    press(g, { throwPressed: true, up: true });
+    expect(g.nina.held).toBe('key1');
+    expect(g.projectiles).toEqual([]);
+  });
+
   it('ключ 1 в руках, E у двери 1 — дверь открыта, ключ потрачен, звук door, проход свободен', () => {
     const g = createGame(world(), { room: 'a', x: 2, bottom: 22 });
     standAt(g, 10);
@@ -107,17 +118,6 @@ describe('двери в игре', () => {
     expect(liveRoom(g).tiles[20][20]).toBe('.');
     walk(g, 1, 1);
     expect(g.nina.body.x).toBeGreaterThan(21);
-  });
-
-  it('ключ бросается по дуге', () => {
-    const g = createGame(world(), { room: 'a', x: 2, bottom: 22 });
-    standAt(g, 10);
-    press(g, { throwPressed: true });
-    press(g, { throwPressed: true });
-    expect(g.projectiles).toHaveLength(1);
-    const vy = g.projectiles[0].vy;
-    press(g, {});
-    expect(g.projectiles[0].vy).toBeGreaterThan(vy);
   });
 
   it('гибель и чекпоинт: открытая дверь остаётся открытой, потраченный ключ не возвращается', () => {
