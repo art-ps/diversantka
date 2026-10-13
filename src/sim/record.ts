@@ -6,18 +6,19 @@ const FLAGS = ['up', 'down', 'jump', 'jumpPressed', 'attackPressed', 'throwPress
 const MX_SHIFT = FLAGS.length;
 const MX_ZERO = 100;
 const IDLE_CODE = MX_ZERO * (1 << MX_SHIFT);
+const MAX_CODE = (2 * MX_ZERO + 1) * (1 << MX_SHIFT) - 1; // moveX 200 и все флаги
 
 export function encodeIntent(it: Intent): number {
   let code = 0;
   FLAGS.forEach((f, i) => { if (it[f]) code |= 1 << i; });
-  const mx = Math.round(Math.min(1, Math.max(-1, it.moveX)) * MX_ZERO) + MX_ZERO;
+  const mx = Math.round(Math.min(1, Math.max(-1, Number.isFinite(it.moveX) ? it.moveX : 0)) * MX_ZERO) + MX_ZERO;
   return code + mx * (1 << MX_SHIFT);
 }
 
-// Кривой код (чужая или испорченная запись) не бросает: лишние биты отбрасываются, moveX вне −1…1 — ноль.
+// Кривой код (чужая или испорченная запись) не бросает: код вне 17 бит — покой, moveX вне −1…1 — ноль.
 export function decodeIntent(code: number): Intent {
-  const c = Number.isInteger(code) && code >= 0 ? code : IDLE_CODE;
-  const mx = Math.floor(c / (1 << MX_SHIFT)) % 256;
+  const c = Number.isInteger(code) && code >= 0 && code <= MAX_CODE ? code : IDLE_CODE;
+  const mx = Math.floor(c / (1 << MX_SHIFT));
   const flag = (i: number) => (c & (1 << i)) !== 0;
   return {
     moveX: mx <= 2 * MX_ZERO ? (mx - MX_ZERO) / MX_ZERO : 0,
@@ -93,6 +94,7 @@ export async function unpackRecord(s: string): Promise<number[]> {
   };
   while (p < raw.length) {
     const v = varint(), k = varint();
+    if (v > MAX_CODE) throw new Error('record: bad code');
     if (k < 1 || rec.length + k > MAX_STEPS) throw new Error('record: bad run length');
     for (let i = 0; i < k; i++) rec.push(v);
   }

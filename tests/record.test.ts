@@ -27,6 +27,12 @@ describe('кодек намерения', () => {
     expect(decodeIntent(-1)).toEqual(IDLE);
     expect(Math.abs(decodeIntent(255 * 512).moveX)).toBeLessThanOrEqual(1);
   });
+
+  it('код вне 17 бит — покой, а не сворачивание по модулю; NaN в moveX — как 0', () => {
+    expect(decodeIntent(2 ** 17)).toEqual(IDLE);
+    expect(decodeIntent(201 * 512)).toEqual(IDLE);
+    expect(encodeIntent({ ...IDLE, moveX: Number.NaN })).toBe(encodeIntent(IDLE));
+  });
 });
 
 describe('Game.rec', () => {
@@ -94,5 +100,10 @@ describe('packRecord / unpackRecord', () => {
     await expect(unpackRecord('')).rejects.toThrow();
     await expect(unpackRecord('Ag' + s.slice(2))).rejects.toThrow(); // версия 2
     await expect(unpackRecord(s.slice(0, 4))).rejects.toThrow();
+  });
+
+  it('значение вне 17 бит — запись отвергается', async () => {
+    await expect(unpackRecord(await packRecord([200 * 512 + 512]))).rejects.toThrow('bad code');
+    expect(await unpackRecord(await packRecord([200 * 512 + 511]))).toEqual([200 * 512 + 511]);
   });
 });
