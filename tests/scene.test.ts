@@ -18,6 +18,16 @@ const cellOf = (g: G) => [Math.floor(g.x + 0.5), Math.floor(g.y + 0.5)];
 const inCell = (c: number, r: number) => (g: G) => cellOf(g)[0] === c && cellOf(g)[1] === r;
 
 describe('drawRoom в полклетки', () => {
+  it('фальш-стена S неотличима от стены #: те же символы и цвета', () => {
+    const at = (rows: Record<number, string>, c: number) => {
+      const out: { x: number; y: number; ch: string; c: readonly number[] }[] = [];
+      drawRoom({ push: (x, y, ch, col) => { out.push({ x, y, ch, c: [...col] }); } }, roomOf(rows), 0, 0, 0, 'test');
+      return out.filter(g => Math.floor(g.x + 0.5) === c && Math.floor(g.y + 0.5) === 10).map(g => `${g.ch} ${g.c.join(',')}`).sort();
+    };
+    // Две комнаты: в одной стена ##, в другой #S — столбец 11 должен выглядеть одинаково.
+    expect(at({ 10: '..........#S' }, 11)).toEqual(at({ 10: '..........##' }, 11));
+  });
+
   it('вода: рябь бежит — символы клетки меняются со временем', () => {
     const at = (time: number) => {
       const out: string[] = [];

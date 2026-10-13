@@ -280,7 +280,7 @@ it('store-2 → secret-1 сквозь фальш-пол без урона, к и
   expect(bottomOf(g)).toBeCloseTo(22);
 });
 
-it('фальш-пол store-2 и фальш-стена power-1 — стена на вид, другого оттенка', () => {
+it('фальш-пол store-2 и фальш-стена power-1 — на вид обычная стена', () => {
   const rooms = loadRoomsFs();
   const glyphsAt = (room: Room, c: number, r: number) => {
     const out: { ch: string; c: readonly number[] }[] = [];
@@ -295,12 +295,11 @@ it('фальш-пол store-2 и фальш-стена power-1 — стена н
       expect(g).toHaveLength(4);
       for (const p of g) {
         expect('#%&8').toContain(p.ch);
-        expect(p.c).toBe(PAL.fake);
+        // Фальш-стена неотличима от обычной: только цвета стены, без особого оттенка.
+        expect([PAL.wall, PAL.wallInner]).toContain(p.c);
       }
     }
   }
-  expect(glyphsAt(rooms.get('store-2')!, 20, 22).every(p => p.c !== PAL.fake)).toBe(true);
-  expect(PAL.fake).not.toEqual(PAL.wall);
 });
 
 it('slope-1: дверь в lab-1 заложена; со скалы по уступам и в трещину — в forest-1 без урона', () => {

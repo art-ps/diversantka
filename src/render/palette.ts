@@ -6,7 +6,6 @@ export const PAL = {
   grid: [0.18, 0.24, 0.36, 0.22] as Color,
   wall: [0.9, 0.55, 0.18, 1] as Color,
   wallInner: [0.45, 0.27, 0.09, 1] as Color,
-  fake: [0.86, 0.6, 0.26, 1] as Color,
   platform: [0.3, 0.95, 0.55, 1] as Color,
   ladder: [0.45, 0.8, 1.0, 1] as Color,
   water: [0.25, 0.45, 1.0, 1] as Color,

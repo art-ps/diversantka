@@ -76,7 +76,7 @@ export function drawRoom(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy
             // Подклетка на открытой стороне — яркая кромка, внутри — тусклее.
             const edge = (i === 0 && !isWall(room, c - 1, r)) || (i === 1 && !isWall(room, c + 1, r))
               || (j === 0 && !isWall(room, c, r - 1)) || (j === 1 && !isWall(room, c, r + 1));
-            sub(b, x, y, i, j, WALL_GLYPHS[h % WALL_GLYPHS.length], t === 'S' ? PAL.fake : edge ? PAL.wall : PAL.wallInner);
+            sub(b, x, y, i, j, WALL_GLYPHS[h % WALL_GLYPHS.length], edge ? PAL.wall : PAL.wallInner);
           } else if (t === '=') {
             if (j === 0) sub(b, x, y, i, j, '=', PAL.platform);
           } else if (t === 'H') {
