@@ -98,3 +98,14 @@ export async function unpackRecord(s: string): Promise<number[]> {
   }
   return rec;
 }
+
+// Ссылка на реплей: текущая страница без query и hash, плюс ?r=. На GitHub Pages, артефакте и локально — своя.
+export function replayUrl(href: string, packed: string): string {
+  const u = new URL(href);
+  u.search = '';
+  u.hash = '';
+  return `${u.href}?r=${packed}`;
+}
+
+// Текст для буфера обмена: строка итога и ссылка на реплей через перевод строки; ссылки нет — только строка.
+export const shareText = (line: string, url: string | null): string => (url ? `${line}\n${url}` : line);

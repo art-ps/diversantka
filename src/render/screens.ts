@@ -1,7 +1,8 @@
 import { BIKE, MISSION, ROOM_W, TITLE } from '../config';
 import type { Pose } from '../anim/clip';
 import { lang, LANG_NAMES, LANGS, str } from '../i18n';
-import type { MissionResult } from '../sim/mission';
+import type { Board, RecordRow } from '../save';
+import { formatTime, marksOf, type MissionResult } from '../sim/mission';
 import { bootLines, menuItems, type Screen } from '../sim/terminal';
 import { BIKE_DIR, BIKE_PIPE, bikeGlyphs, riderGlyphs } from './bike';
 import type { Glyph } from './figure';
@@ -55,12 +56,41 @@ export function wrap(s: string, n: number): string[] {
 
 export const WIDE = Math.floor((X1 - X0 - 3) / STEP); // букв в строке внутри рамки
 
-export function drawResult(b: Pick<GlyphBatch, 'push' | 'text'>, r: MissionResult, copied: boolean): void {
+export const RESULT_COL = 21; // правая колонка итога «ЛУЧШИЕ» — с этой буквы; левая — уже на букву
+export const BEST_ROWS = 5;
+
+// Части через « · », перенос между частями: строка не шире n.
+export function joinParts(parts: readonly string[], n: number): string[] {
+  const out: string[] = [];
+  for (const p of parts) {
+    const last = out.length - 1;
+    if (last >= 0 && out[last].length + 3 + p.length <= n) out[last] += ` · ${p}`;
+    else out.push(p);
+  }
+  return out;
+}
+
+// Строка таблицы: «N  12:54  06.10  ·ББ·И» — место, время, день.месяц, отметки сокращённо.
+export function recordRow(n: number, r: RecordRow): string {
+  const s = str(), marks = marksOf(r).map(m => `·${s.marksShort[m]}`).join('');
+  const row = `${n}  ${formatTime(r.seconds)}  ${r.date.slice(8, 10)}.${r.date.slice(5, 7)}`;
+  return marks ? `${row}  ${marks}` : row;
+}
+
+// Итог: слева свой результат, справа лучшие (своя строка — цветом предмета), ниже строка для буфера обмена.
+export function drawResult(b: Pick<GlyphBatch, 'push' | 'text'>, r: MissionResult, copied: boolean, board: Board | null = null): void {
+  const s = str(), x = X0 + 2, rx = x + RESULT_COL * STEP;
   drawFrame(b, PAL.hudDim);
-  const rows = [str().won, '', ...str().resultRows(r.time, r.tapes, r.hits, r.secret)];
-  rows.forEach((s, i) => b.text(X0 + 2, Y0 + 2 + i, s, i === 0 ? PAL.item : PAL.hud, STEP));
-  wrap(r.line, WIDE).forEach((s, i) => b.text(X0 + 2, Y0 + 10 + i, s, PAL.hudDim, STEP));
-  b.text(X0 + 2, Y1 - 1, copied ? str().copiedHint : str().copyHint, PAL.hudDim, STEP);
+  const marks = joinParts(marksOf(r).map(m => s.marks[m]), RESULT_COL - 1);
+  const left = [s.won, '', ...s.resultRows(r.time, r.tapes, r.hits), '', ...marks];
+  left.forEach((t, i) => b.text(x, Y0 + 2 + i, t, i === 0 ? PAL.item : PAL.hud, STEP));
+  if (board?.place === 1) b.text(rx, Y0 + 2, s.newRecord, PAL.item, STEP);
+  b.text(rx, Y0 + 3, s.best, PAL.hudDim, STEP);
+  const best = board?.records.slice(0, BEST_ROWS) ?? [];
+  if (!best.length) b.text(rx, Y0 + 4, '—', PAL.hudDim, STEP);
+  best.forEach((rec, i) => b.text(rx, Y0 + 4 + i, recordRow(i + 1, rec), i + 1 === board!.place ? PAL.item : PAL.hud, STEP));
+  wrap(r.line, WIDE).forEach((t, i) => b.text(x, Y0 + 11 + i, t, PAL.hudDim, STEP));
+  b.text(x, Y1 - 1, copied ? s.copiedHint : s.copyHint, PAL.hudDim, STEP);
 }
 
 export function drawFailed(b: Pick<GlyphBatch, 'text'>): void {

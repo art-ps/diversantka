@@ -6,6 +6,9 @@ export const LANGS: readonly Lang[] = ['en', 'ru'];
 // Названия языков в строке выбора — каждое на своём языке, поэтому вне словаря.
 export const LANG_NAMES: Record<Lang, string> = { en: 'ENGLISH', ru: 'РУССКИЙ' };
 
+// Отметки рекорда: без урона (hits = 0), без боя (attacks = 0), источник найден.
+export type Mark = 'noDamage' | 'noFight' | 'source';
+
 // Все тексты, которые видит игрок. Функции — тексты с числами и id комнат (id не переводятся).
 export interface Strings {
   // HUD и надписи над миром
@@ -26,7 +29,7 @@ export interface Strings {
   tapesIn: string;
   accessDenied: string;
   fenceOff: string;
-  resultLine: (time: string, tapes: string, hits: number, secret: boolean) => string;
+  resultLine: (time: string, tapes: string, hits: number, marks: readonly Mark[]) => string;
   // экран ЭВМ
   bootLog: readonly string[];
   menuFlamer: (room: string) => string;
@@ -36,7 +39,11 @@ export interface Strings {
   screenHint: string;
   // итог и провал
   won: string;
-  resultRows: (time: string, tapes: string, hits: number, secret: boolean) => string[];
+  resultRows: (time: string, tapes: string, hits: number) => string[];
+  marks: Record<Mark, string>; // левая колонка итога, строкой через «·»
+  marksShort: Record<Mark, string>; // строки таблицы «ЛУЧШИЕ»
+  best: string;
+  newRecord: string;
   copyHint: string;
   copiedHint: string;
   failed: string;
@@ -56,6 +63,10 @@ export interface Strings {
   noWebgl: string;
 }
 
+// Отметки в строке для буфера обмена — строчными, как остальная строка.
+const LINE_MARKS_RU: Record<Mark, string> = { noDamage: 'без урона', noFight: 'без боя', source: 'источник найден' };
+const LINE_MARKS_EN: Record<Mark, string> = { noDamage: 'no damage', noFight: 'no fight', source: 'source found' };
+
 const RU: Strings = {
   energy: 'ЭНЕРГИЯ ',
   hudTapes: (n, total) => `ЛЕНТЫ ${n}/${total} · `,
@@ -72,8 +83,8 @@ const RU: Strings = {
   tapesIn: 'ЛЕНТЫ ВВЕДЕНЫ',
   accessDenied: 'ДОСТУП ЗАКРЫТ',
   fenceOff: 'ЗАБОР ВЫКЛЮЧЕН',
-  resultLine: (time, tapes, hits, secret) =>
-    `Диверсантка · миссия выполнена за ${time} · ленты ${tapes} · ударов ${hits} · источник найден: ${secret ? 'да' : 'нет'}`,
+  resultLine: (time, tapes, hits, marks) =>
+    ['Диверсантка', time, `ленты ${tapes}`, `ударов ${hits}`, ...marks.map(m => LINE_MARKS_RU[m])].join(' · '),
   bootLog: [
     'НИИ-7 · ЭВМ СЕРИИ 2 · МОНИТОР В3.1',
     'ТЕСТ ОЗУ ............. 64К ОК',
@@ -87,7 +98,11 @@ const RU: Strings = {
   flamerOff: room => `ОГНЕМЁТ ${room} ОТКЛЮЧЁН`,
   screenHint: 'СТРЕЛКИ — ВЫБОР · ПРЫЖОК/E — ДА',
   won: 'МИССИЯ ВЫПОЛНЕНА',
-  resultRows: (time, tapes, hits, secret) => [`ВРЕМЯ   ${time}`, `ЛЕНТЫ   ${tapes}`, `УДАРОВ  ${hits}`, `ИСТОЧНИК НАЙДЕН: ${secret ? 'ДА' : 'НЕТ'}`],
+  resultRows: (time, tapes, hits) => [`ВРЕМЯ   ${time}`, `ЛЕНТЫ   ${tapes}`, `УДАРОВ  ${hits}`],
+  marks: { noDamage: 'БЕЗ УРОНА', noFight: 'БЕЗ БОЯ', source: 'ИСТОЧНИК' },
+  marksShort: { noDamage: 'БУ', noFight: 'ББ', source: 'И' },
+  best: 'ЛУЧШИЕ',
+  newRecord: 'НОВЫЙ РЕКОРД',
   copyHint: 'E/Y — СКОПИРОВАТЬ · ПРЫЖОК — ЗАНОВО',
   copiedHint: 'СКОПИРОВАНО · ПРЫЖОК — ЗАНОВО',
   failed: 'МИССИЯ ПРОВАЛЕНА',
@@ -130,8 +145,8 @@ const EN: Strings = {
   tapesIn: 'TAPES LOADED',
   accessDenied: 'ACCESS DENIED',
   fenceOff: 'FENCE OFF',
-  resultLine: (time, tapes, hits, secret) =>
-    `Diversantka · mission complete in ${time} · tapes ${tapes} · hits ${hits} · source found: ${secret ? 'yes' : 'no'}`,
+  resultLine: (time, tapes, hits, marks) =>
+    ['Diversantka', time, `tapes ${tapes}`, `hits ${hits}`, ...marks.map(m => LINE_MARKS_EN[m])].join(' · '),
   bootLog: [
     'NII-7 · SERIES 2 COMPUTER · MONITOR V3.1',
     'RAM TEST ............. 64K OK',
@@ -145,7 +160,11 @@ const EN: Strings = {
   flamerOff: room => `FLAMER ${room} DISABLED`,
   screenHint: 'ARROWS — SELECT · JUMP/E — OK',
   won: 'MISSION COMPLETE',
-  resultRows: (time, tapes, hits, secret) => [`TIME    ${time}`, `TAPES   ${tapes}`, `HITS    ${hits}`, `SOURCE FOUND: ${secret ? 'YES' : 'NO'}`],
+  resultRows: (time, tapes, hits) => [`TIME    ${time}`, `TAPES   ${tapes}`, `HITS    ${hits}`],
+  marks: { noDamage: 'NO DAMAGE', noFight: 'NO FIGHT', source: 'SOURCE' },
+  marksShort: { noDamage: 'ND', noFight: 'NF', source: 'S' },
+  best: 'BEST',
+  newRecord: 'NEW RECORD',
   copyHint: 'E/Y — COPY · JUMP — RESTART',
   copiedHint: 'COPIED · JUMP — RESTART',
   failed: 'MISSION FAILED',

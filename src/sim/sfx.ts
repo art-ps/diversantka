@@ -6,7 +6,7 @@ export const SFX_KINDS = [
   'type', 'menuMove', 'menuSelect',
   'liftStart', 'liftStop', 'liftFloor',
   'flamerWarn', 'jetOn', 'jetOff',
-  'switch', 'zap', 'bike', 'mast', 'seaSplash',
+  'switch', 'zap', 'bike', 'mast', 'seaSplash', 'record',
 ] as const;
 
 export type Sfx = (typeof SFX_KINDS)[number];

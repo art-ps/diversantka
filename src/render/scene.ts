@@ -354,7 +354,7 @@ const outside = (b: Pick<GlyphBatch, 'push'>, f: Box): Pick<GlyphBatch, 'push'> 
 export function drawGame(b: GlyphBatch, g: Game, time: number, fig: Pick<GlyphBatch, 'push'> = b): void {
   if (g.mission.result === 'won') {
     if (g.endT < MISSION.outroTime) drawOutro(b, g.endT, RIDER);
-    else drawResult(b, missionResult(g.mission), g.copied);
+    else drawResult(b, missionResult(g.mission), g.copied, g.board);
     return;
   }
   if (g.screen) {

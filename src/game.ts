@@ -18,6 +18,7 @@ import { openScreen, stepScreen, type Screen } from './sim/terminal';
 import { burnNina, createNina, updateNina, type Nina, type NinaState } from './sim/nina';
 import type { Attack } from './sim/combat';
 import type { Sfx } from './sim/sfx';
+import type { Board } from './save';
 import { crumble, smoke, sparks, splash, stepParticles, type Particle } from './sim/particles';
 import { overTop } from './sim/physics';
 import { decodeIntent, encodeIntent } from './sim/record';
@@ -78,6 +79,7 @@ export interface Game {
   stepAcc: number; // путь с прошлого звука шага, клетки
   liftHum: boolean; // звучит гул лифта в пути
   jetHiss: boolean; // звучит струя огнемёта
+  board: Board | null; // рекорды для экрана итогов — ставит main.ts при победе
   rec: number[]; // запись нажатий с начала полёта (src/sim/record.ts); повтор пролога и «заново» начинают её с нуля
 }
 
@@ -85,7 +87,7 @@ export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
     items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
-    lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false, rec: [],
+    lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false, board: null, rec: [],
   };
   enterRoom(g, start.room);
   return g;
@@ -219,10 +221,13 @@ function respawn(g: Game): void {
 }
 
 // Конец миссии: при победе — выезд, затем итог (E — скопировать строку); прыжок — заново.
+// Место 1 в таблице — звук record один раз, когда итог появляется.
 function stepEnd(g: Game, it: Intent, dt: number): void {
+  const t0 = g.endT;
   g.endT += dt;
   const shown = g.mission.result === 'won' ? MISSION.outroTime : 0;
   if (g.endT < shown) return;
+  if (t0 < shown && g.board?.place === 1) g.sfx.push('record');
   if (g.mission.result === 'won' && it.usePressed) g.clip = missionResult(g.mission).line;
   if (it.jumpPressed && g.endT >= shown + MISSION.restartDelay) Object.assign(g, g.withPrologue ? createPrologue(g.rooms, true) : createGame(g.rooms, g.start));
 }

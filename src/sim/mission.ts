@@ -1,5 +1,5 @@
 import { MISSION } from '../config';
-import { str } from '../i18n';
+import { str, type Mark } from '../i18n';
 
 // x — левый край тела, как в createNina.
 export interface Spot { room: string; x: number; bottom: number }
@@ -83,12 +83,21 @@ export function formatTime(sec: number): string {
   return `${pad2(Math.floor(s / 60))}:${pad2(s % 60)}`;
 }
 
+// Отметки результата по порядку показа: без урона, без боя, источник.
+export function marksOf(r: { hits: number; attacks: number; secret: boolean }): Mark[] {
+  const out: Mark[] = [];
+  if (r.hits === 0) out.push('noDamage');
+  if (r.attacks === 0) out.push('noFight');
+  if (r.secret) out.push('source');
+  return out;
+}
+
 export const isoDay = (d: Date): string => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
 export function missionResult(m: Mission, now: Date = new Date()): MissionResult {
   const seconds = MISSION.time - m.timeLeft;
   const time = formatTime(seconds);
   const tapes = `${m.tapes.size}/${MISSION.tapes}`;
-  const line = str().resultLine(time, tapes, m.hits, m.secret);
+  const line = str().resultLine(time, tapes, m.hits, marksOf(m));
   return { time, tapes, hits: m.hits, secret: m.secret, line, seconds, attacks: m.attacks, date: isoDay(now) };
 }

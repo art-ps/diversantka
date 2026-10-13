@@ -291,6 +291,7 @@ export const SOUNDS: Record<Sfx, Tone[]> = {
   bike: [{ wave: 'sawtooth', f: 70, to: 160, dur: 2.5, gain: 0.22, filter: 'lowpass', cut: 700 }, { wave: 'square', f: 35, to: 80, dur: 2.5, gain: 0.1, filter: 'lowpass', cut: 400 }],
   mast: [hiss(0.6, 0.45, 'lowpass', 1200), { wave: 'square', f: 200, to: 40, dur: 0.4, gain: 0.18 }, { wave: 'triangle', f: 1200, to: 1100, dur: 0.8, gain: 0.07 }],
   seaSplash: [hiss(0.9, 0.45, 'lowpass', 1500), hiss(1.2, 0.35, 'lowpass', 300)],
+  record: [523, 659, 784, 1047].map((f, i) => ({ wave: 'square' as const, f, dur: 0.16, gain: 0.08, at: i * 0.08, filter: 'lowpass' as const, cut: 3000 })), // восходящее арпеджио — место 1
 };
 
 // Петли, пока событие не погасит: гул лифта в пути (liftStart…liftStop), шипение струи (jetOn…jetOff).

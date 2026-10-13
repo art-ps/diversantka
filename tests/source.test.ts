@@ -107,15 +107,15 @@ describe('источник', () => {
     expect(g.nina.immortal).toBe(false);
   });
 
-  it('итог: «источник найден: да» в строке и на экране', () => {
+  it('итог: «источник найден» в строке, «ИСТОЧНИК» в отметках на экране', () => {
     const g = spring();
     touch(g);
     g.mission.result = 'won';
     g.endT = MISSION.outroTime;
-    expect(missionResult(g.mission).line).toContain('источник найден: да');
+    expect(missionResult(g.mission).line).toMatch(/ · источник найден$/);
     const out: string[] = [];
     drawGame({ push: () => {}, text: (_x: number, _y: number, s: string) => { out.push(s); } } as never, g, 1);
-    expect(out).toContain('ИСТОЧНИК НАЙДЕН: ДА');
+    expect(out.some(s => s.split(' · ').includes('ИСТОЧНИК'))).toBe(true);
   });
 });
 

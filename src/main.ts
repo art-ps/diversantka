@@ -11,7 +11,9 @@ import { Bloom } from './render/bloom';
 import { GlyphBatch } from './render/glyphs';
 import { PAL } from './render/palette';
 import { drawGame } from './render/scene';
-import { loadLang, loadMuted, saveLang, saveMuted, saveResult, storage } from './save';
+import { loadLang, loadMuted, loadRecords, saveLang, saveMuted, saveRecord, saveResult, storage } from './save';
+import { missionResult } from './sim/mission';
+import { packRecord, replayUrl, shareText } from './sim/record';
 import { loadWorld } from './world';
 
 function fail(msg: string) {
@@ -72,6 +74,7 @@ async function boot() {
   let last = performance.now();
   let missed = IDLE; // нажатия из кадров без шага симуляции (120 Гц)
   let saved = false; // итог этой миссии уже записан в localStorage
+  let share: Promise<string | null> = Promise.resolve(null); // ссылка на реплей победной попытки
   const frame = (now: number) => {
     const plan = planSteps(acc, (now - last) / 1000, DT);
     acc = plan.acc;
@@ -96,13 +99,18 @@ async function boot() {
       saveLang(storage(), savedLang);
     }
     if (game.mission.result === 'won' && !saved) {
+      // Победа: флаги, таблица рекордов (место — для экрана итогов и звука), запись нажатий — в ссылку.
       saved = true;
       saveResult(storage(), game.mission.secret);
+      const place = saveRecord(storage(), missionResult(game.mission));
+      game.board = { records: loadRecords(storage()), place };
+      share = packRecord(game.rec).then(p => replayUrl(location.href, p), () => null);
     }
     if (!game.mission.result) saved = false;
     if (game.clip) {
-      // Буфер обмена может отказать (нет фокуса, нажатие с геймпада) — тогда «СКОПИРОВАНО» не показываем.
-      navigator.clipboard?.writeText(game.clip).then(() => { game.copied = true; }, () => {});
+      // Строка и ссылка на реплей. Буфер обмена может отказать (нет фокуса, нажатие с геймпада) — тогда «СКОПИРОВАНО» не показываем.
+      const line = game.clip, cb = navigator.clipboard;
+      if (cb) share.then(url => cb.writeText(shareText(line, url))).then(() => { game.copied = true; }, () => {});
       game.clip = null;
     }
     bloom.begin(PAL.bg);

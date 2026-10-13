@@ -4,10 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, expect, it } from 'vitest';
 import { MISSION, ROOM_W } from '../src/config';
 import { createGame, createPrologue, type Game } from '../src/game';
-import { lang, LANG_NAMES, LANGS, setLang, STR, str, type Strings } from '../src/i18n';
+import { lang, LANG_NAMES, LANGS, setLang, STR, str, type Mark, type Strings } from '../src/i18n';
 import { CHARSET } from '../src/render/atlas';
 import { drawGame, hudWidth } from '../src/render/scene';
-import { KEY_COLS, TITLE_BOX, WIDE, wrap } from '../src/render/screens';
+import { joinParts, KEY_COLS, recordRow, RESULT_COL, TITLE_BOX, WIDE, wrap } from '../src/render/screens';
 import { openScreen } from '../src/sim/terminal';
 import { loadRoomsFs } from './helpers';
 
@@ -16,15 +16,16 @@ afterEach(() => setLang('ru')); // язык — общий для модуля: 
 // Самый длинный id комнаты — для строк ЭВМ с id (id не переводятся).
 const ROOM = [...loadRoomsFs().keys()].reduce((a, b) => (b.length > a.length ? b : a));
 const N = MISSION.tapes;
+const ALL: Mark[] = ['noDamage', 'noFight', 'source'];
 
 // Все тексты языка, которые видит игрок; функции — с самыми длинными аргументами.
 const visible = (s: Strings): string[] => [
   s.energy, s.hudTapes(N, N) + '15:00', s.dead, s.credit, s.liftHint, ...Object.values(s.prologue),
   s.tapeFloat(N, N), s.sourceFound, s.fenceLive, s.killed, s.blocked,
   s.notEnoughTapes(N - 1, N), s.tapesIn, s.accessDenied, s.fenceOff,
-  s.resultLine('15:00', `${N}/${N}`, 999, true), s.resultLine('15:00', `${N}/${N}`, 999, false),
+  s.resultLine('15:00', `${N}/${N}`, 999, ALL), s.resultLine('15:00', `${N}/${N}`, 999, []),
   ...s.bootLog, s.menuFlamer(ROOM), s.menuTapes, s.menuExit, s.flamerOff(ROOM), s.screenHint,
-  s.won, ...s.resultRows('15:00', `${N}/${N}`, 999, true), ...s.resultRows('15:00', `${N}/${N}`, 999, false),
+  s.won, ...s.resultRows('15:00', `${N}/${N}`, 999), ...Object.values(s.marks), ...Object.values(s.marksShort), s.best, s.newRecord,
   s.copyHint, s.copiedHint, s.failed, s.failedHint,
   s.mapTitle, s.mapLegend, s.mapHint, ...Object.values(s.mapIcons),
   s.titleName, s.titleTask, ...s.titleKeys.flat(), s.titleStart, s.titleFocus,
@@ -95,10 +96,15 @@ it.each(LANGS)('%s: строки помещаются — HUD, надписи п
   }
   // экран ЭВМ и итог — внутри рамки
   const framed = [...s.bootLog, `> ${s.menuFlamer(ROOM)}`, `> ${s.menuTapes}`, `> ${s.menuExit}`, s.flamerOff(ROOM), s.notEnoughTapes(N - 1, N),
-    s.tapesIn, s.screenHint, s.won, ...s.resultRows('15:00', `${N}/${N}`, 999, true), s.copyHint, s.copiedHint];
+    s.tapesIn, s.screenHint, s.won, ...s.resultRows('15:00', `${N}/${N}`, 999), s.copyHint, s.copiedHint];
   for (const t of framed) expect(t.length, t).toBeLessThanOrEqual(WIDE);
+  // итог в две колонки: левая — до RESULT_COL − 1 букв, правая (лучшие) — до конца рамки
+  const left = [s.won, ...s.resultRows('15:00', `${N}/${N}`, 999), ...joinParts(ALL.map(m => s.marks[m]), RESULT_COL - 1)];
+  for (const t of left) expect(t.length, t).toBeLessThan(RESULT_COL);
+  const worst = recordRow(5, { seconds: 899.5, hits: 0, attacks: 0, secret: true, date: '2026-12-31' });
+  for (const t of [s.best, s.newRecord, worst]) expect(t.length, t).toBeLessThanOrEqual(WIDE - RESULT_COL);
   // строка итога: не больше 6 строк (13–18, подсказка — в 20), ни одна не шире рамки
-  const line = wrap(s.resultLine('15:00', `${N}/${N}`, 999, true), WIDE);
+  const line = wrap(s.resultLine('15:00', `${N}/${N}`, 999, ALL), WIDE);
   expect(line.length).toBeLessThanOrEqual(6);
   for (const t of line) expect(t.length, t).toBeLessThanOrEqual(WIDE);
   // таблица клавиш: колонки не слипаются (хотя бы одна пустая буква между ними)
@@ -156,7 +162,7 @@ it('English: ЭВМ, карта, итог и стартовый экран по�
   const f = frames(), texts = (g: Game) => shot(g).texts.map(t => t.s);
   expect(texts(f.evm)).toEqual(expect.arrayContaining(['CHECKPOINT SAVED', '> DISABLE FLAMER lab-2', '  LOAD TAPES', '  EXIT', 'NOT ENOUGH TAPES 5/6', STR.en.screenHint]));
   expect(texts(f.map)).toEqual(expect.arrayContaining([STR.en.mapTitle, STR.en.mapLegend, STR.en.mapHint]));
-  expect(texts(f.won)).toEqual(expect.arrayContaining(['MISSION COMPLETE', 'TAPES   0/6', 'SOURCE FOUND: NO', STR.en.copyHint]));
+  expect(texts(f.won)).toEqual(expect.arrayContaining(['MISSION COMPLETE', 'TAPES   0/6', 'NO DAMAGE · NO FIGHT', 'BEST', '—', STR.en.copyHint]));
   expect(texts(f.hud)).toEqual(expect.arrayContaining(['ENERGY ', 'TAPES 0/6 · ', 'evm-1']));
   const own = shot(f.title).texts.filter(t => t.y > TITLE_BOX.y0 && t.y < TITLE_BOX.y1);
   expect(own.map(t => t.s)).toEqual(expect.arrayContaining(['DIVERSANTKA', STR.en.titleTask, 'SPACE — START', STR.en.titleFocus, 'STICK/D-PAD']));

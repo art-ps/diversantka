@@ -125,5 +125,5 @@ it('итог: время по таймеру миссии, ленты, удар�
   tickTimer(m, 192);
   const r = missionResult(m);
   expect(r).toMatchObject({ time: '03:12', tapes: '6/6', hits: 4, secret: false });
-  expect(r.line).toBe('Диверсантка · миссия выполнена за 03:12 · ленты 6/6 · ударов 4 · источник найден: нет');
+  expect(r.line).toBe('Диверсантка · 03:12 · ленты 6/6 · ударов 4 · без боя');
 });

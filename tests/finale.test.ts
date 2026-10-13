@@ -114,7 +114,7 @@ describe('экраны конца', () => {
     expect(bikeX()).toBeLessThan(x0);
   });
 
-  it('итог: заголовок, время, ленты, удары, источник, строка; символы — из атласа', () => {
+  it('итог: заголовок, время, ленты, удары, отметки, строка; символы — из атласа', () => {
     const g = won();
     g.mission.hits = 2;
     wait(g, MISSION.outroTime + 0.1);
@@ -124,8 +124,8 @@ describe('экраны конца', () => {
     expect(out).toContain(`ВРЕМЯ   ${r.time}`);
     expect(out).toContain('ЛЕНТЫ   0/6');
     expect(out).toContain('УДАРОВ  2');
-    expect(out).toContain('ИСТОЧНИК НАЙДЕН: НЕТ');
-    expect(out.join(' ')).toContain('Диверсантка · миссия выполнена за');
+    expect(out).toContain('БЕЗ БОЯ');
+    expect(out.join(' ')).toContain(`Диверсантка · ${r.time} · ленты 0/6 · ударов 2 · без боя`);
     for (const ch of chars) expect(CHARSET).toContain(ch);
   });
 

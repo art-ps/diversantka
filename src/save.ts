@@ -65,6 +65,8 @@ export function saveLang(s: Store | undefined, l: Lang): void {
 // Строка таблицы рекордов: время миссии в секундах, полученные удары, попадания по врагам, источник, день «ГГГГ-ММ-ДД».
 export interface RecordRow { seconds: number; hits: number; attacks: number; secret: boolean; date: string }
 export const RECORDS_MAX = 10;
+// Таблица на экране итогов: рекорды и место этой игры (null — не вошла, реплей или нет хранилища).
+export interface Board { records: RecordRow[]; place: number | null }
 
 const isRow = (v: unknown): v is RecordRow => {
   const r = v as RecordRow;
