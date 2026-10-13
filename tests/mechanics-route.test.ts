@@ -2,7 +2,8 @@ import { expect, it } from 'vitest';
 import { BOMB, CAMERA, DT, MISSION } from '../src/config';
 import { createGame, liveRoom, stepGame, type Game } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
-import { decodeIntent } from '../src/sim/record';
+import { decodeIntent, packRecord, replayStep, unpackRecord } from '../src/sim/record';
+import { STR } from '../src/i18n';
 import type { Room } from '../src/world/room';
 import { validateDoors } from '../src/world';
 import { FLOOR, roomOf } from './helpers';
@@ -25,7 +26,7 @@ const START = { room: 'a', x: 2, bottom: 22 };
 
 const I = (p: Partial<Intent> = {}): Intent => ({ ...IDLE, ...p });
 // Состояние после шага — для сравнения с реплеем: комната, позиция, тревога, решётка, отсчёт, охрана.
-const trace = (g: Game) => `${g.roomId} ${g.nina.body.x} ${g.nina.body.y} ${g.alarmT} ${g.gate} ${g.mission.fuse} ${g.guards.map(gd => gd.state).join()}`;
+const trace = (g: Game) => `${g.roomId} ${g.nina.body.x} ${g.nina.body.y} ${g.alarmT} ${g.gate} ${g.mission.fuse} ${g.mission.timeLeft} ${g.guards.map(gd => gd.state).join()}`;
 let log: string[] | null = null; // play() пишет сюда trace каждого шага
 const step = (g: Game, p: Partial<Intent> = {}) => {
   stepGame(g, I(p), DT);
@@ -57,8 +58,12 @@ function play(): Game {
   expect(g.nina.held).toBe('key1');
   walkTo(g, 'a', 19.2);
   expect(g.guards[0].state).toBe('patrol');
+  const keyId = g.heldId;
+  expect(keyId).not.toBeNull();
   use(g);
   expect(g.mission.doorsOpen.has('a#1')).toBe(true);
+  expect(g.nina.held).toBeNull();
+  expect(g.spent.has(keyId!)).toBe(true);
   // Охранник: подойти вплотную и бить, пока не рассыплется.
   for (let i = 0; i < 60 * 6 && g.guards[0].state !== 'dead'; i++) {
     const d = g.guards[0].body.x + g.guards[0].body.w / 2 - cx(g);
@@ -70,6 +75,9 @@ function play(): Game {
   walkTo(g, 'a', 34);
   step(g, { throwPressed: true });
   expect(g.nina.held).toBe('bomb');
+  step(g, { throwPressed: true }); // бомбу не бросают
+  expect(g.nina.held).toBe('bomb');
+  expect(g.projectiles).toEqual([]);
   walkTo(g, 'b', 12);
   wait(g, 0.5);
   expect(g.alarmT).toBeGreaterThan(0);
@@ -86,8 +94,11 @@ function play(): Game {
   step(g, { downPressed: true });
   step(g, { jumpPressed: true, jump: true }); // ВЫХОД
   expect(g.screen).toBeNull();
-  for (let i = 0; i < 60 * (CAMERA.alarm + 1) && g.gate > 0; i++) step(g);
+  expect(g.cameras[0].off).toBe(true);
+  let lifted = 0;
+  for (; lifted < 60 * (CAMERA.alarm + 1) && g.gate > 0; lifted++) step(g);
   expect(g.gate).toBe(0);
+  expect(lifted * DT).toBeLessThan(CAMERA.alarm); // решётка поднялась раньше, чем истёк бы полный CAMERA.alarm
   walkTo(g, 'a', 4);
   use(g);
   expect(g.mission.result).toBe('won');
@@ -106,20 +117,33 @@ it('сквозной маршрут: ключ → дверь → охранни�
   expect(g.killed.size).toBe(1);
 });
 
-it('реплей того же маршрута повторяет его до кадра: тревога, решётка, отсчёт, охрана, позиция', () => {
+it('реплей того же маршрута повторяет его до кадра: тревога, решётка, отсчёт, охрана, позиция', async () => {
   const played: string[] = [];
   log = played;
   const won = play();
   log = null;
   expect(played).toHaveLength(won.rec.length); // каждый шаг маршрута записан
+  // Как main.ts в режиме ?r=: запись проходит через кодек ссылки.
+  const r = { rec: await unpackRecord(await packRecord(won.rec)), i: 0 };
+  expect(r.rec).toEqual(won.rec);
   const g = createGame(world(), START);
   g.mission.goal = 'bomb';
   for (let i = 0; i < won.rec.length; i++) {
-    stepGame(g, decodeIntent(won.rec[i]), DT);
+    stepGame(g, replayStep(r, g.mission.result !== null)!, DT);
     if (trace(g) !== played[i]) expect(`${i}: ${trace(g)}`).toBe(`${i}: ${played[i]}`);
   }
   expect(g.mission.result).toBe('won');
   expect(g.mission.timeLeft).toBe(won.mission.timeLeft);
   expect(g.mission.fuse).toBe(won.mission.fuse);
   expect(g.rec).toEqual(won.rec);
+});
+
+it('E у мотоцикла с целью «бомба» без закладки — выезда нет, «ЗАЛОЖИ ВЗРЫВЧАТКУ»', () => {
+  const g = createGame(world(), START);
+  g.mission.goal = 'bomb';
+  wait(g, 0.2);
+  walkTo(g, 'a', 4);
+  use(g);
+  expect(g.mission.result).toBeNull();
+  expect(g.floaters.map(f => f.text)).toContain(STR.ru.plantFirst);
 });

@@ -74,6 +74,12 @@ describe('охранник: видимость', () => {
     expect(guardSees(gd, ninaAt(38, 22, door), solidRoom(door, new Set()))).toBe(false);
     expect(guardSees(gd, ninaAt(38, 22, door), solidRoom(door, new Set(['d#1'])))).toBe(true);
   });
+
+  it('фальш-стена «S» непрозрачна для охранника', () => {
+    const gd = guard(3, [2, 5]);
+    const fake = roomOf({ 22: FLOOR, 19: '.'.repeat(20) + 'S' });
+    expect(guardSees(gd, ninaAt(38, 22, fake), fake)).toBe(false);
+  });
 });
 
 describe('охранник: выстрел', () => {
@@ -145,15 +151,20 @@ describe('охранник: ближний бой', () => {
     expect(gd.facing).toBe(1); // отступает, не отворачиваясь
   });
 
-  it('упёрся в стену — стреляет на месте', () => {
+  it('упёрся в стену — стреляет на месте; без стены тот же случай — сначала шаг назад', () => {
     const wall = roomOf({ 22: FLOOR, 18: '#', 19: '#', 20: '#', 21: '#' });
-    const gd = guard(1.6, [1.6, 10]);
+    const gd = guard(1.6, [0, 10]);
     const n = ninaAt(3, 22, wall);
     const x0 = center(gd.body);
     const { p, t } = untilShot(gd, n, wall);
     expect(p).not.toBeNull();
     expect(center(gd.body)).toBeCloseTo(x0);
     expect(t).toBeLessThan(GUARD.aim + 4 * DT);
+    // контроль: стены нет — охранник отходит на GUARD.backStep
+    const free = guard(1.6, [0, 10]);
+    const m = ninaAt(3);
+    untilShot(free, m);
+    expect(x0 - center(free.body)).toBeCloseTo(GUARD.backStep, 1);
   });
 });
 
@@ -204,6 +215,30 @@ describe('охранник в игре', () => {
     hold(g, {}, 1);
     expect(g.guards[0].state).toBe('chase');
     expect(center(g.guards[0].body)).toBeGreaterThan(x0 + 2);
+  });
+
+  it('aim-щелчок — один раз до первого выстрела', () => {
+    const g = createGame(R({ enemies: 'guard@6,22 patrol=4..10' }), { room: 'a', x: 30, bottom: 22 });
+    g.sfx = [];
+    hold(g, {}, 1);
+    expect(g.sfx.indexOf('shot')).toBeGreaterThan(0);
+    expect(g.sfx.slice(0, g.sfx.indexOf('shot')).filter(s => s === 'aim')).toHaveLength(1);
+  });
+
+  it('по тревоге: после погони героиня на этаже без стены — aim, затем shot', () => {
+    const rows: Record<number, string> = { 22: FLOOR, 14: '='.repeat(40) };
+    const g = createGame(new Map([['a', { ...roomOf(rows), id: 'a', meta: { enemies: 'guard@10,14 patrol=4..36' } }]]), { room: 'a', x: 30, bottom: 22 });
+    hold(g, {}, 0.1);
+    g.guards[0].facing = -1;
+    g.alarmT = 5;
+    hold(g, {}, 0.5);
+    expect(g.guards[0].state).toBe('chase');
+    Object.assign(g.nina.body, { x: 30 - NINA.w / 2, y: 14 - NINA.h, vx: 0, vy: 0 }); // героиня поднялась на этаж охранника
+    g.sfx = [];
+    hold(g, {}, 1.5);
+    expect(g.sfx).toContain('aim');
+    expect(g.sfx).toContain('shot');
+    expect(g.sfx.indexOf('aim')).toBeLessThan(g.sfx.indexOf('shot'));
   });
 
   it('убитый рассыпается, считается в attacks и не возвращается', () => {

@@ -10,6 +10,7 @@ import { cameraAngle, traceBeam } from '../src/sim/camera';
 import { solidRoom } from '../src/sim/doors';
 import { menuItems } from '../src/sim/terminal';
 import type { Room } from '../src/world/room';
+import { validateCameras } from '../src/world';
 import { parseCameras } from '../src/world/spawns';
 import { FLOOR, roomOf } from './helpers';
 
@@ -34,6 +35,14 @@ const game = (camRow: number | null, meta: Record<string, string> = {}) => {
   hold(g, {}, 0.1);
   return g;
 };
+
+describe('камеры: валидация', () => {
+  it('камера в «#», «S» или «=» — ошибка загрузки; в фоне — нет', () => {
+    const rooms = (ch: string) => new Map([['a', R('a', { 10: ch.repeat(10) }, { cameras: '5,10 arc=0..0 period=1' })]]);
+    expect(validateCameras(rooms('.'))).toEqual([]);
+    for (const ch of ['#', 'S', '=']) expect(validateCameras(rooms(ch))).toEqual(['a: камера 5,10 в стене']);
+  });
+});
 
 describe('камеры: шапка и угол', () => {
   it('«x,y arc=a..b period=p» через «;»', () => {
@@ -109,9 +118,30 @@ describe('тревога', () => {
     const g = game(19);
     hold(g, {}, 0.4); // тревога
     g.sfx = [];
-    hold(g, { down: true }, 3);
+    hold(g, { down: true }, 3.5);
     expect(g.sfx.filter(s => s === 'alarm').length).toBeGreaterThanOrEqual(3);
     expect(g.sfx.filter(s => s === 'alarm').length).toBeLessThanOrEqual(4);
+  });
+
+  it('тревога, начатая в середине секунды, даёт ровно один сигнал за первые 0.9 с', () => {
+    const g = game(19);
+    hold(g, { down: true }, 0.98); // часы миссии — около границы секунды
+    g.sfx = [];
+    for (let i = 0; i < 120 && g.alarmT === 0; i++) stepGame(g, IDLE, DT); // встала — тревога
+    expect(g.alarmT).toBeGreaterThan(0);
+    hold(g, { down: true }, 0.9); // ушла из луча: тревога идёт сама
+    expect(g.alarmT).toBeLessThan(CAMERA.alarm);
+    expect(g.sfx.filter(s => s === 'alarm')).toHaveLength(1);
+  });
+
+  it('повторное попадание в луч продлевает тревогу снова до 20 с', () => {
+    const g = game(19);
+    hold(g, {}, 0.5);
+    expect(g.alarmT).toBe(CAMERA.alarm);
+    hold(g, { down: true }, 3);
+    expect(g.alarmT).toBeLessThan(CAMERA.alarm - 2);
+    hold(g, {}, 0.6);
+    expect(g.alarmT).toBe(CAMERA.alarm);
   });
 
   it('тревога кончается через 20 с без луча; андроид другого этажа в тревоге идёт на героиню', () => {
@@ -198,6 +228,28 @@ describe('выключение с терминала', () => {
     expect(g.alarmT).toBe(0);
     enterRoom(g, 'a'); // снова в комнату — камеры по-прежнему выключены
     expect(g.cameras[0].off).toBe(true);
+  });
+});
+
+describe('гибель', () => {
+  it('выключенные камеры остаются выключенными, тревога и решётка сброшены', () => {
+    const g = game(19, { terminals: '24,22 controls=a' });
+    stepGame(g, I({ usePressed: true }), DT);
+    hold(g, {}, MISSION.bootTime);
+    stepGame(g, I({ jumpPressed: true, jump: true }), DT); // ОТКЛ. КАМЕРЫ a
+    stepGame(g, I({ downPressed: true }), DT);
+    stepGame(g, I({ jumpPressed: true, jump: true }), DT); // ВЫХОД
+    expect(g.screen).toBeNull();
+    g.alarmT = 10;
+    g.gate = 0.7;
+    g.nina.dead = true;
+    g.nina.deadT = NINA.respawnDelay;
+    stepGame(g, I({ jumpPressed: true, jump: true }), DT);
+    expect(g.nina.dead).toBe(false);
+    expect(g.mission.camerasOff.has('a')).toBe(true);
+    expect(g.cameras[0].off).toBe(true);
+    expect(g.alarmT).toBe(0);
+    expect(g.gate).toBe(0);
   });
 });
 

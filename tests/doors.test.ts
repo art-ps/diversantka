@@ -7,6 +7,7 @@ import { CHARSET } from '../src/render/atlas';
 import { PAL } from '../src/render/palette';
 import { drawRoom } from '../src/render/scene';
 import { doorsOf, solidRoom } from '../src/sim/doors';
+import { stepProjectiles, type Projectile } from '../src/sim/items';
 import { validateDoors } from '../src/world';
 import { parseRoom, type Room } from '../src/world/room';
 import { parseItems } from '../src/world/spawns';
@@ -91,6 +92,21 @@ describe('двери в игре', () => {
     press(g, { usePressed: true });
     expect(g.mission.doorsOpen.size).toBe(0);
     expect(g.nina.held).toBe('key2');
+    expect(g.floaters.map(f => f.text)).toContain(STR.ru.needKey(1));
+  });
+
+  it('брошенный нож гаснет о закрытую дверь; после открытия пролетает', () => {
+    const r = R('a', doorRows('1'));
+    const knife = (): Projectile => ({ kind: 'knife', x: 15, y: 19.5, vx: 20, vy: 0, from: 'nina', damage: 1, alive: true, hitWall: false });
+    const fly = (room: Room) => {
+      const p = knife();
+      for (let i = 0; i < 60 && p.alive; i++) stepProjectiles([p], room, DT);
+      return p;
+    };
+    const shut = fly(solidRoom(r, new Set()));
+    expect(shut.alive).toBe(false);
+    expect(shut.x).toBeLessThan(21);
+    expect(fly(solidRoom(r, new Set(['a#1']))).x).toBeGreaterThan(21);
   });
 
   it('ключ нельзя бросить: K с ключом в руках — ключ остаётся, снарядов нет', () => {
@@ -114,7 +130,9 @@ describe('двери в игре', () => {
     press(g, { usePressed: true });
     expect([...g.mission.doorsOpen]).toEqual(['a#1']);
     expect(g.nina.held).toBeNull();
-    expect(g.sfx).toContain('door');
+    expect(g.sfx.filter(s => s === 'door')).toHaveLength(1);
+    wait(g, 0.5);
+    expect(g.sfx.filter(s => s === 'door')).toHaveLength(1);
     expect(liveRoom(g).tiles[20][20]).toBe('.');
     walk(g, 1, 1);
     expect(g.nina.body.x).toBeGreaterThan(21);
