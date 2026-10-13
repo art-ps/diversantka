@@ -196,3 +196,28 @@ describe('разрешение боя', () => {
     expect(resolveCombat(ninaAt(2, 14), [a], [p], ROOM)).toEqual(['r#e0']);
   });
 });
+
+describe('андроид: тревога без прямой видимости (решение плана 5в.2)', () => {
+  it('героиня на другом этаже: идёт к ней до края участка, ножей не бросает и не бьёт', () => {
+    const a = android();
+    const n = far();
+    let knives = 0;
+    for (let i = 0; i < 60 * 5; i++) if (updateAndroid(a, n, ROOM, DT, true)) knives++;
+    expect(knives).toBe(0);
+    expect(a.state).toBe('chase');
+    expect(center(a)).toBeCloseTo(12);
+  });
+
+  it('за стеной на своём этаже — без ножей; стена пропала — видит и бросает', () => {
+    const rows: Record<number, string> = { 22: FLOOR };
+    for (let r = 10; r < 22; r++) rows[r] = '.'.repeat(24) + '#';
+    const walled = roomOf(rows);
+    const a = android();
+    const n = ninaAt(30);
+    let knives = 0;
+    for (let i = 0; i < 60 * 3; i++) if (updateAndroid(a, n, walled, DT, true)) knives++;
+    expect(knives).toBe(0);
+    for (let i = 0; i < 60 * 3; i++) if (updateAndroid(a, n, ROOM, DT, true)) knives++;
+    expect(knives).toBeGreaterThan(0);
+  });
+});

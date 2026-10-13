@@ -2,7 +2,6 @@ id: gate
 exits: left=- right=- up=- down=shaft-1
 bike: 5,22
 bomb: 20,22
-items: bomb@14,22
 ambient: wind
 ---
 ........................................

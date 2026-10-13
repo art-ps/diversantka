@@ -1,5 +1,5 @@
 id: shaft-3
-exits: left=- right=- up=shaft-2 down=-
+exits: left=- right=lab-a up=shaft-2 down=-
 ambient: drips
 ---
 #############################.H.########

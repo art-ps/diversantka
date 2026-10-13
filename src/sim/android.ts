@@ -66,7 +66,7 @@ function knife(a: Android): Projectile {
   };
 }
 
-// alert — тревога в комнате: андроид идёт на героиню, как если бы видел её.
+// alert — тревога в комнате: андроид идёт на героиню; бьёт и бросает нож, только когда видит её.
 export function updateAndroid(a: Android, n: Nina, room: Room, dt: number, alert = false): Projectile | null {
   if (a.state === 'dead') return null;
   a.t += dt;
@@ -93,12 +93,16 @@ export function updateAndroid(a: Android, n: Nina, room: Room, dt: number, alert
     return null;
   }
 
-  if (seesNina(a, n, room) || (alert && !n.dead)) {
+  // Тревога без прямой видимости: идёт к героине, но не бьёт и не бросает — нож ушёл бы в стену или в пустоту.
+  const sees = seesNina(a, n, room);
+  if (sees || (alert && !n.dead)) {
     a.state = 'chase';
     const dx = center(n.body) - center(a.body);
     a.facing = dx >= 0 ? 1 : -1;
     const dist = Math.abs(dx);
-    if (dist <= ANDROID.meleeRange) {
+    if (!sees) {
+      walk(a, room, ANDROID.chaseSpeed, dt);
+    } else if (dist <= ANDROID.meleeRange) {
       if (a.cooldown <= 0) {
         setState(a, 'punch');
         a.punchHit = false;

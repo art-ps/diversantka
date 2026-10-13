@@ -4,12 +4,12 @@ import { createGame, stepGame, type Game } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
 import { BUNKER_START, loadWorld, validateCameras, validateGates, validateMission } from '../src/world';
 import { tileAt, type Room } from '../src/world/room';
-import { parseEnemies, parseItems, parsePoints, parseTerminals } from '../src/world/spawns';
+import { parseCameras, parseEnemies, parseItems, parsePoints, parseTerminals } from '../src/world/spawns';
 import { loadRoomsFs, roomOf } from './helpers';
 import { routeDamage } from './reach';
 
 // Набор комнат бункера (миссия 2) по мере раскладки.
-const ROOMS2 = ['barracks', 'gate', 'shaft-1', 'shaft-2', 'shaft-3', 'store'];
+const ROOMS2 = ['barracks', 'gate', 'lab-a', 'lab-b', 'shaft-1', 'shaft-2', 'shaft-3', 'store', 'vault'];
 
 const R = (id: string, rows: Record<number, string>, meta: Record<string, string>): Room => ({ ...roomOf(rows), id, meta });
 const I = (p: Partial<Intent> = {}): Intent => ({ ...IDLE, ...p });
@@ -165,4 +165,24 @@ it('ярус 1: из шахты в казармы, по лестнице на г
   expect(bottomOf(gallery)).toBeCloseTo(14);
   expect(standsAt([], 'store', 34, 19)).toBe(true); // стеллаж, где лежит ключ 1
   expect(standsAt([], 'store', 16, 22, MISSION.useRange)).toBe(true); // терминал 1
+});
+
+it('ярус 2: терминал 1 гасит камеры обеих лабораторий до сейфа; бомба и ключ 2 — только за дверью 1', () => {
+  const rooms = loadRoomsFs('rooms2');
+  const t1 = parseTerminals(rooms.get('store')!.meta.terminals, 'store')[0];
+  expect(t1.controls).toEqual(['lab-a', 'lab-b']);
+  for (const id of t1.controls) expect(parseCameras(rooms.get(id)!.meta.cameras, id).length, id).toBeGreaterThan(0);
+  expect(standsAt([], 'vault', 20, 20)).toBe(false);
+  expect(standsAt([], 'vault', 12, 22)).toBe(false);
+  expect(standsAt([1], 'vault', 20, 20)).toBe(true);
+  expect(standsAt([1], 'vault', 12, 22)).toBe(true);
+});
+
+it('ярус 2: дверь сейфа без ключа не пускает — героиня упирается в неё из lab-b', () => {
+  const g = at('lab-b', 36, 22);
+  run(g, { moveX: 1 }, 240);
+  expect(g.roomId).toBe('vault');
+  expect(g.nina.body.x + g.nina.body.w).toBeLessThanOrEqual(2 + 1e-6);
+  stepGame(g, I({ usePressed: true }), DT);
+  expect(g.mission.doorsOpen.size).toBe(0);
 });

@@ -1,7 +1,8 @@
 id: store
 exits: left=barracks right=- up=- down=-
 enemies: guard@26,22 patrol=20..28
-terminals: 16,22
+items: key1@34,19
+terminals: 16,22 controls=lab-a,lab-b
 ambient: hum
 ---
 ########################################
