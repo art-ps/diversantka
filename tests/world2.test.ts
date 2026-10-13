@@ -1,8 +1,13 @@
 import { expect, it } from 'vitest';
 import { DT, MISSION, NINA } from '../src/config';
 import { createGame, stepGame, type Game } from '../src/game';
+import { STR } from '../src/i18n';
 import { IDLE, type Intent } from '../src/input/intent';
+import { CHARSET } from '../src/render/atlas';
+import { drawMap, MAP_AREA, MAP_PX, MAP_PY } from '../src/render/map';
+import { drawGame } from '../src/render/scene';
 import { BUNKER_START, loadWorld, validateCameras, validateGates, validateMission } from '../src/world';
+import { layoutMap } from '../src/world/map';
 import { tileAt, type Room } from '../src/world/room';
 import { parseCameras, parseEnemies, parseItems, parsePoints, parseTerminals } from '../src/world/spawns';
 import { loadRoomsFs, roomOf } from './helpers';
@@ -224,4 +229,49 @@ it('вентиляция: по лестнице из vent в shaft-3 и обра
   climbTo(g, 'down', 'vent');
   expect(bottomOf(g)).toBeCloseTo(22);
   expect(g.nina.energy).toBe(NINA.energyMax);
+});
+
+// ---- карта на паузе и отрисовка ----
+
+it('карта паузы: бункер раскладывается от въезда без конфликтов и влезает в область карты', () => {
+  const { pos, conflicts } = layoutMap(loadRoomsFs('rooms2'), 'gate');
+  expect(conflicts).toEqual([]);
+  expect(Object.fromEntries([...pos].map(([id, c]) => [id, [c.x, c.y]]))).toEqual({
+    gate: [0, 0], 'shaft-1': [0, 1],
+    'shaft-2': [0, 2], barracks: [1, 2], store: [2, 2],
+    'shaft-3': [0, 3], 'lab-a': [1, 3], 'lab-b': [2, 3], vault: [3, 3],
+    vent: [0, 4], reactor: [1, 4], 'engine-2': [2, 4], 'engine-1': [3, 4],
+  });
+  const xs = [...pos.values()].map(p => p.x), ys = [...pos.values()].map(p => p.y);
+  expect((Math.max(...xs) - Math.min(...xs)) * MAP_PX + 2).toBeLessThanOrEqual(MAP_AREA.x1 - MAP_AREA.x0 + 1);
+  expect((Math.max(...ys) - Math.min(...ys)) * MAP_PY + 1).toBeLessThanOrEqual(MAP_AREA.y1 - MAP_AREA.y0 + 1);
+});
+
+it('карта паузы рисуется на бункере: все комнаты, значки терминалов и мотоцикла, символы из атласа и внутри области', () => {
+  const g = createGame(loadRoomsFs('rooms2'), BUNKER_START);
+  g.seen = new Set(ROOMS2);
+  const glyphs: { x: number; y: number; ch: string }[] = [];
+  drawMap({ push: (x, y, ch) => { glyphs.push({ x, y, ch }); }, text: () => {} }, g, 0);
+  expect(glyphs.filter(p => p.ch === STR.ru.mapIcons.terminal)).toHaveLength(2); // терминалы склада и машинного зала
+  expect(glyphs.filter(p => p.ch === STR.ru.mapIcons.bike)).toHaveLength(1); // мотоцикл на въезде
+  expect(glyphs.length).toBe(ROOMS2.length * 8 + 13); // блоки комнат по 8 полклеток и 13 связей
+  for (const p of glyphs) {
+    expect(CHARSET).toContain(p.ch);
+    expect(p.x + 0.5).toBeGreaterThanOrEqual(MAP_AREA.x0);
+    expect(p.x + 0.5).toBeLessThan(MAP_AREA.x1 + 1);
+    expect(p.y + 0.5).toBeGreaterThanOrEqual(MAP_AREA.y0);
+    expect(p.y + 0.5).toBeLessThan(MAP_AREA.y1 + 1);
+  }
+});
+
+it('каждая комната бункера рисуется без исключений — и в игре, и на паузе', () => {
+  const rooms = loadRoomsFs('rooms2');
+  for (const id of ROOMS2) {
+    const g = createGame(rooms, { room: id, x: 20, bottom: 22 });
+    const batch = { push: () => {}, text: () => {} } as never;
+    expect(() => drawGame(batch, g, 1), id).not.toThrow();
+    stepGame(g, I({ pausePressed: true }), DT);
+    expect(g.paused, id).toBe(true);
+    expect(() => drawGame(batch, g, 1), id).not.toThrow();
+  }
 });
