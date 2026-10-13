@@ -128,6 +128,20 @@ describe('охранник: выстрел', () => {
     expect(p.x).toBeLessThan(21);
   });
 
+  it('пуля гаснет об опущенную решётку; сквозь поднятую пролетает', () => {
+    const gate = { ...roomOf({ 22: FLOOR, 19: '.'.repeat(20) + 'A' }), id: 'g' };
+    const fly = (down: number) => {
+      const p: Projectile = { kind: 'bullet', x: 12, y: 19.4, vx: GUARD.bulletSpeed, vy: 0, from: 'enemy', damage: GUARD.bulletDamage, alive: true, hitWall: false };
+      for (let i = 0; i < 20 && p.alive; i++) stepProjectiles([p], solidRoom(gate, new Set(), down), DT);
+      return p;
+    };
+    const shut = fly(1);
+    expect(shut.alive).toBe(false);
+    expect(shut.hitWall).toBe(true);
+    expect(shut.x).toBeLessThan(21);
+    expect(fly(0).x).toBeGreaterThan(21);
+  });
+
   it('попадание пули: −25 энергии и оглушение, как от удара', () => {
     const n = ninaAt(30);
     const p: Projectile = { kind: 'bullet', x: 29.5, y: 22 - GUARD.chest, vx: GUARD.bulletSpeed, vy: 0, from: 'enemy', damage: GUARD.bulletDamage, alive: true, hitWall: false };
@@ -147,7 +161,7 @@ describe('охранник: ближний бой', () => {
     expect(gd.state).toBe('back');
     const { p } = untilShot(gd, n);
     expect(p).not.toBeNull();
-    expect(x0 - center(gd.body)).toBeCloseTo(GUARD.backStep, 1);
+    expect(Math.abs(x0 - center(gd.body) - GUARD.backStep)).toBeLessThanOrEqual(GUARD.backSpeed * DT); // шаг — с точностью до кадра
     expect(gd.facing).toBe(1); // отступает, не отворачиваясь
   });
 
@@ -164,7 +178,7 @@ describe('охранник: ближний бой', () => {
     const free = guard(1.6, [0, 10]);
     const m = ninaAt(3);
     untilShot(free, m);
-    expect(x0 - center(free.body)).toBeCloseTo(GUARD.backStep, 1);
+    expect(Math.abs(x0 - center(free.body) - GUARD.backStep)).toBeLessThanOrEqual(GUARD.backSpeed * DT);
   });
 });
 

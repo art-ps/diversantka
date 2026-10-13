@@ -83,6 +83,15 @@ describe('луч', () => {
     expect(traceBeam(solidRoom(door, new Set(['a#1'])), down, 0).y).toBeGreaterThan(24.8);
   });
 
+  it('упирается в опущенную решётку; поднятая — пропускает', () => {
+    const side = { x: 0, y: 19, arc: [90, 90] as [number, number], period: 1 }; // вправо вдоль строки 19
+    const r = R('a', gateRows());
+    const shut = traceBeam(solidRoom(r, new Set(), 1), side, 90);
+    expect(shut.x).toBeLessThan(30);
+    expect(shut.x).toBeGreaterThan(29.8);
+    expect(traceBeam(solidRoom(r, new Set(), 0), side, 90).x).toBeGreaterThan(39.8);
+  });
+
   it('target задет — hit', () => {
     const r = R('a', {});
     expect(traceBeam(r, down, 0, { x: 10, y: 15, w: 1, h: 1 }).hit).toBe(true);

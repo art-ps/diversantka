@@ -112,6 +112,19 @@ describe('взрывчатка: закладка', () => {
     expect(g.items.filter(i => i.kind === 'bomb')).toEqual([]);
     expect(g.fires.some(f => f.kind === 'bomb')).toBe(true);
   });
+
+  it('гибель с бомбой в руках: после респауна бомба снова на полу, одна, ничего не потрачено', () => {
+    const g = game();
+    takeBomb(g);
+    expect(g.nina.held).toBe('bomb');
+    g.nina.dead = true;
+    g.nina.deadT = NINA.respawnDelay;
+    press(g, { jumpPressed: true, jump: true });
+    expect(g.nina.dead).toBe(false);
+    expect(g.items.filter(i => i.kind === 'bomb')).toHaveLength(1);
+    expect(g.spent.size).toBe(0);
+    expect(g.nina.held).toBeNull();
+  });
 });
 
 describe('отсчёт', () => {

@@ -95,10 +95,13 @@ function play(): Game {
   step(g, { jumpPressed: true, jump: true }); // ВЫХОД
   expect(g.screen).toBeNull();
   expect(g.cameras[0].off).toBe(true);
-  let lifted = 0;
-  for (; lifted < 60 * (CAMERA.alarm + 1) && g.gate > 0; lifted++) step(g);
+  walkTo(g, 'b', 12); // в старом луче: камеры выключены — тревога не продлевается
+  const alarm0 = g.alarmT;
+  expect(alarm0).toBeGreaterThan(0);
+  wait(g, 1);
+  expect(g.alarmT).toBeLessThan(alarm0);
+  for (let i = 0; i < 60 * (CAMERA.alarm + 1) && g.gate > 0; i++) step(g);
   expect(g.gate).toBe(0);
-  expect(lifted * DT).toBeLessThan(CAMERA.alarm); // решётка поднялась раньше, чем истёк бы полный CAMERA.alarm
   walkTo(g, 'a', 4);
   use(g);
   expect(g.mission.result).toBe('won');
