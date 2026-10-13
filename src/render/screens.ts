@@ -56,7 +56,7 @@ export function wrap(s: string, n: number): string[] {
 
 export const WIDE = Math.floor((X1 - X0 - 3) / STEP); // букв в строке внутри рамки
 
-export const RESULT_COL = 21; // правая колонка итога «ЛУЧШИЕ» — с этой буквы; левая — уже на букву
+export const RESULT_COL = 22; // правая колонка итога «ЛУЧШИЕ» — с этой буквы; левая — уже на букву
 export const BEST_ROWS = 5;
 
 // Части через « · », перенос между частями: строка не шире n.

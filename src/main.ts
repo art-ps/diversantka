@@ -144,8 +144,8 @@ async function boot() {
     if (!game.mission.result) saved = false;
     if (game.clip) {
       // Строка и ссылка на реплей. Буфер обмена может отказать (нет фокуса, нажатие с геймпада) — тогда «СКОПИРОВАНО» не показываем.
-      const line = game.clip, cb = navigator.clipboard;
-      if (cb) share.then(url => cb.writeText(shareText(line, url))).then(() => { game.copied = true; }, () => {});
+      const line = game.clip, cb = navigator.clipboard, m = game.mission;
+      if (cb) share.then(url => cb.writeText(shareText(line, url))).then(() => { if (game.mission === m) game.copied = true; }, () => {}); // игра могла перезапуститься, пока писали
       game.clip = null;
     }
     bloom.begin(PAL.bg);

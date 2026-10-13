@@ -104,7 +104,8 @@ it.each(LANGS)('%s: строки помещаются — HUD, надписи п
   const left = [s.won, ...s.resultRows('15:00', `${N}/${N}`, 999), ...joinParts(ALL.map(m => s.marks[m]), RESULT_COL - 1)];
   for (const t of left) expect(t.length, t).toBeLessThan(RESULT_COL);
   const worst = recordRow(5, { seconds: 899.5, hits: 0, attacks: 0, secret: true, date: '2026-12-31' });
-  for (const t of [s.best, s.newRecord, worst]) expect(t.length, t).toBeLessThanOrEqual(WIDE - RESULT_COL);
+  // правый запас рамки (одна буква) справа можно занять: строка 25 букв кончается на x = 34.2 < X1 = 35
+  for (const t of [s.best, s.newRecord, worst]) expect(t.length, t).toBeLessThanOrEqual(WIDE + 1 - RESULT_COL);
   // строка итога: не больше 6 строк (13–18, подсказка — в 20), ни одна не шире рамки
   const line = wrap(s.resultLine('15:00', `${N}/${N}`, 999, ALL), WIDE);
   expect(line.length).toBeLessThanOrEqual(6);

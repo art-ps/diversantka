@@ -4,7 +4,7 @@ import { createGame, stepGame, type Game } from '../src/game';
 import { setLang, STR } from '../src/i18n';
 import { IDLE } from '../src/input/intent';
 import { PAL } from '../src/render/palette';
-import { drawResult, recordRow } from '../src/render/screens';
+import { drawResult, joinParts, recordRow } from '../src/render/screens';
 import type { Board, RecordRow } from '../src/save';
 import { createMission, missionResult } from '../src/sim/mission';
 import { replayUrl, shareText } from '../src/sim/record';
@@ -33,6 +33,12 @@ describe('строки итога', () => {
     expect(recordRow(2, row(774))).toBe('2  12:54  06.10');
     setLang('en');
     expect(recordRow(1, row(774, { hits: 0, attacks: 0, secret: true }))).toBe('1  12:54  06.10  ·ND·NF·S');
+  });
+});
+
+describe('joinParts', () => {
+  it('части через « · », перенос между частями, когда не влезает', () => {
+    expect(joinParts(['БЕЗ УРОНА', 'БЕЗ БОЯ', 'ИСТОЧНИК'], 20)).toEqual(['БЕЗ УРОНА · БЕЗ БОЯ', 'ИСТОЧНИК']);
   });
 });
 

@@ -3,7 +3,7 @@ import { DT, MISSION } from '../src/config';
 import { createGame, stepGame } from '../src/game';
 import { IDLE } from '../src/input/intent';
 import { loadRecords, RECORDS_MAX, SAVE, saveRecord, type RecordRow } from '../src/save';
-import { createMission, missionResult, tickTimer } from '../src/sim/mission';
+import { createMission, missionResult, restoreCheckpoint, tickTimer } from '../src/sim/mission';
 import { loadRoomsFs } from './helpers';
 
 // Фейковое хранилище: реальный localStorage в тестах не трогаем.
@@ -38,6 +38,26 @@ describe('Mission.attacks', () => {
     g.projectiles.push(stone(g.dogs[0].body, 0.8, 0.7));
     stepGame(g, IDLE, DT);
     expect(g.mission.attacks).toBe(1);
+  });
+
+  it('удар рукой и ногой по андроиду — +1', () => {
+    for (const up of [false, true]) {
+      const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
+      const a = g.androids[0];
+      for (let i = 0; i < 5; i++) stepGame(g, IDLE, DT); // героиня встаёт на пол
+      a.body.x = g.nina.body.x + g.nina.body.w + 0.1;
+      a.body.y = g.nina.body.y + g.nina.body.h - a.body.h;
+      stepGame(g, { ...IDLE, attackPressed: true, up }, DT);
+      for (let i = 0; i < 40; i++) stepGame(g, IDLE, DT);
+      expect(g.mission.attacks, up ? 'нога' : 'рука').toBe(1);
+    }
+  });
+
+  it('чекпоинт не откатывает attacks', () => {
+    const m = createMission({ room: 'x', x: 0, bottom: 0 });
+    m.attacks = 2;
+    restoreCheckpoint(m);
+    expect(m.attacks).toBe(2);
   });
 
   it('новая миссия — ноль', () => {
