@@ -55,6 +55,14 @@ export function solidRoom(room: Room, open: ReadonlySet<string>, gate = 0): Room
   return { ...room, tiles };
 }
 
+// В строке row между колонками x0 и x1 нет стены и фальш-стены «S» — прямая видимость и удар по горизонтали.
+// room — из solidRoom: закрытая дверь и опущенная решётка там уже «#».
+export function clearRow(room: Room, x0: number, x1: number, row: number): boolean {
+  const a = Math.floor(x0), b = Math.floor(x1);
+  for (let c = Math.min(a, b); c <= Math.max(a, b); c++) if (isSolid(tileAt(room, c, row)) || tileAt(room, c, row) === 'S') return false;
+  return true;
+}
+
 // Тело на месте x задевает стену комнаты.
 function blockedAt(room: Room, b: Body, x: number): boolean {
   for (let r = Math.floor(b.y + 1e-6); r <= Math.floor(b.y + b.h - 1e-6); r++)

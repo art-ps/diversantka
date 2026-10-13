@@ -36,9 +36,9 @@ describe('андроид: патруль', () => {
 
   it('видит только на своём этаже и в пределах обзора', () => {
     const a = android();
-    expect(seesNina(a, ninaAt(30))).toBe(true);
-    expect(seesNina(a, far())).toBe(false);
-    expect(seesNina(a, ninaAt(20 + ANDROID.sight + 3))).toBe(false);
+    expect(seesNina(a, ninaAt(30), ROOM)).toBe(true);
+    expect(seesNina(a, far(), ROOM)).toBe(false);
+    expect(seesNina(a, ninaAt(20 + ANDROID.sight + 3), ROOM)).toBe(false);
   });
 
   it('преследуя, не выходит за участок', () => {

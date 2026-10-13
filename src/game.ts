@@ -92,6 +92,7 @@ export interface Game {
   cameras: Camera[]; // камеры комнаты
   gates: Gate[]; // решётки комнаты (тайлы A)
   alarmT: number; // осталось тревоги в комнате, с; 0 — тихо. Выход из комнаты тревогу снимает
+  alarmAge: number; // с начала текущей тревоги, с — по нему сирена; повторное попадание в луч его не сбрасывает
   gate: number; // решётки комнаты: 0 — подняты, 1 — опущены
   bombSite: Point | null; // точка закладки взрывчатки в комнате («bomb:»)
 }
@@ -101,7 +102,7 @@ export function createGame(rooms: Map<string, Room>, start: Start): Game {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
     items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
     lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false, replay: false, board: null, rec: [],
-    doors: [], heldId: null, spent: new Set(), guards: [], cameras: [], gates: [], alarmT: 0, gate: 0, bombSite: null,
+    doors: [], heldId: null, spent: new Set(), guards: [], cameras: [], gates: [], alarmT: 0, alarmAge: 0, gate: 0, bombSite: null,
   };
   enterRoom(g, start.room);
   return g;
@@ -200,6 +201,7 @@ export function enterRoom(g: Game, id: string): void {
   g.doors = doorsOf(room);
   g.gates = gatesOf(room);
   g.alarmT = 0;
+  g.alarmAge = 0;
   g.gate = 0;
   g.dogs = enemies
     .filter((e): e is { s: DogSpawn; id: string } => e.s.kind === 'dog')
@@ -288,7 +290,11 @@ function stepAlarm(g: Game, dt: number): void {
   const was = g.alarmT;
   g.alarmT = Math.max(0, g.alarmT - dt);
   if (stepCameras(g.cameras, liveRoom(g), t, g.nina.dead ? null : beamTarget(g.nina.body), dt)) g.alarmT = CAMERA.alarm;
-  if (g.alarmT > 0 && (was === 0 || Math.ceil(g.alarmT / CAMERA.siren) !== Math.ceil(was / CAMERA.siren))) g.sfx.push('alarm');
+  if (g.alarmT > 0) {
+    const age = was === 0 ? 0 : g.alarmAge + dt;
+    if (was === 0 || Math.floor(age / CAMERA.siren) !== Math.floor(g.alarmAge / CAMERA.siren)) g.sfx.push('alarm');
+    g.alarmAge = age;
+  } else g.alarmAge = 0;
   g.gate = g.alarmT > 0 ? Math.min(1, g.gate + dt / CAMERA.gateTime) : Math.max(0, g.gate - dt / CAMERA.gateTime);
   const room = liveRoom(g);
   for (const s of g.gates) pushFromGate(g.nina.body, g.nina.facing, s, gateRows(s, g.gate), room);
@@ -607,8 +613,8 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
   const events: HitEvent[] = [];
   for (const id of resolveCombat(g.nina, g.androids, g.projectiles, room, events)) g.killed.add(id);
   const bit0 = bites(g.dogs);
-  for (const id of resolveDogs(g.nina, g.dogs, g.projectiles, events)) g.killed.add(id);
-  for (const id of resolveGuards(g.nina, g.guards, g.projectiles, events)) g.killed.add(id);
+  for (const id of resolveDogs(g.nina, g.dogs, g.projectiles, room, events)) g.killed.add(id);
+  for (const id of resolveGuards(g.nina, g.guards, g.projectiles, room, events)) g.killed.add(id);
   if (bites(g.dogs) > bit0) g.sfx.push('bite');
   for (const f of g.flamers) {
     const warned = flamerPhase(f) === 'warn';

@@ -160,6 +160,32 @@ describe('двери в игре', () => {
   });
 });
 
+describe('рукопашная и закрытая дверь', () => {
+  // Враг вплотную за дверью 1 (колонка 20), стоит на месте; героиня вплотную перед дверью.
+  const fight = (enemy: string) => {
+    const g = createGame(new Map([['a', R('a', doorRows('1'), { enemies: `${enemy}@21.6,22 patrol=21.6..21.7` })]]), { room: 'a', x: 2, bottom: 22 });
+    standAt(g, 19.3);
+    return g;
+  };
+  const strike = (g: Game) => { press(g, { attackPressed: true }); wait(g, 0.7); };
+
+  it('андроид за закрытой дверью не видит и не бьёт героиню', () => {
+    const g = fight('android');
+    wait(g, 3);
+    expect(g.nina.energy).toBe(NINA.energyMax);
+    expect(g.androids[0].state).toBe('patrol');
+  });
+
+  it('удары героини через закрытую дверь не ранят охранника; после открытия — ранят', () => {
+    const g = fight('guard');
+    for (let i = 0; i < 3; i++) strike(g);
+    expect(g.guards[0].hp).toBe(2);
+    g.mission.doorsOpen.add('a#1');
+    strike(g);
+    expect(g.guards[0].hp).toBe(1);
+  });
+});
+
 describe('достижимость с дверями', () => {
   const START = [{ room: 'a', x: 2, bottom: 22 }];
   const beyond = (d: Map<string, number>) => [...d.keys()].some(k => k.startsWith('S|a|') && Number(k.split('|')[2]) > 21);

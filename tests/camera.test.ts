@@ -123,6 +123,16 @@ describe('тревога', () => {
     expect(g.sfx.filter(s => s === 'alarm').length).toBeLessThanOrEqual(4);
   });
 
+  it('сирена — раз в секунду, и пока героиня стоит в луче', () => {
+    const g = game(19);
+    hold(g, {}, 0.4); // тревога
+    g.sfx = [];
+    hold(g, {}, 3.5);
+    expect(g.alarmT).toBe(CAMERA.alarm);
+    expect(g.sfx.filter(s => s === 'alarm').length).toBeGreaterThanOrEqual(3);
+    expect(g.sfx.filter(s => s === 'alarm').length).toBeLessThanOrEqual(4);
+  });
+
   it('тревога, начатая в середине секунды, даёт ровно один сигнал за первые 0.9 с', () => {
     const g = game(19);
     hold(g, { down: true }, 0.98); // часы миссии — около границы секунды

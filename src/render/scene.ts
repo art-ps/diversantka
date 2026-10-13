@@ -308,7 +308,7 @@ export function drawStatic(b: Pick<GlyphBatch, 'push'>, deadT: number, time: num
   for (let r = 0; r < ROOM_H * 2; r++) {
     const bar = ((r / (ROOM_H * 2) - time * 0.3) % 1 + 1) % 1 < 0.08;
     for (let c = 0; c < ROOM_W * 2; c++) {
-      const h = mix(hash(c + frame * 131 + 7919, r + frame * 71 + 104729));
+      const h = mix(hash(c + frame * 131, r + frame * 71));
       if ((h % 1000) / 1000 >= k * FX.staticDensity * (bar ? 1.6 : 1)) continue;
       const ch = SNOW[1 + ((h >>> 10) % (SNOW.length - 1))];
       const a = PAL.static[3] * k * (bar ? 1.8 : 1);
@@ -400,7 +400,7 @@ export function drawBlast(b: Pick<GlyphBatch, 'push'>, t: number, time: number):
   for (let r = 0; r < ROOM_H * 2; r++) {
     const low = r / (ROOM_H * 2); // 0 — верх экрана, 1 — низ
     for (let c = 0; c < ROOM_W * 2; c++) {
-      const h = mix(hash(c + frame * 131, r + frame * 71));
+      const h = mix(hash(c + frame * 131 + 7919, r + frame * 71 + 104729));
       if ((h % 1000) / 1000 >= k * (0.4 + low)) continue;
       const level = 1 + ((h >>> 10) % (HEAT_RAMP.length - 1));
       b.push(c / 2 + 0.25 - 0.5, r / 2 + 0.25 - 0.5, HEAT_RAMP[level], heatColor(level), 0.5);

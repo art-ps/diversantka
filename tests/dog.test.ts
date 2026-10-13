@@ -57,7 +57,7 @@ describe('собака', () => {
     const n = ninaAt(24);
     for (let i = 0; i < 120; i++) {
       updateDog(d, n, ROOM, DT);
-      resolveDogs(n, [d], [], []);
+      resolveDogs(n, [d], [], ROOM, []);
       if (d.state === 'recoil') break;
     }
     expect(NINA.energyMax - n.energy).toBe(DOG.biteDamage);
@@ -77,7 +77,7 @@ describe('собака', () => {
       updateNina(n, { ...IDLE, attackPressed: true, up: kind === 'kick' }, ROOM, DT);
       for (let i = 0; i < 30; i++) {
         updateNina(n, IDLE, ROOM, DT);
-        resolveDogs(n, [d], [], []);
+        resolveDogs(n, [d], [], ROOM, []);
       }
       return d.state;
     };

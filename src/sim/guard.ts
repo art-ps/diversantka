@@ -1,11 +1,12 @@
 import { createSimpleAnim, type SimpleAnim } from '../anim/simple';
 import { GUARD } from '../config';
-import { tileAt, type Room } from '../world/room';
+import type { Room } from '../world/room';
 import type { GuardSpawn } from '../world/spawns';
 import type { HitResult } from './android';
+import { clearRow } from './doors';
 import type { Projectile } from './items';
 import type { Nina } from './nina';
-import { isSolid, moveX, type Body } from './physics';
+import { moveX, type Body } from './physics';
 
 // patrol/chase — ходит; back — шаг назад от героини перед выстрелом; aim — целится; reload — перезаряжается.
 export type GuardState = 'patrol' | 'chase' | 'back' | 'aim' | 'reload' | 'hurt' | 'dead';
@@ -40,10 +41,7 @@ export function guardSees(gd: Guard, n: Nina, room: Room): boolean {
   if (n.dead || gd.state === 'dead') return false;
   const bottom = gd.body.y + gd.body.h;
   if (Math.abs(bottom - (n.body.y + n.body.h)) >= GUARD.floorTol) return false;
-  const row = Math.floor(bottom - GUARD.chest);
-  const a = Math.floor(center(gd.body)), b = Math.floor(center(n.body));
-  for (let c = Math.min(a, b); c <= Math.max(a, b); c++) if (isSolid(tileAt(room, c, row)) || tileAt(room, c, row) === 'S') return false;
-  return true;
+  return clearRow(room, center(gd.body), center(n.body), Math.floor(bottom - GUARD.chest));
 }
 
 function setState(gd: Guard, s: GuardState): void {

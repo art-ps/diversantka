@@ -184,7 +184,7 @@ describe('охранник: урон', () => {
     n.attack = { kind: 'punch', t: COMBAT.punch.windup, hits: [] };
     const knife: Projectile = { kind: 'knife', x: 20, y: 20, vx: 10, vy: 0, from: 'nina', damage: 1, alive: true, hitWall: false };
     const events: { id: string; result: string }[] = [];
-    expect(resolveGuards(n, [gd], [knife], events as never)).toEqual([]);
+    expect(resolveGuards(n, [gd], [knife], ROOM, events as never)).toEqual([]);
     expect(events).toEqual([{ id: 'r#e0', result: 'hit' }, { id: 'r#e0', result: 'blocked' }]);
   });
 });

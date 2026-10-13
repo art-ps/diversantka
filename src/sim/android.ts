@@ -2,6 +2,7 @@ import { createSimpleAnim, type SimpleAnim } from '../anim/simple';
 import { ANDROID } from '../config';
 import type { Room } from '../world/room';
 import type { AndroidSpawn } from '../world/spawns';
+import { clearRow } from './doors';
 import type { Projectile } from './items';
 import type { Nina } from './nina';
 import { moveX, type Body } from './physics';
@@ -34,10 +35,13 @@ export function createAndroid(id: string, s: AndroidSpawn): Android {
   };
 }
 
-export function seesNina(a: Android, n: Nina): boolean {
+// Героиня на своём этаже не дальше sight и на высоте головы (там летит нож) между ними нет стены, закрытой двери,
+// опущенной решётки и фальш-стены.
+export function seesNina(a: Android, n: Nina, room: Room): boolean {
   if (n.dead || a.state === 'dead') return false;
   const sameFloor = Math.abs(a.body.y + a.body.h - (n.body.y + n.body.h)) < ANDROID.floorTol;
-  return sameFloor && Math.abs(center(n.body) - center(a.body)) <= ANDROID.sight;
+  return sameFloor && Math.abs(center(n.body) - center(a.body)) <= ANDROID.sight
+    && clearRow(room, center(a.body), center(n.body), Math.floor(a.body.y + ANDROID.knifeHeight * a.body.h));
 }
 
 function setState(a: Android, s: AndroidState): void {
@@ -89,7 +93,7 @@ export function updateAndroid(a: Android, n: Nina, room: Room, dt: number, alert
     return null;
   }
 
-  if (seesNina(a, n) || (alert && !n.dead)) {
+  if (seesNina(a, n, room) || (alert && !n.dead)) {
     a.state = 'chase';
     const dx = center(n.body) - center(a.body);
     a.facing = dx >= 0 ? 1 : -1;
