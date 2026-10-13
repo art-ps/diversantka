@@ -11,8 +11,9 @@ export function roomOf(rows: Record<number, string>, exits: Partial<Record<Dir, 
   return { id: 'test', exits, meta: {}, tiles };
 }
 
-export function loadRoomsFs(): Map<string, Room> {
-  const dir = fileURLToPath(new URL('../src/world/rooms', import.meta.url));
+// Комнаты набора с диска: rooms — база НИИ (миссия 1), rooms2 — бункер (миссия 2).
+export function loadRoomsFs(set: 'rooms' | 'rooms2' = 'rooms'): Map<string, Room> {
+  const dir = fileURLToPath(new URL(`../src/world/${set}`, import.meta.url));
   const rooms = new Map<string, Room>();
   for (const f of readdirSync(dir).filter(n => n.endsWith('.txt'))) {
     const r = parseRoom(readFileSync(join(dir, f), 'utf8'), f);
