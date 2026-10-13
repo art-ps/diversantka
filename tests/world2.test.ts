@@ -1,12 +1,43 @@
 import { expect, it } from 'vitest';
+import { DT, MISSION, NINA } from '../src/config';
+import { createGame, stepGame, type Game } from '../src/game';
+import { IDLE, type Intent } from '../src/input/intent';
 import { BUNKER_START, loadWorld, validateCameras, validateGates, validateMission } from '../src/world';
-import type { Room } from '../src/world/room';
+import { tileAt, type Room } from '../src/world/room';
+import { parseEnemies, parseItems, parsePoints, parseTerminals } from '../src/world/spawns';
 import { loadRoomsFs, roomOf } from './helpers';
+import { routeDamage } from './reach';
 
 // Набор комнат бункера (миссия 2) по мере раскладки.
-const ROOMS2 = ['gate'];
+const ROOMS2 = ['gate', 'shaft-1', 'shaft-2', 'shaft-3'];
 
 const R = (id: string, rows: Record<number, string>, meta: Record<string, string>): Room => ({ ...roomOf(rows), id, meta });
+const I = (p: Partial<Intent> = {}): Intent => ({ ...IDLE, ...p });
+const run = (g: Game, p: Partial<Intent>, n: number, until: () => boolean = () => false) => {
+  for (let i = 0; i < n && !until(); i++) stepGame(g, I(p), DT);
+};
+const bottomOf = (g: Game) => g.nina.body.y + g.nina.body.h;
+// Героиня центром в x на полу bottom комнаты room бункера; враги убраны — проверяем тайлы и переходы.
+const at = (room: string, x: number, bottom: number) => {
+  const g = createGame(loadRoomsFs('rooms2'), { room, x: x - NINA.w / 2, bottom });
+  g.androids = [];
+  g.dogs = [];
+  g.guards = [];
+  run(g, {}, 5);
+  return g;
+};
+// По лестнице до комнаты to: держать dir, пока не встанет на пол в to.
+const climbTo = (g: Game, dir: 'up' | 'down', to: string) => {
+  run(g, { [dir]: true }, 1500, () => g.roomId === to && g.nina.state === 'ground');
+  run(g, {}, 30);
+  expect(g.roomId).toBe(to);
+};
+// Узлы «стоит» модели достижимости: комната, центр тела x = c + 1, низ r.
+const standing = (d: Map<string, number>) =>
+  [...d.keys()].filter(k => k.startsWith('S|')).map(k => k.split('|')).map(([, id, c, r]) => ({ id, x: Number(c) + 1, r: Number(r) }));
+// Можно встать в комнате room центром не дальше tol от x на полу bottom, выйдя из from при открытых дверях open.
+const standsAt = (open: number[], room: string, x: number, bottom: number, tol = 1, from = [BUNKER_START]) =>
+  standing(routeDamage(loadRoomsFs('rooms2'), from, new Set(open))).some(s => s.id === room && s.r === bottom && Math.abs(s.x - x) <= tol);
 
 it('loadWorld(2) — бункер: комнаты набора проходят все проверки; loadWorld() — по-прежнему база НИИ', () => {
   expect([...loadWorld(2).keys()].sort()).toEqual(ROOMS2);
@@ -61,4 +92,64 @@ it('validateGates: враг, чей участок заходит под реш�
   expect(validateGates(room('android@12,22 patrol=8..18'))).toEqual([]);
   expect(validateGates(room('guard@20,14 patrol=15..25'))).toEqual([]);
   expect(validateGates(room('flamer@20,19 dir=left'))).toEqual([]);
+});
+
+// ---- раскладка набора: общие правила (работают на любом числе комнат) ----
+
+it('мотоцикл, точка закладки, терминалы и предметы стоят на полу, а не в стене', () => {
+  for (const r of loadRoomsFs('rooms2').values()) {
+    const pts = [
+      ...parsePoints(r.meta.bike, r.id, 'мотоцикла'), ...parsePoints(r.meta.bomb, r.id, 'точки закладки'),
+      ...parseTerminals(r.meta.terminals, r.id), ...parseItems(r.meta.items, r.id),
+    ];
+    for (const p of pts) {
+      expect('#=H', `${r.id} ${p.x},${p.bottom}`).toContain(tileAt(r, Math.floor(p.x), p.bottom));
+      expect(tileAt(r, Math.floor(p.x), p.bottom - 1), `${r.id} ${p.x},${p.bottom}`).not.toBe('#');
+    }
+  }
+});
+
+// Враг не стоит на лестнице и в проёме выхода: участок патруля плюс клетка — без лестниц и не у края комнаты.
+it('патрули врагов не перекрывают лестницы и выходы', () => {
+  for (const r of loadRoomsFs('rooms2').values()) {
+    for (const e of parseEnemies(r.meta.enemies, r.id)) {
+      if (e.kind === 'flamer') continue;
+      const [a, b] = e.patrol;
+      for (let c = Math.floor(a - 1); c <= Math.ceil(b + 1); c++) {
+        for (let row = e.bottom - 4; row <= e.bottom; row++) expect(tileAt(r, c, row), `${r.id} ${e.kind} ${a}..${b}: лестница ${c},${row}`).not.toBe('H');
+      }
+      expect(a - 1, `${r.id} ${e.kind}: у левого края`).toBeGreaterThan(1);
+      expect(b + 1, `${r.id} ${e.kind}: у правого края`).toBeLessThan(39);
+    }
+  }
+});
+
+it('у терминалов и мотоцикла нет предметов на том же полу ближе useRange', () => {
+  for (const r of loadRoomsFs('rooms2').values()) {
+    for (const o of [...parseTerminals(r.meta.terminals, r.id), ...parsePoints(r.meta.bike, r.id, 'мотоцикла')]) {
+      for (const i of parseItems(r.meta.items, r.id).filter(i => i.bottom === o.bottom)) expect(Math.abs(i.x - o.x), `${r.id} ${i.kind}@${i.x}`).toBeGreaterThan(MISSION.useRange);
+    }
+  }
+});
+
+it('каждая комната набора достижима со старта (все двери открыты) и из каждой есть путь к мотоциклу', () => {
+  const rooms = loadRoomsFs('rooms2');
+  const all = standing(routeDamage(rooms, [BUNKER_START], new Set([1, 2, 3]))).filter(s => s.x >= 1 && s.x <= 39);
+  expect([...new Set(all.map(s => s.id))].sort()).toEqual(ROOMS2);
+  for (const id of ROOMS2) {
+    const s = all.find(n => n.id === id)!;
+    const back = standing(routeDamage(rooms, [{ room: id, x: s.x - NINA.w / 2, bottom: s.r }], new Set([1, 2, 3])));
+    expect(back.some(n => n.id === 'gate' && n.r === 22 && Math.abs(n.x - 5) <= MISSION.useRange), id).toBe(true);
+  }
+}, 20_000);
+
+it('шахта: въезд ↔ shaft-1 ↔ shaft-2 ↔ shaft-3 по лестницам вниз и вверх без урона', () => {
+  for (const [top, x, bottom, low] of [['gate', 30.5, 22, 'shaft-1'], ['shaft-1', 8.5, 12, 'shaft-2'], ['shaft-2', 30.5, 22, 'shaft-3']] as const) {
+    const g = at(top, x, bottom);
+    climbTo(g, 'down', low);
+    expect(bottomOf(g), top).toBeCloseTo(low === 'shaft-1' ? 12 : 22);
+    climbTo(g, 'up', top);
+    expect(bottomOf(g), low).toBeCloseTo(bottom);
+    expect(g.nina.energy, top).toBe(NINA.energyMax);
+  }
 });
