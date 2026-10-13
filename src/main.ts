@@ -1,6 +1,6 @@
 import { ambientOf } from './audio/ambient';
 import { AudioGate } from './audio/gate';
-import { DT, ROOM_H, ROOM_W } from './config';
+import { DT, FX, ROOM_H, ROOM_W } from './config';
 import { createPrologue, stepGame } from './game';
 import { lang, setLang, str } from './i18n';
 import { InputDevices } from './input/devices';
@@ -42,7 +42,9 @@ async function boot() {
     return fail(`Ошибка в файлах комнат:\n${(e as Error).message}`);
   }
 
-  const batch = new GlyphBatch(gl, await createAtlas('JetBrains Mono'));
+  const atlas = await createAtlas('JetBrains Mono');
+  const batch = new GlyphBatch(gl, atlas);
+  const fig = new GlyphBatch(gl, atlas, 4000); // фигуры — отдельный слой свечения
   const bloom = new Bloom(gl);
   const input = new InputDevices(window);
   const tracker = new IntentTracker();
@@ -104,9 +106,11 @@ async function boot() {
       game.clip = null;
     }
     bloom.begin(PAL.bg);
-    drawGame(batch, game, now / 1000);
+    drawGame(batch, game, now / 1000, fig);
     batch.draw(ROOM_W, ROOM_H);
-    bloom.end(glow ? 1.2 : 0);
+    fig.draw(ROOM_W, ROOM_H, true); // в сцену, как раньше
+    bloom.layer(() => fig.draw(ROOM_W, ROOM_H)); // и в слой фигур
+    bloom.end(glow ? 1.2 : 0, glow ? FX.figGlow : 0);
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);

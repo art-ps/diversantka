@@ -218,7 +218,7 @@ export function drawParticles(b: Pick<GlyphBatch, 'push'>, ps: Particle[], ox: n
 // Мигание при неуязвимости: фигура видна через кадр.
 const blinkOff = (invulnT: number, time: number) => invulnT > 0 && Math.floor(time * 12) % 2 !== 0;
 
-function drawAndroids(b: GlyphBatch, g: Game, ox: number, oy: number, time: number): void {
+function drawAndroids(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number, time: number): void {
   for (const a of g.androids) {
     if (a.gone) continue;
     if (a.state !== 'dead' && blinkOff(a.invulnT, time)) continue;
@@ -226,14 +226,14 @@ function drawAndroids(b: GlyphBatch, g: Game, ox: number, oy: number, time: numb
   }
 }
 
-function drawDogs(b: GlyphBatch, g: Game, ox: number, oy: number): void {
+function drawDogs(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number): void {
   for (const d of g.dogs) {
     if (d.gone) continue;
     for (const s of dogGlyphs(d, PAL.dog)) b.push(s.x - 0.5 + ox, s.y - 0.5 + oy, s.ch, s.color, s.size);
   }
 }
 
-function drawNina(b: GlyphBatch, g: Game, ox: number, oy: number, time: number): void {
+function drawNina(b: GlyphBatch, fig: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number, time: number): void {
   const { body, facing } = g.nina;
   const p = g.prologue;
   if (p && p.phase !== 'fall' && p.phase !== 'splash') {
@@ -243,8 +243,8 @@ function drawNina(b: GlyphBatch, g: Game, ox: number, oy: number, time: number):
   if (!g.nina.dead && blinkOff(g.nina.invulnT, time)) return;
   const pose = currentPose(g.anim, CLIPS);
   const x = body.x + body.w / 2 + ox, y = body.y + body.h + oy;
-  drawFigure(b, pose, x, y, facing, PAL.nina, g.nina.state === 'ladder');
-  if (g.nina.held) b.push(x + facing * pose[2 * J.rHand] - 0.5, y - pose[2 * J.rHand + 1] - 0.5, ITEM_GLYPH[g.nina.held], PAL.item, 0.5);
+  drawFigure(fig, pose, x, y, facing, PAL.nina, g.nina.state === 'ladder');
+  if (g.nina.held) fig.push(x + facing * pose[2 * J.rHand] - 0.5, y - pose[2 * J.rHand + 1] - 0.5, ITEM_GLYPH[g.nina.held], PAL.item, 0.5);
 }
 
 const FLOAT_COLOR = { damage: PAL.danger, enemy: PAL.item, blocked: PAL.hudDim } as const;
@@ -323,7 +323,7 @@ export function drawFires(b: Pick<GlyphBatch, 'push'>, fires: Fire[], ox: number
 }
 
 // Всё, что живёт в комнате поверх тайлов; ox, oy — сдвиг перехода.
-function drawWorld(b: GlyphBatch, g: Game, ox: number, oy: number, time: number): void {
+function drawWorld(b: GlyphBatch, fig: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number, time: number): void {
   drawFires(b, g.fires, ox, oy);
   drawFlamers(b, g, ox, oy);
   drawTerminals(b, g.terminals, ox, oy);
@@ -332,11 +332,11 @@ function drawWorld(b: GlyphBatch, g: Game, ox: number, oy: number, time: number)
   drawItems(b, g.items, ox, oy);
   drawTapes(b, g.tapes, ox, oy);
   if (g.source) drawSource(b, g.source, ox, oy, time);
-  drawAndroids(b, g, ox, oy, time);
-  drawDogs(b, g, ox, oy);
+  drawAndroids(fig, g, ox, oy, time);
+  drawDogs(fig, g, ox, oy);
   drawProjectiles(b, g.projectiles, ox, oy);
   drawParticles(b, g.particles, ox, oy);
-  drawNina(b, g, ox, oy, time);
+  drawNina(b, fig, g, ox, oy, time);
   drawFloaters(b, g.floaters, ox, oy);
   if (liftHint(g)) drawLiftHint(b, g, ox, oy);
 }
@@ -350,7 +350,8 @@ const outside = (b: Pick<GlyphBatch, 'push'>, f: Box): Pick<GlyphBatch, 'push'> 
   },
 });
 
-export function drawGame(b: GlyphBatch, g: Game, time: number): void {
+// fig — батч фигур (героиня, андроиды, собаки): они светятся сильнее. По умолчанию — тот же батч.
+export function drawGame(b: GlyphBatch, g: Game, time: number, fig: Pick<GlyphBatch, 'push'> = b): void {
   if (g.mission.result === 'won') {
     if (g.endT < MISSION.outroTime) drawOutro(b, g.endT, RIDER);
     else drawResult(b, missionResult(g.mission), g.copied);
@@ -380,12 +381,12 @@ export function drawGame(b: GlyphBatch, g: Game, time: number): void {
     drawRoom(b, from, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time, g.roomId);
     drawSky(b, cur, ox, oy, time, gliderSkip(g));
     drawRoom(b, cur, ox, oy, time, g.roomId);
-    drawWorld(b, g, ox, oy, time);
+    drawWorld(b, fig, g, ox, oy, time);
   } else {
     const back = title ? outside(b, TITLE_BOX) : b;
     drawSky(back, cur, 0, 0, time, gliderSkip(g));
     drawRoom(back, cur, 0, 0, time, g.roomId);
-    drawWorld(b, g, 0, 0, time);
+    drawWorld(b, fig, g, 0, 0, time);
   }
   const failed = g.mission.result === 'failed';
   if (g.nina.dead || failed) drawStatic(b, failed ? FX.staticIn : g.nina.deadT, time);

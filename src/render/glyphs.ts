@@ -99,7 +99,8 @@ export class GlyphBatch {
     [...s].forEach((ch, i) => this.push(x + i * step, y, ch, c));
   }
 
-  draw(gridW: number, gridH: number): void {
+  // keep — не сбрасывать символы: тот же батч рисуется ещё раз в другую цель.
+  draw(gridW: number, gridH: number, keep = false): void {
     const gl = this.gl;
     gl.useProgram(this.prog);
     gl.uniform2f(this.uGrid, gridW, gridH);
@@ -113,6 +114,6 @@ export class GlyphBatch {
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.count);
     gl.bindVertexArray(null);
     gl.disable(gl.BLEND);
-    this.count = 0;
+    if (!keep) this.count = 0;
   }
 }

@@ -1,4 +1,5 @@
 import type { Color } from './glyphs';
+import { FX } from '../config';
 import { createProgram } from './gl';
 
 const FULL_VS = `#version 300 es
@@ -29,8 +30,11 @@ void main() {
 
 const COMPOSITE_FS = `#version 300 es
 precision mediump float;
-in vec2 vUV; uniform sampler2D uScene; uniform sampler2D uGlow; uniform float uStrength; out vec4 o;
-void main() { o = vec4(texture(uScene, vUV).rgb + texture(uGlow, vUV).rgb * uStrength, 1.0); }`;
+in vec2 vUV; uniform sampler2D uScene; uniform sampler2D uGlow; uniform sampler2D uFig;
+uniform float uStrength; uniform float uFigStrength; out vec4 o;
+void main() {
+  o = vec4(texture(uScene, vUV).rgb + texture(uGlow, vUV).rgb * uStrength + texture(uFig, vUV).rgb * uFigStrength, 1.0);
+}`;
 
 interface Target { fb: WebGLFramebuffer; tex: WebGLTexture; w: number; h: number }
 
@@ -42,6 +46,8 @@ export class Bloom {
   private scene!: Target;
   private a!: Target;
   private b!: Target;
+  private fa!: Target;
+  private fb!: Target;
 
   constructor(private gl: WebGL2RenderingContext) {
     this.copy = createProgram(gl, FULL_VS, COPY_FS);
@@ -66,7 +72,7 @@ export class Bloom {
   }
 
   resize(w: number, h: number): void {
-    for (const t of [this.scene, this.a, this.b]) {
+    for (const t of [this.scene, this.a, this.b, this.fa, this.fb]) {
       if (!t) continue;
       this.gl.deleteFramebuffer(t.fb);
       this.gl.deleteTexture(t.tex);
@@ -75,6 +81,8 @@ export class Bloom {
     this.scene = this.target(w, h);
     this.a = this.target(q(w), q(h));
     this.b = this.target(q(w), q(h));
+    this.fa = this.target(q(w), q(h));
+    this.fb = this.target(q(w), q(h));
   }
 
   begin(bg: Color): void {
@@ -98,22 +106,43 @@ export class Bloom {
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
-  // strength 0 — без свечения.
-  end(strength: number): void {
+  // Слой фигур: draw рисует фигуры в текстуру четверть-размера; end размоет её отдельно.
+  layer(draw: () => void): void {
+    const gl = this.gl;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fa.fb);
+    gl.viewport(0, 0, this.fa.w, this.fa.h);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    draw();
+  }
+
+  private blurPingPong(a: Target, b: Target, passes: number): void {
+    const gl = this.gl;
+    const dir = this.blur;
+    for (let i = 0; i < passes; i++) {
+      this.pass(dir, a.tex, b, () => gl.uniform2f(gl.getUniformLocation(dir, 'uDir'), 1 / a.w, 0));
+      this.pass(dir, b.tex, a, () => gl.uniform2f(gl.getUniformLocation(dir, 'uDir'), 0, 1 / a.h));
+    }
+  }
+
+  // strength 0 — без общего свечения; figStrength 0 — без свечения фигур (слой тогда не размывается).
+  end(strength: number, figStrength: number): void {
     const gl = this.gl;
     if (strength > 0) {
       this.pass(this.copy, this.scene.tex, this.a);
-      for (let i = 0; i < 2; i++) {
-        this.pass(this.blur, this.a.tex, this.b, () => gl.uniform2f(gl.getUniformLocation(this.blur, 'uDir'), 1 / this.a.w, 0));
-        this.pass(this.blur, this.b.tex, this.a, () => gl.uniform2f(gl.getUniformLocation(this.blur, 'uDir'), 0, 1 / this.a.h));
-      }
+      this.blurPingPong(this.a, this.b, 2);
     }
+    if (figStrength > 0) this.blurPingPong(this.fa, this.fb, FX.figGlowPasses);
     this.pass(this.comp, this.scene.tex, null, () => {
       gl.uniform1i(gl.getUniformLocation(this.comp, 'uScene'), 0);
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, this.a.tex);
       gl.uniform1i(gl.getUniformLocation(this.comp, 'uGlow'), 1);
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, this.fa.tex);
+      gl.uniform1i(gl.getUniformLocation(this.comp, 'uFig'), 2);
       gl.uniform1f(gl.getUniformLocation(this.comp, 'uStrength'), strength);
+      gl.uniform1f(gl.getUniformLocation(this.comp, 'uFigStrength'), figStrength);
     });
   }
 }
