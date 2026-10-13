@@ -26,6 +26,9 @@ export interface Projectile {
 export const itemRect = (i: Point): Rect => ({ x: i.x - 0.5, y: i.bottom - 1, w: 1, h: 1 });
 
 // Кнопка броска: с пустыми руками подбирает предмет под ногами, с предметом — бросает.
+// Бросают только предметы из COMBAT.items; ключи и взрывчатку — нет.
+const isThrowable = (k: ItemKind): k is keyof typeof COMBAT.items => k in COMBAT.items;
+
 export function useThrowButton(n: Nina, it: Intent, items: Item[]): { picked?: Item; thrown?: Projectile } {
   if (!it.throwPressed || n.dead || n.hurtT > 0 || n.state === 'ladder') return {};
   if (!n.held) {
@@ -36,17 +39,17 @@ export function useThrowButton(n: Nina, it: Intent, items: Item[]): { picked?: I
     return { picked };
   }
   const kind = n.held;
-  if (!(kind in COMBAT.items)) return {}; // ключи и взрывчатку не бросают — улетели бы о стену и пропали
+  if (!isThrowable(kind)) return {}; // ключи и взрывчатку не бросают — улетели бы о стену и пропали
   n.held = null;
   n.throwT = COMBAT.throwTime;
-  const cfg = COMBAT.items[kind as keyof typeof COMBAT.items];
+  const cfg = COMBAT.items[kind];
   const a = (COMBAT.throwAngle * Math.PI) / 180;
   const dy = it.up ? -Math.sin(a) : it.down ? Math.sin(a) : 0;
   const dx = dy === 0 ? 1 : Math.cos(a);
   const b = n.body;
   return {
     thrown: {
-      kind: kind as ProjectileKind, x: n.facing > 0 ? b.x + b.w : b.x, y: b.y + 0.3 * b.h,
+      kind, x: n.facing > 0 ? b.x + b.w : b.x, y: b.y + 0.3 * b.h,
       vx: dx * n.facing * cfg.speed, vy: dy * cfg.speed, from: 'nina', damage: cfg.damage, alive: true, hitWall: false,
     },
   };

@@ -10,7 +10,7 @@ import { fireCells, heatColor, type Fire } from '../fx/fires';
 import { HEAT_RAMP } from '../fx/heat';
 import { stormGlyphs } from '../fx/storm';
 import { cameraAngle, traceBeam } from '../sim/camera';
-import { DOOR_TILES, doorId, keyDoor } from '../sim/doors';
+import { DOOR_TILES, doorId, gateRows, keyDoor } from '../sim/doors';
 import { flamerPhase } from '../sim/flamer';
 import { gliderRect } from '../sim/glider';
 import { LIFT_W, liftTop, type Lift } from '../sim/lift';
@@ -308,7 +308,7 @@ export function drawStatic(b: Pick<GlyphBatch, 'push'>, deadT: number, time: num
   for (let r = 0; r < ROOM_H * 2; r++) {
     const bar = ((r / (ROOM_H * 2) - time * 0.3) % 1 + 1) % 1 < 0.08;
     for (let c = 0; c < ROOM_W * 2; c++) {
-      const h = mix(hash(c + frame * 131, r + frame * 71));
+      const h = mix(hash(c + frame * 131 + 7919, r + frame * 71 + 104729));
       if ((h % 1000) / 1000 >= k * FX.staticDensity * (bar ? 1.6 : 1)) continue;
       const ch = SNOW[1 + ((h >>> 10) % (SNOW.length - 1))];
       const a = PAL.static[3] * k * (bar ? 1.8 : 1);
@@ -375,15 +375,15 @@ export function drawCameras(b: Pick<GlyphBatch, 'push'>, g: Game, room: Room, ox
   }
 }
 
-// Решётки: опущенная часть — столбец «=» по полклетки сверху вниз; поднятая — тусклая планка над проёмом.
+// Решётки: опущенная часть — столбец «=» по целым клеткам сверху вниз (как стена в физике); поднятая — тусклая планка над проёмом.
 export function drawGates(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number): void {
   for (const s of g.gates) {
-    const half = Math.ceil(g.gate * 2 * (s.bottom - s.top) - 1e-9);
-    if (!half) {
+    const rows = gateRows(s, g.gate);
+    if (!rows) {
       sub(b, s.x + ox, s.top + oy, 0, 0, '-', PAL.wallInner);
       sub(b, s.x + ox, s.top + oy, 1, 0, '-', PAL.wallInner);
     }
-    for (let k = 0; k < half; k++) for (let i = 0; i < 2; i++) sub(b, s.x + ox, s.top + Math.floor(k / 2) + oy, i, k % 2, '=', PAL.wall);
+    for (let r = 0; r < rows; r++) for (let j = 0; j < 4; j++) sub(b, s.x + ox, s.top + r + oy, j % 2, j >> 1, '=', PAL.wall);
   }
 }
 

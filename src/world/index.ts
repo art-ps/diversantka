@@ -1,4 +1,5 @@
 import { MISSION, NINA, ROOM_H } from '../config';
+import { isOpaque } from '../sim/camera';
 import { doorsOf, keyDoor } from '../sim/doors';
 import { LIFT_W, shaftRooms } from '../sim/lift';
 import { parseRoom, tileAt, validateWorld, type Room } from './room';
@@ -16,7 +17,7 @@ export function loadWorld(): Map<string, Room> {
     if (rooms.has(room.id)) throw new Error(`${path}: повтор id ${room.id}`);
     rooms.set(room.id, room);
   }
-  const errors = [...validateWorld(rooms), ...validateMission(rooms), ...validateLifts(rooms), ...validateAmbient(rooms), ...validateDoors(rooms)];
+  const errors = [...validateWorld(rooms), ...validateMission(rooms), ...validateLifts(rooms), ...validateAmbient(rooms), ...validateDoors(rooms), ...validateCameras(rooms)];
   if (errors.length) throw new Error(errors.join('\n'));
   return rooms;
 }
@@ -91,6 +92,17 @@ export function validateDoors(rooms: Map<string, Room>): string[] {
     if (keys[n] > 1) errors.push(`ключей ${n} на карте ${keys[n]}, нужен один`);
     if (doors[n] && !keys[n]) errors.push(`у двери ${n} нет ключа`);
     if (keys[n] && !doors[n]) errors.push(`ключ ${n} без двери`);
+  }
+  return errors;
+}
+
+// Камера висит в свободной клетке: в «#», «S» или «=» её луч упёрся бы сам в себя.
+export function validateCameras(rooms: Map<string, Room>): string[] {
+  const errors: string[] = [];
+  for (const r of rooms.values()) {
+    for (const c of parseCameras(r.meta.cameras, r.id)) {
+      if (isOpaque(tileAt(r, c.x, c.y))) errors.push(`${r.id}: камера ${c.x},${c.y} в стене`);
+    }
   }
   return errors;
 }

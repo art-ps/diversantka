@@ -35,14 +35,14 @@ export function createGuard(id: string, s: GuardSpawn): Guard {
 }
 
 // Видит героиню на своём этаже на всю комнату, если на высоте груди между ними нет стены (закрытая дверь и опущенная
-// решётка в solidRoom — тоже стена). Героиня в прыжке — не на этаже, не видна.
+// решётка в solidRoom — тоже стена; фальш-стена «S» непрозрачна, как для камеры). Героиня в прыжке — не на этаже, не видна.
 export function guardSees(gd: Guard, n: Nina, room: Room): boolean {
   if (n.dead || gd.state === 'dead') return false;
   const bottom = gd.body.y + gd.body.h;
   if (Math.abs(bottom - (n.body.y + n.body.h)) >= GUARD.floorTol) return false;
   const row = Math.floor(bottom - GUARD.chest);
   const a = Math.floor(center(gd.body)), b = Math.floor(center(n.body));
-  for (let c = Math.min(a, b); c <= Math.max(a, b); c++) if (isSolid(tileAt(room, c, row))) return false;
+  for (let c = Math.min(a, b); c <= Math.max(a, b); c++) if (isSolid(tileAt(room, c, row)) || tileAt(room, c, row) === 'S') return false;
   return true;
 }
 

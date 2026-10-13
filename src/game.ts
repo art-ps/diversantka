@@ -282,13 +282,13 @@ function touchSource(g: Game, s: Point, nr: Rect, dt: number): void {
 export const liveRoom = (g: Game, id = g.roomId): Room => solidRoom(g.rooms.get(id)!, g.mission.doorsOpen, id === g.roomId ? g.gate : 0);
 
 // Камеры, тревога и решётка за шаг. Героиня в луче CAMERA.detect подряд — тревога CAMERA.alarm с: сирена раз
-// в CAMERA.siren с (по часам миссии), решётки опускаются за CAMERA.gateTime и выталкивают героиню; после — поднимаются.
+// в CAMERA.siren с от начала тревоги, решётки опускаются за CAMERA.gateTime и выталкивают героиню; после — поднимаются.
 function stepAlarm(g: Game, dt: number): void {
   const t = elapsed(g.mission);
   const was = g.alarmT;
   g.alarmT = Math.max(0, g.alarmT - dt);
   if (stepCameras(g.cameras, liveRoom(g), t, g.nina.dead ? null : beamTarget(g.nina.body), dt)) g.alarmT = CAMERA.alarm;
-  if (g.alarmT > 0 && (was === 0 || Math.floor(t / CAMERA.siren) !== Math.floor((t - dt) / CAMERA.siren))) g.sfx.push('alarm');
+  if (g.alarmT > 0 && (was === 0 || Math.ceil(g.alarmT / CAMERA.siren) !== Math.ceil(was / CAMERA.siren))) g.sfx.push('alarm');
   g.gate = g.alarmT > 0 ? Math.min(1, g.gate + dt / CAMERA.gateTime) : Math.max(0, g.gate - dt / CAMERA.gateTime);
   const room = liveRoom(g);
   for (const s of g.gates) pushFromGate(g.nina.body, g.nina.facing, s, gateRows(s, g.gate), room);
@@ -637,9 +637,11 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
   // Дым: над ямами — всегда, над концом струи — пока она горит.
   for (const fire of g.fires) {
     if (fire.kind !== 'jet') {
-      const width = fire.field.w / 2;
+      const bomb = fire.kind === 'bomb';
+      const width = bomb ? Math.max(g.mission.fuse === null ? 0 : 1 - g.mission.fuse / BOMB.fuse, 0.1) * fire.field.w / 2 : fire.field.w / 2;
+      const left = bomb ? fire.x + (fire.field.w / 2 - width) / 2 : fire.x;
       const n = Math.floor(FX.smokePerSec * width * dt + Math.random());
-      if (n) smoke(g.particles, fire.x + Math.random() * width, fire.y - 1 - FIRE.pitRise, n);
+      if (n) smoke(g.particles, left + Math.random() * width, fire.y - 1 - (bomb ? BOMB.heatRise : FIRE.pitRise), n);
     } else if (fire.field.on && Math.random() < FX.smokePerSec * dt) {
       smoke(g.particles, fire.x + fire.dir * FLAMER.length, fire.y - FIRE.jetLift * FLAMER.length - 0.5, 1);
     }
