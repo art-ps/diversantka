@@ -5,12 +5,17 @@ import { IDLE, type Intent } from '../src/input/intent';
 import { flamerPhase } from '../src/sim/flamer';
 import { gliderAt } from '../src/sim/glider';
 import { formatTime, missionResult } from '../src/sim/mission';
+import { packRecord, replayStep, unpackRecord } from '../src/sim/record';
 import { loadRoomsFs } from './helpers';
 
 // Сквозное прохождение настоящей физикой: сценарий «знающего игрока» без гибелей — посадка на крышу, корпус, низ, выезд.
 const log: string[] = [];
 let frames = 0;
 let atkToggle = false;
+// Для теста реплея: победная игра и положение героини после каждого записанного шага.
+let won: Game | null = null;
+const trace: string[] = [];
+const pos = (g: Game) => `${g.roomId} ${g.nina.body.x} ${g.nina.body.y}`;
 
 const cx = (g: Game) => g.nina.body.x + g.nina.body.w / 2;
 const bot = (g: Game) => g.nina.body.y + g.nina.body.h;
@@ -32,9 +37,10 @@ function step(g: Game, p: Partial<Intent>) {
       if (same && Math.abs(dx) < 2.6) { it = { ...IDLE, moveX: Math.sign(dx) }; break; }
     }
   }
-  const dead0 = g.nina.dead;
+  const dead0 = g.nina.dead, rec0 = g.rec.length;
   stepGame(g, it, DT);
   frames++;
+  if (g.rec.length > rec0) trace.push(pos(g));
   if (g.nina.dead && !dead0) log.push(`DIED at ${where(g)}`);
   expect(g.nina.dead, `гибель: ${where(g)}\n${log.join('\n')}`).toBe(false);
 }
@@ -335,4 +341,44 @@ it('игра проходится от пролога до выезда: кры�
   const spent = MISSION.time - g.mission.timeLeft;
   expect(spent).toBeCloseTo((frames - landedAt) * DT, 3);
   expect(spent, `${r.line}\n${log.join('\n')}`).toBeLessThan(6 * 60);
+  won = g;
+});
+
+it('запись прохождения воспроизводит миссию до кадра: тот же итог, та же комната и позиция на каждом шаге', async () => {
+  expect(won, 'сначала должно пройти прохождение').not.toBeNull();
+  const rec = won!.rec;
+  expect(rec).toHaveLength(trace.length);
+  // Как main.ts в режиме ?r=: новая игра с полёта, шаги — из записи, после итога — покой.
+  const g = createPrologue(loadRoomsFs());
+  const r = { rec: await unpackRecord(await packRecord(rec)), i: 0 };
+  for (let i = 0; i < rec.length; i++) {
+    stepGame(g, replayStep(r, g.mission.result !== null)!, DT);
+    if (pos(g) !== trace[i]) expect(pos(g), `шаг ${i}`).toBe(trace[i]);
+  }
+  expect(g.mission.result).toBe('won');
+  const a = missionResult(won!.mission), b = missionResult(g.mission);
+  for (const k of ['time', 'seconds', 'tapes', 'hits', 'attacks', 'secret', 'line'] as const) expect(b[k], k).toBe(a[k]);
+  expect(g.rec).toEqual(rec);
+  for (let i = 0; i < Math.round((MISSION.outroTime + 1) / DT); i++) stepGame(g, replayStep(r, g.mission.result !== null)!, DT);
+  expect(g.endT).toBeGreaterThan(MISSION.outroTime); // итог на экране, реплей стоит на нём
+  expect(g.mission.result).toBe('won');
+});
+
+it('обрезанная запись: шаги кончаются раньше итога — replayStep отдаёт null (main уходит в обычный старт)', async () => {
+  const rec = won!.rec.slice(0, Math.floor(won!.rec.length / 2));
+  const g = createPrologue(loadRoomsFs());
+  const r = { rec, i: 0 };
+  let it = replayStep(r, false);
+  while (it) {
+    stepGame(g, it, DT);
+    it = replayStep(r, g.mission.result !== null);
+  }
+  expect(g.mission.result).toBeNull();
+  expect(r.i).toBe(rec.length);
+});
+
+it('победная запись в ссылке — несколько КБ', async () => {
+  const packed = await packRecord(won!.rec);
+  expect(packed.length).toBeLessThan(12_000);
+  expect(await unpackRecord(packed)).toEqual(won!.rec);
 });
