@@ -20,6 +20,7 @@ import type { Attack } from './sim/combat';
 import type { Sfx } from './sim/sfx';
 import { crumble, smoke, sparks, splash, stepParticles, type Particle } from './sim/particles';
 import { overTop } from './sim/physics';
+import { decodeIntent, encodeIntent } from './sim/record';
 import { bodyRect, overlap, type Rect } from './sim/rect';
 import { touchesTile, touchHazards } from './sim/hazards';
 import { exitFor } from './sim/transition';
@@ -77,13 +78,14 @@ export interface Game {
   stepAcc: number; // путь с прошлого звука шага, клетки
   liftHum: boolean; // звучит гул лифта в пути
   jetHiss: boolean; // звучит струя огнемёта
+  rec: number[]; // запись нажатий с начала полёта (src/sim/record.ts); повтор пролога и «заново» начинают её с нуля
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
     items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
-    lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false,
+    lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false, rec: [],
   };
   enterRoom(g, start.room);
   return g;
@@ -345,9 +347,11 @@ const HIT_SFX = { hit: 'hit', blocked: 'block', killed: 'kill', none: null } as 
 
 // Шаг игры и петли звука: гул лифта в пути и шипение струи звучат, пока мир идёт (не пауза, не экран ЭВМ,
 // не конец миссии, не гибель). g мог смениться целиком («заново») — сравнение с тем, что звучало до шага.
+// Мир получает намерение, прошедшее через кодек записи: реплей подаёт ровно те же числа (пауза — мимо записи).
 export function stepGame(g: Game, it: Intent, dt: number): void {
   const lift0 = g.liftHum, jet0 = g.jetHiss;
-  stepWorld(g, it, dt);
+  const code = encodeIntent(it);
+  stepWorld(g, { ...decodeIntent(code), pausePressed: it.pausePressed }, code, dt);
   const live = !g.paused && !g.screen && !g.mission.result && !g.nina.dead;
   g.liftHum = live && g.lifts.some(l => l.target !== null && liftTop(l, g.roomId) !== null);
   g.jetHiss = live && g.flamers.some(f => flameRect(f) !== null);
@@ -355,7 +359,8 @@ export function stepGame(g: Game, it: Intent, dt: number): void {
   if (g.jetHiss !== jet0) g.sfx.push(g.jetHiss ? 'jetOn' : 'jetOff');
 }
 
-function stepWorld(g: Game, it: Intent, dt: number): void {
+// code — намерение шага для записи: дописывается, только если ввод принят (не стартовый экран, не пауза, нет итога).
+function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
   const p = g.prologue;
   if (p) {
     // После отцепления: вода — всплеск, опора под ногами — посадка и старт миссии.
@@ -367,6 +372,7 @@ function stepWorld(g: Game, it: Intent, dt: number): void {
       } else if (g.nina.state === 'ground') beginMission(g);
     }
     if (g.prologue && p.phase !== 'fall') {
+      if (p.phase !== 'title') g.rec.push(code);
       stepPrologue(g, p, it, dt);
       return;
     }
@@ -384,6 +390,7 @@ function stepWorld(g: Game, it: Intent, dt: number): void {
     }
     if (g.paused) return; // мир и таймер стоят
   }
+  g.rec.push(code); // шаг пауза не съела — мир или экран ЭВМ принимают ввод
   if (!g.prologue) tickTimer(g.mission, dt); // таймер идёт всегда: в переходе, после гибели, на экране ЭВМ
   if (g.mission.result) {
     g.screen = null; // таймер 0 — провал, мир стоит
