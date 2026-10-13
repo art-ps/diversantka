@@ -303,8 +303,8 @@ function drawHud(b: GlyphBatch, g: Game, time: number): void {
   b.text(rx, 0, label, g.replay ? PAL.hud : PAL.hudDim, HUD_STEP);
   const tapes = s.hudTapes(g.mission.tapes.size, MISSION.tapes);
   const clock = formatTime(g.mission.timeLeft);
-  // По центру; длинная подсказка реплея справа сдвигает ленты и таймер левее — между ними хотя бы буква.
-  const mx = Math.min((ROOM_W - hudWidth(tapes + clock)) / 2, rx - HUD_STEP - hudWidth(tapes + clock));
+  // По центру; длинная подсказка реплея справа сдвигает ленты и таймер левее — между ними две буквы.
+  const mx = Math.min((ROOM_W - hudWidth(tapes + clock)) / 2, rx - 2 * HUD_STEP - hudWidth(tapes + clock));
   b.text(mx, 0, tapes, PAL.hud, HUD_STEP);
   b.text(mx + hudWidth(tapes), 0, clock, g.mission.timeLeft < MISSION.lowTime ? PAL.danger : PAL.hud, HUD_STEP);
   if (g.nina.dead && !g.mission.result) {
@@ -314,7 +314,7 @@ function drawHud(b: GlyphBatch, g: Game, time: number): void {
   const p = g.prologue;
   if (p) {
     const msg = s.prologue[p.phase]; // подсказка в полёте и исход пролога
-    if (msg) b.text((ROOM_W - hudWidth(msg)) / 2, p.phase === 'fly' ? 2 : 12, msg, p.phase === 'fly' ? PAL.hud : PAL.danger, HUD_STEP);
+    if (msg && !(g.replay && p.phase === 'fly')) b.text((ROOM_W - hudWidth(msg)) / 2, p.phase === 'fly' ? 2 : 12, msg, p.phase === 'fly' ? PAL.hud : PAL.danger, HUD_STEP);
   }
 }
 function drawFlamers(b: GlyphBatch, g: Game, ox: number, oy: number): void {

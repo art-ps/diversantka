@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { DT, ROOM_W } from '../src/config';
+import { DT, MISSION, ROOM_W } from '../src/config';
 import { createGame, createPrologue, stepGame, type Game } from '../src/game';
 import { LANGS, setLang, STR } from '../src/i18n';
 import { IDLE, type Intent } from '../src/input/intent';
-import { drawGame, hudWidth } from '../src/render/scene';
+import { gliderAt } from '../src/sim/glider'; import { drawGame, hudWidth } from '../src/render/scene';
 import { encodeIntent, holdMove, quitsReplay, replayStep, unpackRecord } from '../src/sim/record';
 import { loadRoomsFs } from './helpers';
 
@@ -66,10 +66,8 @@ describe('шаг реплея', () => {
     }
   });
 
-  it('мусор в ?r= — ошибка разбора, а не падение; игра с пролога идёт', async () => {
+  it('мусор в ?r= — ошибка разбора', async () => {
     for (const bad of ['%%%', 'AAAA', 'AQ', '']) await expect(unpackRecord(bad)).rejects.toThrow();
-    const g = createPrologue(loadRoomsFs(), true);
-    expect(() => stepGame(g, IDLE, DT)).not.toThrow();
   });
 });
 
@@ -94,7 +92,9 @@ describe('HUD в реплее', () => {
     expect(label.y).toBe(0);
     expect(texts.map(t => t.s)).not.toContain('lab-1');
     const clock = texts.find(t => /^\d\d:\d\d$/.test(t.s))!;
-    expect(clock.x + hudWidth(clock.s)).toBeLessThan(label.x);
+    expect(label.x - (clock.x + hudWidth(clock.s))).toBeGreaterThanOrEqual(2 * 0.6 - 1e-9);
+    const tapes = texts.find(t => t.s === STR[l].hudTapes(0, MISSION.tapes))!;
+    expect(tapes.x).toBeGreaterThan(12.5);
     expect(label.x + hudWidth(label.s)).toBeLessThanOrEqual(ROOM_W - 1 + 1e-9);
     expect(walls.filter(w => w.y < 0.5 && w.x + 0.5 >= label.x && w.x + 0.5 <= label.x + hudWidth(label.s))).toEqual([]);
   });
@@ -104,5 +104,32 @@ describe('HUD в реплее', () => {
     const t = hud(g).texts.map(x => x.s);
     expect(t).toContain('lab-1');
     expect(t).not.toContain(STR.ru.replayHud);
+  });
+});
+
+describe('детерминизм: стартовый экран, паузы, аналоговый стик', () => {
+  it('запись с паузами в разных кадрах воспроизводится шаг в шаг', () => {
+    const rooms = loadRoomsFs();
+    const g = createPrologue(rooms, true);
+    const trace: string[] = [];
+    const pos = (x: Game) => `${x.roomId} ${x.nina.body.x} ${x.nina.body.y} ${x.mission.timeLeft} ${x.mission.attacks} ${x.nina.energy}`;
+    const st = (it: Intent) => { const n = g.rec.length; stepGame(g, it, DT); if (g.rec.length > n) trace.push(pos(g)); };
+    for (let i = 0; i < 10; i++) st(I({ moveX: 1 }));
+    st(I({ jumpPressed: true, jump: true }));
+    for (let i = 0; i < 3000 && !(g.roomId === 'roof-1' && !g.transition && gliderAt(g.prologue!.d).x >= 8); i++) st(I({ jump: i < 30 }));
+    st(I({ jumpPressed: true, jump: true, pausePressed: true }));
+    for (let i = 0; i < 600 && g.prologue; i++) st(I({ pausePressed: i % 7 === 0 }));
+    expect(g.prologue).toBeNull();
+    for (let i = 0; i < 1500; i++) {
+      const k = i % 97;
+      st(I({ moveX: k < 40 ? 0.73 : -0.31, pausePressed: k === 50 || k === 60, jumpPressed: k === 70, jump: k === 70, attackPressed: k === 80, throwPressed: k === 90 }));
+    }
+    const r = { rec: g.rec.slice(), i: 0 };
+    expect(r.rec.length).toBe(trace.length);
+    const h = createPrologue(rooms);
+    for (let i = 0; i < r.rec.length; i++) {
+      stepGame(h, replayStep(r, h.mission.result !== null)!, DT);
+      expect(pos(h), 'step ' + i).toBe(trace[i]);
+    }
   });
 });

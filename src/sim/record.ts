@@ -75,8 +75,11 @@ export async function packRecord(rec: readonly number[]): Promise<string> {
   return toBase64url(out);
 }
 
+const MAX_LINK = 200_000;
+
 // Бросает на любой порче: не base64url, чужая версия, битый deflate, оборванный varint, слишком длинная запись.
 export async function unpackRecord(s: string): Promise<number[]> {
+  if (s.length > MAX_LINK) throw new Error('record: too long'); // до декодирования: deflate раздувает ссылку в тысячи раз
   const bytes = fromBase64url(s);
   if (bytes[0] !== VERSION) throw new Error('record: unknown version');
   const raw = await through(bytes.slice(1), new DecompressionStream('deflate-raw'));

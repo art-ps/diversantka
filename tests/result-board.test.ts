@@ -36,6 +36,17 @@ describe('строки итога', () => {
   });
 });
 
+describe('экран итогов в реплее', () => {
+  it('вместо строки копирования — подсказка реплея', () => {
+    const out: string[] = [];
+    const b = { push: () => {}, text: (_x: number, _y: number, s: string) => { out.push(s); } };
+    drawResult(b as never, missionResult(createMission({ room: 'x', x: 0, bottom: 0 })), false, null, true);
+    expect(out).toContain(STR.ru.replayHud);
+    expect(out).not.toContain(STR.ru.copyHint);
+    expect(out).not.toContain(STR.ru.copiedHint);
+  });
+});
+
 describe('joinParts', () => {
   it('части через « · », перенос между частями, когда не влезает', () => {
     expect(joinParts(['БЕЗ УРОНА', 'БЕЗ БОЯ', 'ИСТОЧНИК'], 20)).toEqual(['БЕЗ УРОНА · БЕЗ БОЯ', 'ИСТОЧНИК']);

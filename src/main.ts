@@ -54,7 +54,9 @@ async function boot() {
   const dropParam = () => {
     const u = new URL(location.href);
     u.searchParams.delete('r');
-    history.replaceState(null, '', u.pathname + u.search + u.hash);
+    try {
+      history.replaceState(null, '', u.pathname + u.search + u.hash);
+    } catch { /* без адреса не страшно; исключение оборвало бы кадр */ }
   };
   const param = new URLSearchParams(location.search).get('r');
   let replay: Replay | null = null;

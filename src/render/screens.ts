@@ -90,7 +90,7 @@ export function drawResult(b: Pick<GlyphBatch, 'push' | 'text'>, r: MissionResul
   if (!best.length) b.text(rx, Y0 + 4, '—', PAL.hudDim, STEP);
   best.forEach((rec, i) => b.text(rx, Y0 + 4 + i, recordRow(i + 1, rec), i + 1 === board!.place ? PAL.item : PAL.hud, STEP));
   wrap(r.line, WIDE).forEach((t, i) => b.text(x, Y0 + 11 + i, t, PAL.hudDim, STEP));
-  if (!replay) b.text(x, Y1 - 1, copied ? s.copiedHint : s.copyHint, PAL.hudDim, STEP);
+  b.text(x, Y1 - 1, replay ? s.replayHud : copied ? s.copiedHint : s.copyHint, PAL.hudDim, STEP);
 }
 
 export function drawFailed(b: Pick<GlyphBatch, 'text'>): void {

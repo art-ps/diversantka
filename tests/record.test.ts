@@ -102,6 +102,10 @@ describe('packRecord / unpackRecord', () => {
     await expect(unpackRecord(s.slice(0, 4))).rejects.toThrow();
   });
 
+  it('ссылка длиннее 200 000 символов отвергается до распаковки', async () => {
+    await expect(unpackRecord('A'.repeat(200_001))).rejects.toThrow('record: too long');
+  });
+
   it('значение вне 17 бит — запись отвергается', async () => {
     await expect(unpackRecord(await packRecord([200 * 512 + 512]))).rejects.toThrow('bad code');
     expect(await unpackRecord(await packRecord([200 * 512 + 511]))).toEqual([200 * 512 + 511]);
