@@ -8,8 +8,11 @@ import { bodyRect, contains, overlap, type Rect } from './rect';
 
 export interface Item { id: string; kind: ItemKind; x: number; bottom: number }
 
+// Снаряды: брошенные предметы и пуля охранника.
+export type ProjectileKind = ItemKind | 'bullet';
+
 export interface Projectile {
-  kind: ItemKind;
+  kind: ProjectileKind;
   x: number;
   y: number;
   vx: number;
@@ -51,7 +54,7 @@ export function useThrowButton(n: Nina, it: Intent, items: Item[]): { picked?: I
 export function stepProjectiles(ps: Projectile[], room: Room, dt: number): void {
   for (const p of ps) {
     if (!p.alive) continue;
-    p.vy += COMBAT.items[p.kind].gravity * dt;
+    p.vy += (p.kind === 'bullet' ? 0 : COMBAT.items[p.kind].gravity) * dt;
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     const out = p.x < 0 || p.x >= ROOM_W || p.y < 0 || p.y >= ROOM_H;

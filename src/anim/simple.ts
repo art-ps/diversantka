@@ -1,5 +1,6 @@
-import { ANDROID, ANIM } from '../config';
+import { ANDROID, ANIM, GUARD } from '../config';
 import type { Android } from '../sim/android';
+import type { Guard } from '../sim/guard';
 import type { Clip, Pose } from './clip';
 import { lerpPose, sampleClip } from './pose';
 
@@ -42,4 +43,14 @@ export function androidClip(a: Android, dt = 0, clips?: Map<string, Clip>): { na
       return { name: 'walk', advance: walk && walk.speed > 0 ? (s * dt) / walk.speed : dt };
     }
   }
+}
+
+// Клип охранника: идёт или стоит с ружьём; попадание и гибель — как у андроида.
+export function guardClip(gd: Guard, dt = 0, clips?: Map<string, Clip>): { name: string; advance: number } {
+  if (gd.state === 'dead') return { name: 'death', advance: dt };
+  if (gd.state === 'hurt') return { name: 'hit', advance: (dt * (clips?.get('hit') ? len(clips.get('hit')!) : 1)) / GUARD.hurtStun };
+  const s = Math.abs(gd.body.vx);
+  if (s < ANIM.moveEps) return { name: 'idle', advance: dt };
+  const walk = clips?.get('walk');
+  return { name: 'walk', advance: walk && walk.speed > 0 ? (s * dt) / walk.speed : dt };
 }

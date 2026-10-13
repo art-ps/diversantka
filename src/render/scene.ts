@@ -3,7 +3,7 @@ import { CLIPS } from '../anim/clips';
 import { J } from '../anim/clip';
 import { dogGlyphs } from '../anim/dog';
 import { simplePose } from '../anim/simple';
-import { CAMERA, DOOR, FX, LIFT, MISSION, NINA, ROOM_H, ROOM_W, SOURCE } from '../config';
+import { CAMERA, DOOR, FX, GUARD, LIFT, MISSION, NINA, ROOM_H, ROOM_W, SOURCE } from '../config';
 import { liftHint, liveRoom, TRANSITION_TIME, type Game } from '../game';
 import { LANGS, STR, str, type Strings } from '../i18n';
 import { fireCells, heatColor, type Fire } from '../fx/fires';
@@ -219,7 +219,7 @@ export function drawTapes(b: Pick<GlyphBatch, 'push'>, tapes: Point[], ox: numbe
 export function drawProjectiles(b: Pick<GlyphBatch, 'push'>, ps: Projectile[], ox: number, oy: number): void {
   for (const p of ps) {
     if (!p.alive) continue;
-    const ch = p.kind === 'knife' ? (Math.abs(p.vy) > Math.abs(p.vx) * 0.3 ? (p.vy * p.vx > 0 ? '\\' : '/') : '-') : ITEM_GLYPH[p.kind];
+    const ch = p.kind === 'bullet' ? '-' : p.kind === 'knife' ? (Math.abs(p.vy) > Math.abs(p.vx) * 0.3 ? (p.vy * p.vx > 0 ? '\\' : '/') : '-') : ITEM_GLYPH[p.kind];
     b.push(p.x + ox - 0.5, p.y + oy - 0.5, ch, PAL.projectile, 0.5);
   }
 }
@@ -239,6 +239,20 @@ function drawAndroids(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: numb
     if (a.gone) continue;
     if (a.state !== 'dead' && blinkOff(a.invulnT, time)) continue;
     drawFigure(b, simplePose(a.anim, CLIPS), a.body.x + a.body.w / 2 + ox, a.body.y + a.body.h + oy, a.facing, PAL.android, false, '@');
+  }
+}
+
+// Охранник: скелет героини зелёным, голова «o», ружьё — GUARD.gun символов «—» от правой руки вперёд.
+function drawGuards(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number, time: number): void {
+  for (const gd of g.guards) {
+    if (gd.gone) continue;
+    if (gd.state !== 'dead' && blinkOff(gd.invulnT, time)) continue;
+    const pose = simplePose(gd.anim, CLIPS);
+    const x = gd.body.x + gd.body.w / 2 + ox, y = gd.body.y + gd.body.h + oy;
+    drawFigure(b, pose, x, y, gd.facing, PAL.guard, false, 'o');
+    if (gd.state === 'dead') continue;
+    const hx = x + gd.facing * pose[2 * J.rHand], hy = y - pose[2 * J.rHand + 1];
+    for (let k = 1; k <= GUARD.gun; k++) b.push(hx + gd.facing * k * 0.4 - 0.5, hy - 0.5, '—', PAL.guard, 0.5);
   }
 }
 
@@ -385,6 +399,7 @@ function drawWorld(b: GlyphBatch, fig: Pick<GlyphBatch, 'push'>, g: Game, ox: nu
   if (g.source) drawSource(b, g.source, ox, oy, time);
   drawAndroids(fig, g, ox, oy, time);
   drawDogs(fig, g, ox, oy);
+  drawGuards(fig, g, ox, oy, time);
   drawProjectiles(b, g.projectiles, ox, oy);
   drawParticles(b, g.particles, ox, oy);
   drawNina(b, fig, g, ox, oy, time);

@@ -2,6 +2,7 @@ import { ANDROID, COMBAT, DOG } from '../config';
 import { androidPunchBox, hitAndroid, type Android, type HitResult } from './android';
 import { attackBox } from './combat';
 import { hitDog, type Dog } from './dog';
+import { hitGuard, type Guard } from './guard';
 import { projectileHit, type Projectile } from './items';
 import { hurtNina, type Nina } from './nina';
 import type { Room } from '../world/room';
@@ -53,6 +54,30 @@ export function resolveCombat(n: Nina, androids: Android[], projectiles: Project
       p.alive = false;
       hurtNina(n, p.damage, dirOf(p.vx)); // при неуязвимости нож всё равно исчезает
     }
+  }
+  return killed;
+}
+
+// Охранник: удары и снаряды героини (пули по героине — в resolveCombat). Возвращает id убитых.
+export function resolveGuards(n: Nina, guards: Guard[], projectiles: Projectile[], events: HitEvent[] = []): string[] {
+  const killed: string[] = [];
+  const box = attackBox(n.body, n.facing, n.attack);
+  for (const gd of guards) {
+    if (gd.state === 'dead') continue;
+    const gr = bodyRect(gd.body);
+    if (box && n.attack && !n.attack.hits.includes(gd.id) && overlap(box, gr)) {
+      n.attack.hits.push(gd.id);
+      const r = hitGuard(gd, COMBAT[n.attack.kind].damage, n.facing);
+      if (r !== 'none') events.push({ id: gd.id, result: r });
+    }
+    for (const p of projectiles) {
+      if (p.from === 'nina' && gd.hp > 0 && projectileHit(p, gr)) {
+        p.alive = false;
+        const r = hitGuard(gd, p.damage, dirOf(p.vx));
+        if (r !== 'none') events.push({ id: gd.id, result: r });
+      }
+    }
+    if (gd.hp === 0) killed.push(gd.id);
   }
   return killed;
 }

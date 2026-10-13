@@ -76,6 +76,27 @@ export const COMBAT = {
   },
 };
 
+// Охранник с ружьём: скорости — клеток/с, время — с, расстояния — клетки.
+export const GUARD = {
+  w: 1.2,
+  h: 4,
+  hp: 2,
+  speed: 3, // патруль
+  chaseSpeed: 4, // к героине по тревоге
+  floorTol: 0.5, // «тот же этаж» — разница низа тел меньше
+  aim: 0.5, // целится перед выстрелом
+  reload: 1.5, // перезарядка после выстрела
+  close: 2, // героиня ближе — сначала шаг назад
+  backStep: 1, // шаг назад, клетки
+  backSpeed: 4,
+  chest: 2.6, // пуля летит на высоте низ тела − chest — грудь стоящей героини
+  bulletSpeed: 30,
+  bulletDamage: 25, // энергии героини
+  hurtStun: 0.3,
+  hitInvuln: 0.6, // после попадания неуязвим — серию подряд не провести
+  gun: 3, // символов «—» ружья от руки вперёд
+};
+
 // Камеры и решётка: время — с, расстояния — клетки.
 export const CAMERA = {
   detect: 0.3, // героиня в луче столько подряд — тревога
@@ -311,6 +332,8 @@ export const SOUNDS: Record<Sfx, Tone[]> = {
   bike: [{ wave: 'sawtooth', f: 70, to: 160, dur: 2.5, gain: 0.22, filter: 'lowpass', cut: 700 }, { wave: 'square', f: 35, to: 80, dur: 2.5, gain: 0.1, filter: 'lowpass', cut: 400 }],
   mast: [hiss(0.6, 0.45, 'lowpass', 1200), { wave: 'square', f: 200, to: 40, dur: 0.4, gain: 0.18 }, { wave: 'triangle', f: 1200, to: 1100, dur: 0.8, gain: 0.07 }],
   seaSplash: [hiss(0.9, 0.45, 'lowpass', 1500), hiss(1.2, 0.35, 'lowpass', 300)],
+  aim: [{ wave: 'square', f: 1600, dur: 0.03, gain: 0.08, filter: 'highpass', cut: 1000 }, hiss(0.03, 0.12, 'highpass', 3000, 1, 0.06)], // щелчок затвора
+  shot: [hiss(0.18, 0.45, 'lowpass', 2500), { wave: 'square', f: 180, to: 50, dur: 0.15, gain: 0.25, filter: 'lowpass', cut: 1200 }], // выстрел
   alarm: [{ wave: 'square', f: 880, dur: 0.4, gain: 0.08, filter: 'lowpass', cut: 3000 }, { wave: 'square', f: 660, dur: 0.4, gain: 0.08, at: 0.5, filter: 'lowpass', cut: 3000 }], // сирена — два тона
   door: [{ wave: 'square', f: 150, to: 70, dur: 0.25, gain: 0.14, filter: 'lowpass', cut: 900 }, hiss(0.3, 0.22, 'lowpass', 700), { wave: 'triangle', f: 600, to: 400, dur: 0.08, gain: 0.08, at: 0.2 }], // засов и тяжёлая створка
   record: [523, 659, 784, 1047].map((f, i) => ({ wave: 'square' as const, f, dur: 0.16, gain: 0.08, at: i * 0.08, filter: 'lowpass' as const, cut: 3000 })), // восходящее арпеджио — место 1

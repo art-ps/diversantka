@@ -3,14 +3,15 @@ import { jetFire, pitFires, stepFires, type Fire } from './fx/fires';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { dogGlyphs } from './anim/dog';
 import { CLIPS } from './anim/clips';
-import { androidClip, playClip, simplePose } from './anim/simple';
+import { androidClip, guardClip, playClip, simplePose } from './anim/simple';
 import { IDLE, type Intent } from './input/intent';
 import { createDog, updateDog, type Dog } from './sim/dog';
 import { createAndroid, updateAndroid, type Android } from './sim/android';
 import { beamTarget, createCamera, stepCameras, type Camera } from './sim/camera';
 import { doorId, doorsOf, doorSpot, gateRows, gatesOf, keyDoor, pushFromGate, solidRoom, type Door, type Gate } from './sim/doors';
 import { createFlamer, flamerPhase, flameRect, stepFlamer, type Flamer } from './sim/flamer';
-import { resolveCombat, resolveDogs, type HitEvent } from './sim/fight';
+import { resolveCombat, resolveDogs, resolveGuards, type HitEvent } from './sim/fight';
+import { createGuard, updateGuard, type Guard } from './sim/guard';
 import { spawnFloater, stepFloaters, type Floater } from './sim/floaters';
 import { stepProjectiles, itemRect, useThrowButton, type Item, type Projectile } from './sim/items';
 import { gliderAt, gliderHits, ROUTE, ROUTE_LEN } from './sim/glider';
@@ -31,7 +32,7 @@ import type { Dir, Room } from './world/room';
 import { setLang, str } from './i18n';
 import { figureGlyphs } from './render/figure';
 import { PAL } from './render/palette';
-import { parseCameras, parseEnemies, parseFence, parseItems, parsePoints, parseTerminals, type AndroidSpawn, type DogSpawn, type Fence, type FlamerSpawn, type Point, type TerminalSpawn } from './world/spawns';
+import { parseCameras, parseEnemies, parseFence, parseItems, parsePoints, parseTerminals, type AndroidSpawn, type DogSpawn, type Fence, type GuardSpawn, type FlamerSpawn, type Point, type TerminalSpawn } from './world/spawns';
 
 export { TRANSITION_TIME };
 
@@ -87,6 +88,7 @@ export interface Game {
   doors: Door[]; // двери комнаты (тайлы 1–3)
   heldId: string | null; // id предмета в руках героини — чтобы потратить ключ навсегда
   spent: Set<string>; // потраченные предметы (ключ открыл дверь) — не возвращаются и после гибели
+  guards: Guard[]; // охрана комнаты; убитые — в killed, как андроиды
   cameras: Camera[]; // камеры комнаты
   gates: Gate[]; // решётки комнаты (тайлы A)
   alarmT: number; // осталось тревоги в комнате, с; 0 — тихо. Выход из комнаты тревогу снимает
@@ -98,7 +100,7 @@ export function createGame(rooms: Map<string, Room>, start: Start): Game {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
     items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
     lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false, replay: false, board: null, rec: [],
-    doors: [], heldId: null, spent: new Set(), cameras: [], gates: [], alarmT: 0, gate: 0,
+    doors: [], heldId: null, spent: new Set(), guards: [], cameras: [], gates: [], alarmT: 0, gate: 0,
   };
   enterRoom(g, start.room);
   return g;
@@ -201,6 +203,10 @@ export function enterRoom(g: Game, id: string): void {
     .filter((e): e is { s: DogSpawn; id: string } => e.s.kind === 'dog')
     .map(e => createDog(e.id, e.s))
     .filter(d => !g.killed.has(d.id));
+  g.guards = enemies
+    .filter((e): e is { s: GuardSpawn; id: string } => e.s.kind === 'guard')
+    .map(e => createGuard(e.id, e.s))
+    .filter(gd => !g.killed.has(gd.id));
   g.projectiles = [];
   g.floaters = [];
   g.particles = [];
@@ -562,10 +568,20 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
     if (k) g.projectiles.push(k);
   }
   for (const d of g.dogs) updateDog(d, g.nina, room, dt);
+  for (const gd of g.guards) {
+    const s0 = gd.state;
+    const shot = updateGuard(gd, g.nina, room, dt, g.alarmT > 0);
+    if (gd.state === 'aim' && s0 !== 'aim') g.sfx.push('aim');
+    if (shot) {
+      g.projectiles.push(shot);
+      g.sfx.push('shot');
+    }
+  }
   const events: HitEvent[] = [];
   for (const id of resolveCombat(g.nina, g.androids, g.projectiles, room, events)) g.killed.add(id);
   const bit0 = bites(g.dogs);
   for (const id of resolveDogs(g.nina, g.dogs, g.projectiles, events)) g.killed.add(id);
+  for (const id of resolveGuards(g.nina, g.guards, g.projectiles, events)) g.killed.add(id);
   if (bites(g.dogs) > bit0) g.sfx.push('bite');
   for (const f of g.flamers) {
     const warned = flamerPhase(f) === 'warn';
@@ -616,8 +632,9 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
   }
   for (const e of events) {
     const a = g.androids.find(x => x.id === e.id);
-    const d = a ? undefined : g.dogs.find(x => x.id === e.id)!;
-    const body = (a ?? d)!.body;
+    const gd = a ? undefined : g.guards.find(x => x.id === e.id);
+    const d = a || gd ? undefined : g.dogs.find(x => x.id === e.id)!;
+    const body = (a ?? gd ?? d)!.body;
     if (e.result === 'hit' || e.result === 'killed') g.mission.attacks++; // враг получил урон — для отметки «без боя»
     const text = e.result === 'killed' ? str().killed : e.result === 'blocked' ? str().blocked : '-1';
     const cx = body.x + body.w / 2;
@@ -631,6 +648,10 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
         crumble(g.particles, figureGlyphs(simplePose(a.anim, CLIPS), cx, a.body.y + a.body.h, a.facing, PAL.android, false, '@'), -a.facing as 1 | -1);
         smoke(g.particles, cx, body.y + body.h / 2, FX.smokePuff);
         a.gone = true;
+      } else if (gd) {
+        crumble(g.particles, figureGlyphs(simplePose(gd.anim, CLIPS), cx, gd.body.y + gd.body.h, gd.facing, PAL.guard, false, 'o'), -gd.facing as 1 | -1);
+        smoke(g.particles, cx, body.y + body.h / 2, FX.smokePuff);
+        gd.gone = true;
       } else if (d) {
         crumble(g.particles, dogGlyphs(d, PAL.dog), -d.facing as 1 | -1);
         smoke(g.particles, cx, body.y + body.h / 2, FX.smokePuff);
@@ -644,6 +665,10 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
   for (const a of g.androids) {
     const { name, advance } = androidClip(a, dt, CLIPS);
     playClip(a.anim, name, advance, CLIPS);
+  }
+  for (const gd of g.guards) {
+    const { name, advance } = guardClip(gd, dt, CLIPS);
+    playClip(gd.anim, name, advance, CLIPS);
   }
   g.floaters = stepFloaters(g.floaters, dt);
   g.particles = stepParticles(g.particles, dt);
