@@ -2,7 +2,7 @@ import { MISSION, NINA, ROOM_H } from '../config';
 import { doorsOf, keyDoor } from '../sim/doors';
 import { LIFT_W, shaftRooms } from '../sim/lift';
 import { parseRoom, tileAt, validateWorld, type Room } from './room';
-import { parseAmbient, parseEnemies, parseFence, parseItems, parseLift, parsePoints, parseTerminals } from './spawns';
+import { parseAmbient, parseCameras, parseEnemies, parseFence, parseItems, parseLift, parsePoints, parseTerminals } from './spawns';
 
 const files = import.meta.glob('./rooms/*.txt', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
@@ -12,6 +12,7 @@ export function loadWorld(): Map<string, Room> {
     const room = parseRoom(text, path);
     parseItems(room.meta.items, path);
     parseEnemies(room.meta.enemies, path);
+    parseCameras(room.meta.cameras, path);
     if (rooms.has(room.id)) throw new Error(`${path}: повтор id ${room.id}`);
     rooms.set(room.id, room);
   }

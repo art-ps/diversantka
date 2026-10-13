@@ -62,7 +62,8 @@ function knife(a: Android): Projectile {
   };
 }
 
-export function updateAndroid(a: Android, n: Nina, room: Room, dt: number): Projectile | null {
+// alert — тревога в комнате: андроид идёт на героиню, как если бы видел её.
+export function updateAndroid(a: Android, n: Nina, room: Room, dt: number, alert = false): Projectile | null {
   if (a.state === 'dead') return null;
   a.t += dt;
   a.cooldown = Math.max(0, a.cooldown - dt);
@@ -88,7 +89,7 @@ export function updateAndroid(a: Android, n: Nina, room: Room, dt: number): Proj
     return null;
   }
 
-  if (seesNina(a, n)) {
+  if (seesNina(a, n) || (alert && !n.dead)) {
     a.state = 'chase';
     const dx = center(n.body) - center(a.body);
     a.facing = dx >= 0 ? 1 : -1;

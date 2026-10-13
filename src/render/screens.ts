@@ -3,7 +3,7 @@ import type { Pose } from '../anim/clip';
 import { lang, LANG_NAMES, LANGS, str } from '../i18n';
 import type { Board, RecordRow } from '../save';
 import { formatTime, marksOf, type MissionResult } from '../sim/mission';
-import { bootLines, menuItems, type Screen } from '../sim/terminal';
+import { bootLines, type Screen } from '../sim/terminal';
 import { BIKE_DIR, BIKE_PIPE, bikeGlyphs, riderGlyphs } from './bike';
 import type { Glyph } from './figure';
 import type { Color, GlyphBatch } from './glyphs';
@@ -32,7 +32,7 @@ export function drawScreen(b: Pick<GlyphBatch, 'push' | 'text'>, s: Screen): voi
   drawFrame(b, PAL.hudDim);
   bootLines(s.t).forEach((l, i) => b.text(X0 + 2, Y0 + 2 + i, l, PAL.hud, STEP));
   if (s.t < MISSION.bootTime) return;
-  menuItems(s.term).forEach((item, i) => {
+  s.items.forEach((item, i) => {
     const on = i === s.sel;
     b.text(X0 + 2, Y0 + 9 + i, (on ? '> ' : '  ') + item.label, on ? PAL.item : PAL.hud, STEP);
   });

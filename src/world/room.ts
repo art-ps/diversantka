@@ -5,8 +5,8 @@ export const DIRS: Dir[] = ['left', 'right', 'up', 'down'];
 export const OPPOSITE: Record<Dir, Dir> = { left: 'right', right: 'left', up: 'down', down: 'up' };
 
 // # стена, = платформа (снизу проходима), H лестница, ~ вода, ^ опасность, . фон, S фальш-стена,
-// 1 2 3 — запертые двери (src/sim/doors.ts)
-export const TILE_CHARS = '#=H~^.S123';
+// 1 2 3 — запертые двери, A — решётка: проём, при тревоге — стена (src/sim/doors.ts)
+export const TILE_CHARS = '#=H~^.S123A';
 
 export interface Room {
   id: string;

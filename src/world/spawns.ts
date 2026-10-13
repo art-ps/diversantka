@@ -1,4 +1,4 @@
-import { ROOM_W } from '../config';
+import { ROOM_H, ROOM_W } from '../config';
 
 export type ItemKind = 'knife' | 'stone' | 'wrench' | 'key1' | 'key2' | 'key3';
 export const ITEM_KINDS: ItemKind[] = ['knife', 'stone', 'wrench', 'key1', 'key2', 'key3'];
@@ -66,6 +66,20 @@ export function parseLift(s: string | undefined, file: string): LiftSpawn | null
   const floors = m?.[4] ? m[4].split(',').map(Number) : [];
   if (!m || x > ROOM_W - 3 || !(top < bottom) || floors.some(f => f <= top || f >= bottom)) throw new Error(`${file}: плохая запись лифта «${v}»`);
   return { x, stops: [...new Set([top, ...floors, bottom])].sort((a, b) => a - b) };
+}
+
+export interface CameraSpawn { x: number; y: number; arc: [number, number]; period: number }
+
+// «x,y arc=a..b period=p» — камера в клетке x,y (фон под потолком или у стены); веер — углы в градусах от вертикали
+// вниз (минус — влево), a ≤ b; качание a → b → a за p секунд.
+export function parseCameras(s: string | undefined, file: string): CameraSpawn[] {
+  return parts(s).map(rec => {
+    const m = /^(\d+),(\d+)\s+arc=(-?\d+)\.\.(-?\d+)\s+period=(\d+(?:\.\d+)?)$/.exec(rec);
+    const x = m ? Number(m[1]) : NaN, y = m ? Number(m[2]) : NaN;
+    const a = m ? Number(m[3]) : NaN, b = m ? Number(m[4]) : NaN, period = m ? Number(m[5]) : NaN;
+    if (!m || x >= ROOM_W || y >= ROOM_H || a > b || a < -90 || b > 90 || !(period > 0)) throw new Error(`${file}: плохая запись камеры «${rec}»`);
+    return { x, y, arc: [a, b], period };
+  });
 }
 
 export interface TerminalSpawn { x: number; bottom: number; controls: string[]; main: boolean }

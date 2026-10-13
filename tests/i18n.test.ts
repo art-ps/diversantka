@@ -24,7 +24,7 @@ const visible = (s: Strings): string[] => [
   s.tapeFloat(N, N), s.sourceFound, s.fenceLive, s.killed, s.blocked, s.needKey(3),
   s.notEnoughTapes(N - 1, N), s.tapesIn, s.accessDenied, s.fenceOff,
   s.resultLine('15:00', `${N}/${N}`, 999, ALL), s.resultLine('15:00', `${N}/${N}`, 999, []),
-  ...s.bootLog, s.menuFlamer(ROOM), s.menuTapes, s.menuExit, s.flamerOff(ROOM), s.screenHint,
+  ...s.bootLog, s.menuFlamer(ROOM), s.menuTapes, s.menuExit, s.flamerOff(ROOM), s.menuCamera(ROOM), s.cameraOff(ROOM), s.screenHint,
   s.won, ...s.resultRows('15:00', `${N}/${N}`, 999), ...Object.values(s.marks), ...Object.values(s.marksShort), s.best, s.newRecord,
   s.copyHint, s.copiedHint, s.failed, s.failedHint,
   s.mapTitle, s.mapLegend, s.mapHint, ...Object.values(s.mapIcons),
@@ -97,7 +97,7 @@ it.each(LANGS)('%s: строки помещаются — HUD, надписи п
     expect(hudWidth(t), t).toBeLessThanOrEqual(ROOM_W - 2);
   }
   // экран ЭВМ и итог — внутри рамки
-  const framed = [...s.bootLog, `> ${s.menuFlamer(ROOM)}`, `> ${s.menuTapes}`, `> ${s.menuExit}`, s.flamerOff(ROOM), s.notEnoughTapes(N - 1, N),
+  const framed = [...s.bootLog, `> ${s.menuFlamer(ROOM)}`, `> ${s.menuTapes}`, `> ${s.menuExit}`, s.flamerOff(ROOM), `> ${s.menuCamera(ROOM)}`, s.cameraOff(ROOM), s.notEnoughTapes(N - 1, N),
     s.tapesIn, s.screenHint, s.won, ...s.resultRows('15:00', `${N}/${N}`, 999), s.copyHint, s.copiedHint];
   for (const t of framed) expect(t.length, t).toBeLessThanOrEqual(WIDE);
   // итог в две колонки: левая — до RESULT_COL − 1 букв, правая (лучшие) — до конца рамки

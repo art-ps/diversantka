@@ -38,6 +38,8 @@ export interface Strings {
   menuTapes: string;
   menuExit: string;
   flamerOff: (room: string) => string;
+  menuCamera: (room: string) => string;
+  cameraOff: (room: string) => string;
   screenHint: string;
   // итог и провал
   won: string;
@@ -100,6 +102,8 @@ const RU: Strings = {
   menuTapes: 'ВВЕСТИ ЛЕНТЫ',
   menuExit: 'ВЫХОД',
   flamerOff: room => `ОГНЕМЁТ ${room} ОТКЛЮЧЁН`,
+  menuCamera: room => `ОТКЛ. КАМЕРЫ ${room}`,
+  cameraOff: room => `КАМЕРЫ ${room} ОТКЛЮЧЕНЫ`,
   screenHint: 'СТРЕЛКИ — ВЫБОР · ПРЫЖОК/E — ДА',
   won: 'МИССИЯ ВЫПОЛНЕНА',
   resultRows: (time, tapes, hits) => [`ВРЕМЯ   ${time}`, `ЛЕНТЫ   ${tapes}`, `УДАРОВ  ${hits}`],
@@ -164,6 +168,8 @@ const EN: Strings = {
   menuTapes: 'LOAD TAPES',
   menuExit: 'EXIT',
   flamerOff: room => `FLAMER ${room} DISABLED`,
+  menuCamera: room => `DISABLE CAMERAS ${room}`,
+  cameraOff: room => `CAMERAS ${room} DISABLED`,
   screenHint: 'ARROWS — SELECT · JUMP/E — OK',
   won: 'MISSION COMPLETE',
   resultRows: (time, tapes, hits) => [`TIME    ${time}`, `TAPES   ${tapes}`, `HITS    ${hits}`],

@@ -1,4 +1,4 @@
-import { ANIM, FIRE, FLAMER, FX, LIFT, MISSION, NINA, PROLOGUE, ROOM_H, ROOM_W, SFX, SOURCE, TRANSITION_TIME } from './config';
+import { ANIM, CAMERA, FIRE, FLAMER, FX, LIFT, MISSION, NINA, PROLOGUE, ROOM_H, ROOM_W, SFX, SOURCE, TRANSITION_TIME } from './config';
 import { jetFire, pitFires, stepFires, type Fire } from './fx/fires';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { dogGlyphs } from './anim/dog';
@@ -7,15 +7,16 @@ import { androidClip, playClip, simplePose } from './anim/simple';
 import { IDLE, type Intent } from './input/intent';
 import { createDog, updateDog, type Dog } from './sim/dog';
 import { createAndroid, updateAndroid, type Android } from './sim/android';
-import { doorId, doorsOf, doorSpot, keyDoor, solidRoom, type Door } from './sim/doors';
+import { beamTarget, createCamera, stepCameras, type Camera } from './sim/camera';
+import { doorId, doorsOf, doorSpot, gateRows, gatesOf, keyDoor, pushFromGate, solidRoom, type Door, type Gate } from './sim/doors';
 import { createFlamer, flamerPhase, flameRect, stepFlamer, type Flamer } from './sim/flamer';
 import { resolveCombat, resolveDogs, type HitEvent } from './sim/fight';
 import { spawnFloater, stepFloaters, type Floater } from './sim/floaters';
 import { stepProjectiles, itemRect, useThrowButton, type Item, type Projectile } from './sim/items';
 import { gliderAt, gliderHits, ROUTE, ROUTE_LEN } from './sim/glider';
 import { createLifts, LIFT_W, liftRect, liftTop, nextStop, stepLift, type Lift } from './sim/lift';
-import { createMission, missionResult, restoreCheckpoint, saveCheckpoint, startBike, tickTimer, useSwitch, type Mission } from './sim/mission';
-import { openScreen, stepScreen, type Screen } from './sim/terminal';
+import { createMission, elapsed, missionResult, restoreCheckpoint, saveCheckpoint, startBike, tickTimer, useSwitch, type Mission } from './sim/mission';
+import { openScreen, stepScreen, type Controls, type Screen } from './sim/terminal';
 import { burnNina, createNina, updateNina, type Nina, type NinaState } from './sim/nina';
 import type { Attack } from './sim/combat';
 import type { Sfx } from './sim/sfx';
@@ -30,7 +31,7 @@ import type { Dir, Room } from './world/room';
 import { setLang, str } from './i18n';
 import { figureGlyphs } from './render/figure';
 import { PAL } from './render/palette';
-import { parseEnemies, parseFence, parseItems, parsePoints, parseTerminals, type AndroidSpawn, type DogSpawn, type Fence, type FlamerSpawn, type Point, type TerminalSpawn } from './world/spawns';
+import { parseCameras, parseEnemies, parseFence, parseItems, parsePoints, parseTerminals, type AndroidSpawn, type DogSpawn, type Fence, type FlamerSpawn, type Point, type TerminalSpawn } from './world/spawns';
 
 export { TRANSITION_TIME };
 
@@ -86,6 +87,10 @@ export interface Game {
   doors: Door[]; // двери комнаты (тайлы 1–3)
   heldId: string | null; // id предмета в руках героини — чтобы потратить ключ навсегда
   spent: Set<string>; // потраченные предметы (ключ открыл дверь) — не возвращаются и после гибели
+  cameras: Camera[]; // камеры комнаты
+  gates: Gate[]; // решётки комнаты (тайлы A)
+  alarmT: number; // осталось тревоги в комнате, с; 0 — тихо. Выход из комнаты тревогу снимает
+  gate: number; // решётки комнаты: 0 — подняты, 1 — опущены
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
@@ -93,7 +98,7 @@ export function createGame(rooms: Map<string, Room>, start: Start): Game {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
     items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
     lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false, replay: false, board: null, rec: [],
-    doors: [], heldId: null, spent: new Set(),
+    doors: [], heldId: null, spent: new Set(), cameras: [], gates: [], alarmT: 0, gate: 0,
   };
   enterRoom(g, start.room);
   return g;
@@ -180,7 +185,8 @@ export function enterRoom(g: Game, id: string): void {
   g.flamers = enemies
     .filter((e): e is { s: FlamerSpawn; id: string } => e.s.kind === 'flamer')
     .map(e => createFlamer(e.id, e.s));
-  applyFlamers(g);
+  g.cameras = parseCameras(room.meta.cameras, id).map((s, i) => createCamera(`${id}#c${i}`, s));
+  applyTerminals(g);
   g.fires = [...pitFires(room), ...g.flamers.map(jetFire)];
   g.terminals = parseTerminals(room.meta.terminals, id);
   g.panel = parsePoints(room.meta.switch, id, 'щитка')[0] ?? null;
@@ -188,6 +194,9 @@ export function enterRoom(g: Game, id: string): void {
   g.source = parsePoints(room.meta.source, id, 'источника')[0] ?? null;
   g.fence = parseFence(room.meta.fence, id);
   g.doors = doorsOf(room);
+  g.gates = gatesOf(room);
+  g.alarmT = 0;
+  g.gate = 0;
   g.dogs = enemies
     .filter((e): e is { s: DogSpawn; id: string } => e.s.kind === 'dog')
     .map(e => createDog(e.id, e.s))
@@ -200,16 +209,23 @@ export function enterRoom(g: Game, id: string): void {
   g.inWater = false;
 }
 
-// Огнемёты комнаты, выключенной с терминала, молчат.
-function applyFlamers(g: Game): void {
+// Огнемёты и камеры комнаты, выключенные с терминала, молчат.
+function applyTerminals(g: Game): void {
   for (const f of g.flamers) f.off = g.mission.flamersOff.has(g.roomId);
+  for (const c of g.cameras) c.off = g.mission.camerasOff.has(g.roomId);
 }
+
+// Что гасит терминал в комнате из controls — по шапке комнаты.
+const controlsOf = (g: Game): Controls => id => {
+  const r = g.rooms.get(id);
+  return { flamers: parseEnemies(r?.meta.enemies, id).some(e => e.kind === 'flamer'), cameras: parseCameras(r?.meta.cameras, id).length > 0 };
+};
 
 // Чекпоинт у терминала: героиня возродится перед ним; лифт в пути записывается на этаже, куда едет.
 function checkpointAt(g: Game, t: TerminalSpawn): void {
   const lifts = Object.fromEntries(g.lifts.map(l => [l.id, l.target ?? l.y]));
   saveCheckpoint(g.mission, { room: g.roomId, x: t.x - NINA.w / 2, bottom: t.bottom }, lifts);
-  applyFlamers(g);
+  applyTerminals(g);
 }
 
 // Смерть: к последнему чекпоинту (до первого терминала — старт) с полной энергией.
@@ -253,8 +269,22 @@ function touchSource(g: Game, s: Point, nr: Rect, dt: number): void {
   }
 }
 
-// Комната id, какой её видят физика, пули и лучи: закрытые двери — стена, открытые — проход.
-export const liveRoom = (g: Game, id = g.roomId): Room => solidRoom(g.rooms.get(id)!, g.mission.doorsOpen);
+// Комната id, какой её видят физика, пули и лучи: закрытые двери — стена, открытые — проход; решётка текущей
+// комнаты — стена в опущенных строках.
+export const liveRoom = (g: Game, id = g.roomId): Room => solidRoom(g.rooms.get(id)!, g.mission.doorsOpen, id === g.roomId ? g.gate : 0);
+
+// Камеры, тревога и решётка за шаг. Героиня в луче CAMERA.detect подряд — тревога CAMERA.alarm с: сирена раз
+// в CAMERA.siren с (по часам миссии), решётки опускаются за CAMERA.gateTime и выталкивают героиню; после — поднимаются.
+function stepAlarm(g: Game, dt: number): void {
+  const t = elapsed(g.mission);
+  const was = g.alarmT;
+  g.alarmT = Math.max(0, g.alarmT - dt);
+  if (stepCameras(g.cameras, liveRoom(g), t, g.nina.dead ? null : beamTarget(g.nina.body), dt)) g.alarmT = CAMERA.alarm;
+  if (g.alarmT > 0 && (was === 0 || Math.floor(t / CAMERA.siren) !== Math.floor((t - dt) / CAMERA.siren))) g.sfx.push('alarm');
+  g.gate = g.alarmT > 0 ? Math.min(1, g.gate + dt / CAMERA.gateTime) : Math.max(0, g.gate - dt / CAMERA.gateTime);
+  const room = liveRoom(g);
+  for (const s of g.gates) pushFromGate(g.nina.body, g.nina.facing, s, gateRows(s, g.gate), room);
+}
 
 // E у закрытой двери: ключ её номера в руках — дверь открыта до конца миссии, ключ потрачен навсегда;
 // без ключа — «НУЖЕН КЛЮЧ N». false — рядом закрытой двери нет.
@@ -459,14 +489,14 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
     stepFires(g.fires, g.flamers, dt);
     return;
   }
-  const room = liveRoom(g);
+  let room = liveRoom(g);
   g.nina.immortal = g.mission.secret; // и после возрождения: новая Нина узнаёт об источнике здесь
   const e0 = g.nina.energy;
   const inv0 = g.nina.invulnT; // выросла за шаг — получен удар
   if (it.usePressed) {
     const t = g.terminals.find(t => near(g.nina, t));
     if (t) {
-      g.screen = openScreen(t);
+      g.screen = openScreen(t, controlsOf(g));
       checkpointAt(g, t);
       return;
     }
@@ -524,9 +554,11 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
   }
   g.tapes = g.tapes.filter(t => !g.mission.tapes.has(t.id));
   if (g.source) touchSource(g, g.source, nr, dt);
+  stepAlarm(g, dt);
+  room = liveRoom(g);
   stepProjectiles(g.projectiles, room, dt);
   for (const a of g.androids) {
-    const k = updateAndroid(a, g.nina, room, dt);
+    const k = updateAndroid(a, g.nina, room, dt, g.alarmT > 0);
     if (k) g.projectiles.push(k);
   }
   for (const d of g.dogs) updateDog(d, g.nina, room, dt);

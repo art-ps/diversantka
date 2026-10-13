@@ -3,17 +3,18 @@ import { CLIPS } from '../anim/clips';
 import { J } from '../anim/clip';
 import { dogGlyphs } from '../anim/dog';
 import { simplePose } from '../anim/simple';
-import { DOOR, FX, LIFT, MISSION, NINA, ROOM_H, ROOM_W, SOURCE } from '../config';
-import { liftHint, TRANSITION_TIME, type Game } from '../game';
+import { CAMERA, DOOR, FX, LIFT, MISSION, NINA, ROOM_H, ROOM_W, SOURCE } from '../config';
+import { liftHint, liveRoom, TRANSITION_TIME, type Game } from '../game';
 import { LANGS, STR, str, type Strings } from '../i18n';
 import { fireCells, heatColor, type Fire } from '../fx/fires';
 import { HEAT_RAMP } from '../fx/heat';
 import { stormGlyphs } from '../fx/storm';
+import { cameraAngle, traceBeam } from '../sim/camera';
 import { DOOR_TILES, doorId, keyDoor } from '../sim/doors';
 import { flamerPhase } from '../sim/flamer';
 import { gliderRect } from '../sim/glider';
 import { LIFT_W, liftTop, type Lift } from '../sim/lift';
-import { formatTime, missionResult } from '../sim/mission';
+import { elapsed, formatTime, missionResult } from '../sim/mission';
 import { floaterView, type Floater } from '../sim/floaters';
 import type { Item, Projectile } from '../sim/items';
 import { particleAlpha, type Particle } from '../sim/particles';
@@ -342,11 +343,41 @@ export function drawFires(b: Pick<GlyphBatch, 'push'>, fires: Fire[], ox: number
   for (const fire of fires) for (const c of fireCells(fire)) b.push(c.x - 0.5 + ox, c.y - 0.5 + oy, HEAT_RAMP[c.level], heatColor(c.level), 0.5);
 }
 
+// Камеры: глиф «o» в своей клетке и луч точками «·»/«:» до первой преграды — холодный белый, при тревоге красный.
+// Выключенная с терминала — тусклая и без луча. Угол — по часам миссии, как в симуляции.
+export function drawCameras(b: Pick<GlyphBatch, 'push'>, g: Game, room: Room, ox: number, oy: number): void {
+  const color = g.alarmT > 0 ? PAL.danger : PAL.beam;
+  for (const c of g.cameras) {
+    b.push(c.x + ox, c.y + oy, 'o', c.off ? PAL.hudDim : color, 0.7);
+    if (c.off) continue;
+    const end = traceBeam(room, c, cameraAngle(c, elapsed(g.mission)));
+    const x0 = c.x + 0.5, y0 = c.y + 0.5, len = Math.hypot(end.x - x0, end.y - y0);
+    for (let k = 1; k * CAMERA.dotStep <= len; k++) {
+      const f = (k * CAMERA.dotStep) / len;
+      b.push(x0 + (end.x - x0) * f - 0.5 + ox, y0 + (end.y - y0) * f - 0.5 + oy, k % 4 ? '·' : ':', color, 0.5);
+    }
+  }
+}
+
+// Решётки: опущенная часть — столбец «=» по полклетки сверху вниз; поднятая — тусклая планка над проёмом.
+export function drawGates(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number): void {
+  for (const s of g.gates) {
+    const half = Math.ceil(g.gate * 2 * (s.bottom - s.top) - 1e-9);
+    if (!half) {
+      sub(b, s.x + ox, s.top + oy, 0, 0, '-', PAL.wallInner);
+      sub(b, s.x + ox, s.top + oy, 1, 0, '-', PAL.wallInner);
+    }
+    for (let k = 0; k < half; k++) for (let i = 0; i < 2; i++) sub(b, s.x + ox, s.top + Math.floor(k / 2) + oy, i, k % 2, '=', PAL.wall);
+  }
+}
+
 // Всё, что живёт в комнате поверх тайлов; ox, oy — сдвиг перехода.
 function drawWorld(b: GlyphBatch, fig: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number, time: number): void {
   drawFires(b, g.fires, ox, oy);
   drawFlamers(b, g, ox, oy);
   drawTerminals(b, g.terminals, ox, oy);
+  drawGates(b, g, ox, oy);
+  drawCameras(b, g, liveRoom(g), ox, oy);
   drawLifts(b, g.lifts, g.rooms.get(g.roomId)!, ox, oy, time, hudLabel(g));
   drawFenceParts(b, g, ox, oy, time);
   drawItems(b, g.items, ox, oy);

@@ -76,6 +76,17 @@ export const COMBAT = {
   },
 };
 
+// Камеры и решётка: время — с, расстояния — клетки.
+export const CAMERA = {
+  detect: 0.3, // героиня в луче столько подряд — тревога
+  alarm: 20, // тревога в комнате
+  gateTime: 0.5, // решётка опускается (и поднимается) за
+  siren: 1, // сирена — раз в столько секунд тревоги
+  feet: 0.25, // нижняя доля хитбокса — ноги: в луче не считаются
+  beamStep: 0.1, // шаг трассировки луча
+  dotStep: 0.5, // точки луча на экране — через
+};
+
 // Двери и ключи: открытая дверь — рамка проёма тусклее закрытой.
 export const DOOR = {
   frameDim: 0.5, // яркость рамки открытой двери от цвета двери
@@ -300,6 +311,7 @@ export const SOUNDS: Record<Sfx, Tone[]> = {
   bike: [{ wave: 'sawtooth', f: 70, to: 160, dur: 2.5, gain: 0.22, filter: 'lowpass', cut: 700 }, { wave: 'square', f: 35, to: 80, dur: 2.5, gain: 0.1, filter: 'lowpass', cut: 400 }],
   mast: [hiss(0.6, 0.45, 'lowpass', 1200), { wave: 'square', f: 200, to: 40, dur: 0.4, gain: 0.18 }, { wave: 'triangle', f: 1200, to: 1100, dur: 0.8, gain: 0.07 }],
   seaSplash: [hiss(0.9, 0.45, 'lowpass', 1500), hiss(1.2, 0.35, 'lowpass', 300)],
+  alarm: [{ wave: 'square', f: 880, dur: 0.4, gain: 0.08, filter: 'lowpass', cut: 3000 }, { wave: 'square', f: 660, dur: 0.4, gain: 0.08, at: 0.5, filter: 'lowpass', cut: 3000 }], // сирена — два тона
   door: [{ wave: 'square', f: 150, to: 70, dur: 0.25, gain: 0.14, filter: 'lowpass', cut: 900 }, hiss(0.3, 0.22, 'lowpass', 700), { wave: 'triangle', f: 600, to: 400, dur: 0.08, gain: 0.08, at: 0.2 }], // засов и тяжёлая створка
   record: [523, 659, 784, 1047].map((f, i) => ({ wave: 'square' as const, f, dur: 0.16, gain: 0.08, at: i * 0.08, filter: 'lowpass' as const, cut: 3000 })), // восходящее арпеджио — место 1
 };
