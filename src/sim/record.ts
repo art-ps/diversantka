@@ -126,3 +126,10 @@ export function replayStep(r: Replay, ended: boolean): Intent | null {
   if (r.i >= r.rec.length) return null;
   return decodeIntent(r.rec[r.i++]);
 }
+
+// После выхода из реплея удерживаемое движение не должно доходить до стартового экрана (там оно переключает язык):
+// пока hold и устройство держит moveX — подаём покой по moveX; как только moveX стал 0 — защёлка снята.
+export function holdMove(it: Intent, hold: boolean): { it: Intent; hold: boolean } {
+  if (!hold || it.moveX === 0) return { it, hold: false };
+  return { it: { ...it, moveX: 0 }, hold: true };
+}

@@ -4,7 +4,7 @@ import { createGame, createPrologue, stepGame, type Game } from '../src/game';
 import { LANGS, setLang, STR } from '../src/i18n';
 import { IDLE, type Intent } from '../src/input/intent';
 import { drawGame, hudWidth } from '../src/render/scene';
-import { encodeIntent, quitsReplay, replayStep, unpackRecord } from '../src/sim/record';
+import { encodeIntent, holdMove, quitsReplay, replayStep, unpackRecord } from '../src/sim/record';
 import { loadRoomsFs } from './helpers';
 
 afterEach(() => setLang('ru'));
@@ -24,6 +24,27 @@ describe('выход из реплея', () => {
   });
 });
 
+describe('защёлка движения после выхода', () => {
+  it('удерживаемое движение не доходит до игры, после отпускания — доходит', () => {
+    let h = true;
+    for (const mx of [-1, -1, -0.5]) {
+      const r = holdMove(I({ moveX: mx, jump: true }), h);
+      expect(r.it).toEqual(I({ moveX: 0, jump: true }));
+      h = r.hold;
+      expect(h).toBe(true);
+    }
+    let r = holdMove(I(), h);
+    expect(r.it).toEqual(IDLE);
+    expect(r.hold).toBe(false);
+    r = holdMove(I({ moveX: -1 }), r.hold);
+    expect(r.it).toEqual(I({ moveX: -1 }));
+  });
+
+  it('без защёлки — как есть', () => {
+    expect(holdMove(I({ moveX: 1 }), false)).toEqual({ it: I({ moveX: 1 }), hold: false });
+  });
+});
+
 describe('шаг реплея', () => {
   it('идёт по записи; после итога — покой; запись кончилась без итога — null', () => {
     const r = { rec: [encodeIntent(I({ moveX: 1 })), encodeIntent(I({ jumpPressed: true, jump: true }))], i: 0 };
@@ -36,7 +57,7 @@ describe('шаг реплея', () => {
 
   it('pausePressed в реплее всегда false — мир никогда не встаёт на паузу', () => {
     const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 10, bottom: 22 });
-    const r = { rec: Array.from({ length: 50 }, (_, i) => (i % 2 ? 2 ** 17 - 1 : 0)), i: 0 };
+    const r = { rec: Array.from({ length: 50 }, (_, i) => (i % 2 ? 201 * 512 - 1 : 0)), i: 0 };
     for (let k = 0; k < 50; k++) {
       const it = replayStep(r, g.mission.result !== null)!;
       expect(it.pausePressed).toBe(false);

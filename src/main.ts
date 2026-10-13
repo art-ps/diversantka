@@ -13,7 +13,7 @@ import { PAL } from './render/palette';
 import { drawGame } from './render/scene';
 import { loadLang, loadMuted, loadRecords, saveLang, saveMuted, saveRecord, saveResult, storage } from './save';
 import { missionResult } from './sim/mission';
-import { packRecord, quitsReplay, replayStep, replayUrl, shareText, unpackRecord, type Replay } from './sim/record';
+import { holdMove, packRecord, quitsReplay, replayStep, replayUrl, shareText, unpackRecord, type Replay } from './sim/record';
 import { loadWorld } from './world';
 
 function fail(msg: string) {
@@ -51,7 +51,11 @@ async function boot() {
   const input = new InputDevices(window);
   const tracker = new IntentTracker();
   // Реплей по ссылке ?r=: шаги берутся из записи, устройства — только чтобы выйти. Запись не читается — обычный старт.
-  const dropParam = () => history.replaceState(null, '', location.pathname + location.hash);
+  const dropParam = () => {
+    const u = new URL(location.href);
+    u.searchParams.delete('r');
+    history.replaceState(null, '', u.pathname + u.search + u.hash);
+  };
   const param = new URLSearchParams(location.search).get('r');
   let replay: Replay | null = null;
   if (param !== null) {
@@ -63,8 +67,10 @@ async function boot() {
   }
   // Стартовый экран поверх первого кадра пролога; реплей — сразу полёт, как начиналась запись.
   const game = createPrologue(rooms, replay === null);
+  let holdLeft = false; // выход из реплея движением: пока клавишу держат, стартовый экран её не видит
   const leaveReplay = () => {
     replay = null;
+    holdLeft = true;
     dropParam();
     Object.assign(game, createPrologue(rooms, true));
   };
@@ -97,6 +103,7 @@ async function boot() {
     acc = plan.acc;
     last = now;
     let it = orPressed(tracker.update(input.read()), missed);
+    if (!replay) ({ it, hold: holdLeft } = holdMove(it, holdLeft));
     missed = plan.steps === 0 ? it : IDLE;
     if (replay && quitsReplay(it)) {
       leaveReplay();
