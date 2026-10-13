@@ -9,7 +9,7 @@ import { loadRoomsFs, roomOf } from './helpers';
 import { routeDamage } from './reach';
 
 // Набор комнат бункера (миссия 2) по мере раскладки.
-const ROOMS2 = ['gate', 'shaft-1', 'shaft-2', 'shaft-3'];
+const ROOMS2 = ['barracks', 'gate', 'shaft-1', 'shaft-2', 'shaft-3', 'store'];
 
 const R = (id: string, rows: Record<number, string>, meta: Record<string, string>): Room => ({ ...roomOf(rows), id, meta });
 const I = (p: Partial<Intent> = {}): Intent => ({ ...IDLE, ...p });
@@ -152,4 +152,17 @@ it('шахта: въезд ↔ shaft-1 ↔ shaft-2 ↔ shaft-3 по лестни
     expect(bottomOf(g), low).toBeCloseTo(bottom);
     expect(g.nina.energy, top).toBe(NINA.energyMax);
   }
+});
+
+it('ярус 1: из шахты в казармы, по лестнице на галерею и в склад; стеллаж (место ключа 1) и терминал 1 — без дверей', () => {
+  const g = at('shaft-2', 36, 22);
+  run(g, { moveX: 1 }, 300, () => g.roomId === 'barracks');
+  expect(g.roomId).toBe('barracks');
+  const gallery = at('barracks', 36, 14);
+  run(gallery, { moveX: 1 }, 300, () => gallery.roomId === 'store');
+  run(gallery, {}, 30);
+  expect(gallery.roomId).toBe('store');
+  expect(bottomOf(gallery)).toBeCloseTo(14);
+  expect(standsAt([], 'store', 34, 19)).toBe(true); // стеллаж, где лежит ключ 1
+  expect(standsAt([], 'store', 16, 22, MISSION.useRange)).toBe(true); // терминал 1
 });
