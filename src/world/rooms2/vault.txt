@@ -1,6 +1,6 @@
 id: vault
-exits: left=lab-b right=- up=- down=-
-items: bomb@20,20
+exits: left=lab-b right=- up=- down=engine-1
+items: bomb@20,20 ; key2@12,22
 ambient: hum
 ---
 ########################################

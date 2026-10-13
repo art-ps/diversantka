@@ -6,10 +6,12 @@ import { BUNKER_START, loadWorld, validateCameras, validateGates, validateMissio
 import { tileAt, type Room } from '../src/world/room';
 import { parseCameras, parseEnemies, parseItems, parsePoints, parseTerminals } from '../src/world/spawns';
 import { loadRoomsFs, roomOf } from './helpers';
-import { routeDamage } from './reach';
+import { doorRoute, routeDamage } from './reach';
 
 // Набор комнат бункера (миссия 2) по мере раскладки.
-const ROOMS2 = ['barracks', 'gate', 'lab-a', 'lab-b', 'shaft-1', 'shaft-2', 'shaft-3', 'store', 'vault'];
+const ROOMS2 = [
+  'barracks', 'engine-1', 'engine-2', 'gate', 'lab-a', 'lab-b', 'reactor', 'shaft-1', 'shaft-2', 'shaft-3', 'store', 'vault', 'vent',
+];
 
 const R = (id: string, rows: Record<number, string>, meta: Record<string, string>): Room => ({ ...roomOf(rows), id, meta });
 const I = (p: Partial<Intent> = {}): Intent => ({ ...IDLE, ...p });
@@ -185,4 +187,41 @@ it('ярус 2: дверь сейфа без ключа не пускает — 
   expect(g.nina.body.x + g.nina.body.w).toBeLessThanOrEqual(2 + 1e-6);
   stepGame(g, I({ usePressed: true }), DT);
   expect(g.mission.doorsOpen.size).toBe(0);
+});
+
+it('ярус 3: маршрут «ключ → дверь» сходится; ключ 3 в реакторной — без двери 3; точка закладки — только за дверью 2', () => {
+  const rooms = loadRoomsFs('rooms2');
+  expect(doorRoute(rooms, [BUNKER_START])).toEqual([]);
+  expect(standsAt([1, 2], 'reactor', 6, 14)).toBe(true);
+  expect(standsAt([1], 'reactor', 20, 22, MISSION.useRange)).toBe(false);
+  expect(standsAt([1, 2], 'reactor', 20, 22, MISSION.useRange)).toBe(true);
+  const t2 = parseTerminals(rooms.get('engine-1')!.meta.terminals, 'engine-1')[0];
+  expect(t2.controls).toEqual(['engine-2']);
+  // камеры — только в двух лабораториях и в машинном зале; каждую гасит свой терминал
+  expect([...rooms.values()].filter(r => r.meta.cameras).map(r => r.id).sort()).toEqual(['engine-2', 'lab-a', 'lab-b']);
+});
+
+it('отход: от точки закладки через дверь 3 и вентиляцию к мотоциклу — урон от падений и воды меньше 10', () => {
+  const rooms = loadRoomsFs('rooms2');
+  const d = routeDamage(rooms, [{ room: 'reactor', x: 20 - NINA.w / 2, bottom: 22 }], new Set([1, 2, 3]));
+  const bike = [...d].filter(([k]) => k.startsWith('S|gate|') && k.endsWith('|22')).map(([k, v]) => ({ x: Number(k.split('|')[2]) + 1, v }));
+  const best = Math.min(...bike.filter(b => Math.abs(b.x - 5) <= MISSION.useRange).map(b => b.v));
+  expect(best).toBeLessThan(10);
+});
+
+it('реакторная: с галереи с ключом 3 — вниз к двери 3 без урона (8 клеток — безопасная высота)', () => {
+  const g = at('reactor', 6, 14);
+  run(g, { moveX: -1 }, 120, () => g.nina.state === 'ground' && bottomOf(g) > 21);
+  run(g, {}, 10);
+  expect(bottomOf(g)).toBeCloseTo(22);
+  expect(g.nina.energy).toBe(NINA.energyMax);
+});
+
+it('вентиляция: по лестнице из vent в shaft-3 и обратно без урона', () => {
+  const g = at('vent', 4.5, 22);
+  climbTo(g, 'up', 'shaft-3');
+  expect(bottomOf(g)).toBeCloseTo(22);
+  climbTo(g, 'down', 'vent');
+  expect(bottomOf(g)).toBeCloseTo(22);
+  expect(g.nina.energy).toBe(NINA.energyMax);
 });
