@@ -1,7 +1,7 @@
 import { ROOM_H, ROOM_W } from '../config';
 
-export type ItemKind = 'knife' | 'stone' | 'wrench' | 'key1' | 'key2' | 'key3';
-export const ITEM_KINDS: ItemKind[] = ['knife', 'stone', 'wrench', 'key1', 'key2', 'key3'];
+export type ItemKind = 'knife' | 'stone' | 'wrench' | 'key1' | 'key2' | 'key3' | 'bomb';
+export const ITEM_KINDS: ItemKind[] = ['knife', 'stone', 'wrench', 'key1', 'key2', 'key3', 'bomb'];
 
 export interface ItemSpawn { kind: ItemKind; x: number; bottom: number }
 export interface AndroidSpawn { kind: 'android'; x: number; bottom: number; patrol: [number, number] }

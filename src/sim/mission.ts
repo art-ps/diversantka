@@ -1,4 +1,4 @@
-import { MISSION } from '../config';
+import { BOMB, MISSION } from '../config';
 import { str, type Mark } from '../i18n';
 
 // x — левый край тела, как в createNina.
@@ -24,6 +24,9 @@ export interface Mission {
   hits: number; // полученные удары за миссию; чекпоинт их не откатывает
   secret: boolean; // источник найден; чекпоинт его не откатывает
   attacks: number; // попадания героини по врагам (рука, нога, прыжок, бросок); чекпоинт не откатывает
+  fuse: number | null; // отсчёт заложенной бомбы, с; null — не заложена. Гибель и чекпоинт его не откатывают
+  blown: boolean; // отсчёт дошёл до нуля — взрыв, миссия провалена
+  goal: 'tapes' | 'bomb'; // выезд на мотоцикле: tapes — забор выключен (миссия 1), bomb — бомба заложена (план 5в.3)
   doorsOpen: Set<string>; // открытые двери «комната#N» (src/sim/doors.ts); гибель их не закрывает — чекпоинт не откатывает
   result: 'won' | 'failed' | null;
   checkpoint: Checkpoint;
@@ -32,8 +35,9 @@ export interface Mission {
 // seconds — время миссии числом (для таблицы рекордов), date — день прохождения «ГГГГ-ММ-ДД» по местному времени.
 export interface MissionResult { time: string; tapes: string; hits: number; secret: boolean; line: string; seconds: number; attacks: number; date: string }
 
-export function createMission(start: Spot): Mission {
+export function createMission(start: Spot, goal: Mission['goal'] = 'tapes'): Mission {
   return {
+    fuse: null, blown: false, goal,
     timeLeft: MISSION.time, tapes: new Set(), tapesIn: false, fenceOff: false, flamersOff: new Set(), camerasOff: new Set(), hits: 0, secret: false, attacks: 0, doorsOpen: new Set(), result: null,
     checkpoint: { ...start, timeLeft: MISSION.time, tapes: [], tapesIn: false, fenceOff: false, flamersOff: [], camerasOff: [], lifts: {} },
   };
@@ -58,10 +62,27 @@ export function restoreCheckpoint(m: Mission): Spot {
 // Секунд с начала миссии — часы камер и итог.
 export const elapsed = (m: Mission): number => MISSION.time - m.timeLeft;
 
+// Таймер миссии идёт всегда; с заложенной бомбой проигрыш решает её отсчёт: ноль — взрыв.
 export function tickTimer(m: Mission, dt: number): void {
   if (m.result) return;
   m.timeLeft = Math.max(0, m.timeLeft - dt);
-  if (m.timeLeft === 0) m.result = 'failed';
+  if (m.fuse !== null) {
+    m.fuse = Math.max(0, m.fuse - dt);
+    if (m.fuse === 0) {
+      m.result = 'failed';
+      m.blown = true;
+    }
+  } else if (m.timeLeft === 0) m.result = 'failed';
+}
+
+export function plantBomb(m: Mission): void {
+  m.fuse = BOMB.fuse;
+}
+
+// Тик отсчёта между f0 и f1: раз в секунду, последние BOMB.fast с — раз в BOMB.fastEvery.
+export function fuseTick(f0: number, f1: number): boolean {
+  const e = f1 <= BOMB.fast ? BOMB.fastEvery : 1;
+  return Math.floor(f0 / e) !== Math.floor(f1 / e);
 }
 
 // Главная ЭВМ: принимает только все ленты сразу.
@@ -77,9 +98,9 @@ export function useSwitch(m: Mission): string {
   return str().fenceOff;
 }
 
-// Мотоцикл: при включённом заборе не едет; поехал — миссия выполнена, таймер встал.
+// Мотоцикл: не едет, пока цель не выполнена (забор под током / бомба не заложена); поехал — миссия выполнена.
 export function startBike(m: Mission): boolean {
-  if (!m.fenceOff || m.result) return false;
+  if (!(m.goal === 'bomb' ? m.fuse !== null : m.fenceOff) || m.result) return false;
   m.result = 'won';
   return true;
 }
@@ -88,6 +109,12 @@ const pad2 = (n: number) => String(n).padStart(2, '0');
 export function formatTime(sec: number): string {
   const s = Math.ceil(Math.max(0, sec));
   return `${pad2(Math.floor(s / 60))}:${pad2(s % 60)}`;
+}
+
+// Отсчёт бомбы в HUD: «1:30».
+export function formatFuse(sec: number): string {
+  const s = Math.ceil(Math.max(0, sec));
+  return `${Math.floor(s / 60)}:${pad2(s % 60)}`;
 }
 
 // Отметки результата по порядку показа: без урона, без боя, источник.

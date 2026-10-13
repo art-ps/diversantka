@@ -1,5 +1,5 @@
-import { ANIM, CAMERA, FIRE, FLAMER, FX, LIFT, MISSION, NINA, PROLOGUE, ROOM_H, ROOM_W, SFX, SOURCE, TRANSITION_TIME } from './config';
-import { jetFire, pitFires, stepFires, type Fire } from './fx/fires';
+import { ANIM, BOMB, CAMERA, FIRE, FLAMER, FX, LIFT, MISSION, NINA, PROLOGUE, ROOM_H, ROOM_W, SFX, SOURCE, TRANSITION_TIME } from './config';
+import { bombFire, bombHeat, jetFire, pitFires, stepFires, type Fire } from './fx/fires';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { dogGlyphs } from './anim/dog';
 import { CLIPS } from './anim/clips';
@@ -16,7 +16,7 @@ import { spawnFloater, stepFloaters, type Floater } from './sim/floaters';
 import { stepProjectiles, itemRect, useThrowButton, type Item, type Projectile } from './sim/items';
 import { gliderAt, gliderHits, ROUTE, ROUTE_LEN } from './sim/glider';
 import { createLifts, LIFT_W, liftRect, liftTop, nextStop, stepLift, type Lift } from './sim/lift';
-import { createMission, elapsed, missionResult, restoreCheckpoint, saveCheckpoint, startBike, tickTimer, useSwitch, type Mission } from './sim/mission';
+import { createMission, elapsed, fuseTick, missionResult, plantBomb, restoreCheckpoint, saveCheckpoint, startBike, tickTimer, useSwitch, type Mission } from './sim/mission';
 import { openScreen, stepScreen, type Controls, type Screen } from './sim/terminal';
 import { burnNina, createNina, updateNina, type Nina, type NinaState } from './sim/nina';
 import type { Attack } from './sim/combat';
@@ -93,6 +93,7 @@ export interface Game {
   gates: Gate[]; // решётки комнаты (тайлы A)
   alarmT: number; // осталось тревоги в комнате, с; 0 — тихо. Выход из комнаты тревогу снимает
   gate: number; // решётки комнаты: 0 — подняты, 1 — опущены
+  bombSite: Point | null; // точка закладки взрывчатки в комнате («bomb:»)
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
@@ -100,7 +101,7 @@ export function createGame(rooms: Map<string, Room>, start: Start): Game {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
     items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
     lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false, replay: false, board: null, rec: [],
-    doors: [], heldId: null, spent: new Set(), guards: [], cameras: [], gates: [], alarmT: 0, gate: 0,
+    doors: [], heldId: null, spent: new Set(), guards: [], cameras: [], gates: [], alarmT: 0, gate: 0, bombSite: null,
   };
   enterRoom(g, start.room);
   return g;
@@ -189,7 +190,8 @@ export function enterRoom(g: Game, id: string): void {
     .map(e => createFlamer(e.id, e.s));
   g.cameras = parseCameras(room.meta.cameras, id).map((s, i) => createCamera(`${id}#c${i}`, s));
   applyTerminals(g);
-  g.fires = [...pitFires(room), ...g.flamers.map(jetFire)];
+  g.bombSite = parsePoints(room.meta.bomb, id, 'точки закладки')[0] ?? null;
+  g.fires = [...pitFires(room), ...g.flamers.map(jetFire), ...(g.bombSite && g.mission.fuse !== null ? [bombFire(g.bombSite)] : [])];
   g.terminals = parseTerminals(room.meta.terminals, id);
   g.panel = parsePoints(room.meta.switch, id, 'щитка')[0] ?? null;
   g.bike = parsePoints(room.meta.bike, id, 'мотоцикла')[0] ?? null;
@@ -255,7 +257,7 @@ function respawn(g: Game): void {
 function stepEnd(g: Game, it: Intent, dt: number): void {
   const t0 = g.endT;
   g.endT += dt;
-  const shown = g.mission.result === 'won' ? MISSION.outroTime : 0;
+  const shown = g.mission.result === 'won' ? MISSION.outroTime : g.mission.blown ? BOMB.blast : 0;
   if (g.endT < shown) return;
   if (t0 < shown && g.board?.place === 1) g.sfx.push('record');
   if (g.mission.result === 'won' && it.usePressed) g.clip = missionResult(g.mission).line;
@@ -305,6 +307,22 @@ function useDoor(g: Game): boolean {
     g.sfx.push('door');
   } else spawnFloater(g.floaters, str().needKey(d.n), d.x + 0.5, d.top - 0.5, 'blocked');
   return true;
+}
+
+// E у точки закладки: бомба в руках — заложена (отсчёт BOMB.fuse, жар у точки), предмет потрачен навсегда;
+// без бомбы — «НУЖНА ВЗРЫВЧАТКА» над героиней. Уже заложена — ничего.
+function plant(g: Game, site: Point): void {
+  if (g.mission.fuse !== null) return;
+  const b = g.nina.body;
+  if (g.nina.held !== 'bomb') {
+    spawnFloater(g.floaters, str().needBomb, b.x + b.w / 2, b.y - 0.6, 'blocked');
+    return;
+  }
+  plantBomb(g.mission);
+  if (g.heldId) g.spent.add(g.heldId);
+  g.nina.held = null;
+  g.heldId = null;
+  g.fires.push(bombFire(site));
 }
 
 // Платформы лифтов в текущей комнате — опора сверху, как «=».
@@ -458,7 +476,10 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
     if (g.paused) return; // мир и таймер стоят
   }
   g.rec.push(code); // шаг пауза не съела — мир или экран ЭВМ принимают ввод
+  const fuse0 = g.mission.fuse;
   if (!g.prologue) tickTimer(g.mission, dt); // таймер идёт всегда: в переходе, после гибели, на экране ЭВМ
+  if (g.mission.blown && fuse0 !== null) g.sfx.push('explode');
+  else if (fuse0 !== null && g.mission.fuse !== null && fuseTick(fuse0, g.mission.fuse)) g.sfx.push('fuse');
   if (g.mission.result) {
     g.screen = null; // таймер 0 — провал, мир стоит
     return;
@@ -515,10 +536,16 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
         g.sfx.push('bike');
         return; // выезд — дальше stepEnd
       }
-      spawnFloater(g.floaters, str().fenceLive, g.bike.x, g.bike.bottom - 2.5, 'damage');
-      g.sfx.push('zap');
-      if (g.fence) for (let y = g.fence.top; y <= g.fence.bottom; y += 2) sparks(g.particles, g.fence.x + 0.5, y + 0.5, PAL.fireHot, 3);
-    } else if (!useDoor(g)) callLift(g);
+      if (g.mission.goal === 'bomb') {
+        const b = g.nina.body;
+        spawnFloater(g.floaters, str().plantFirst, b.x + b.w / 2, b.y - 0.6, 'blocked');
+      } else {
+        spawnFloater(g.floaters, str().fenceLive, g.bike.x, g.bike.bottom - 2.5, 'damage');
+        g.sfx.push('zap');
+        if (g.fence) for (let y = g.fence.top; y <= g.fence.bottom; y += 2) sparks(g.particles, g.fence.x + 0.5, y + 0.5, PAL.fireHot, 3);
+      }
+    } else if (g.bombSite && near(g.nina, g.bombSite)) plant(g, g.bombSite);
+    else if (!useDoor(g)) callLift(g);
   }
   stepLifts(g, it, dt);
   const state0 = g.nina.state, vy0 = g.nina.body.vy, y0 = g.nina.body.y, peak0 = g.nina.peakY, atk0 = g.nina.attack;
@@ -600,6 +627,8 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
       sparks(g.particles, f.x + f.dir * 0.3, f.y, PAL.fireHot, 2);
     }
   }
+  const heat = g.fires.find(f => f.kind === 'bomb');
+  if (heat && g.mission.fuse !== null) bombHeat(heat, 1 - g.mission.fuse / BOMB.fuse); // жар растёт к взрыву
   stepFires(g.fires, g.flamers, dt);
   if (g.nina.invulnT > inv0) {
     g.mission.hits++;
@@ -607,7 +636,7 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
   }
   // Дым: над ямами — всегда, над концом струи — пока она горит.
   for (const fire of g.fires) {
-    if (fire.kind === 'pit') {
+    if (fire.kind !== 'jet') {
       const width = fire.field.w / 2;
       const n = Math.floor(FX.smokePerSec * width * dt + Math.random());
       if (n) smoke(g.particles, fire.x + Math.random() * width, fire.y - 1 - FIRE.pitRise, n);

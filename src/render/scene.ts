@@ -3,7 +3,7 @@ import { CLIPS } from '../anim/clips';
 import { J } from '../anim/clip';
 import { dogGlyphs } from '../anim/dog';
 import { simplePose } from '../anim/simple';
-import { CAMERA, DOOR, FX, GUARD, LIFT, MISSION, NINA, ROOM_H, ROOM_W, SOURCE } from '../config';
+import { BOMB, CAMERA, DOOR, FX, GUARD, LIFT, MISSION, NINA, ROOM_H, ROOM_W, SOURCE } from '../config';
 import { liftHint, liveRoom, TRANSITION_TIME, type Game } from '../game';
 import { LANGS, STR, str, type Strings } from '../i18n';
 import { fireCells, heatColor, type Fire } from '../fx/fires';
@@ -14,7 +14,7 @@ import { DOOR_TILES, doorId, keyDoor } from '../sim/doors';
 import { flamerPhase } from '../sim/flamer';
 import { gliderRect } from '../sim/glider';
 import { LIFT_W, liftTop, type Lift } from '../sim/lift';
-import { elapsed, formatTime, missionResult } from '../sim/mission';
+import { elapsed, formatFuse, formatTime, missionResult } from '../sim/mission';
 import { floaterView, type Floater } from '../sim/floaters';
 import type { Item, Projectile } from '../sim/items';
 import { particleAlpha, type Particle } from '../sim/particles';
@@ -118,11 +118,11 @@ function gliderSkip(g: Game): Rect | undefined {
   return gliderRect({ screen: 0, x: body.x + body.w / 2, bottom: body.y + body.h });
 }
 
-const ITEM_GLYPH = { knife: '/', stone: 'o', wrench: 'Y', key1: 'k', key2: 'k', key3: 'k' } as const;
-// Ключ — цветом своей двери, остальное — предметным.
+const ITEM_GLYPH = { knife: '/', stone: 'o', wrench: 'Y', key1: 'k', key2: 'k', key3: 'k', bomb: '@' } as const;
+// Ключ — цветом своей двери, взрывчатка — красным, остальное — предметным.
 const itemColor = (kind: ItemKind): Color => {
   const n = keyDoor(kind);
-  return n ? PAL.door[n - 1] : PAL.item;
+  return n ? PAL.door[n - 1] : kind === 'bomb' ? PAL.danger : PAL.item;
 };
 
 export function drawItems(b: Pick<GlyphBatch, 'push'>, items: Item[], ox: number, oy: number): void {
@@ -330,12 +330,14 @@ function drawHud(b: GlyphBatch, g: Game, time: number): void {
   b.text(barX + hudWidth('█'.repeat(filled)), 0, '░'.repeat(10 - filled), PAL.hudDim, HUD_STEP);
   const label = hudLabel(g), rx = ROOM_W - 1 - hudWidth(label);
   b.text(rx, 0, label, g.replay ? PAL.hud : PAL.hudDim, HUD_STEP);
-  const tapes = s.hudTapes(g.mission.tapes.size, MISSION.tapes);
-  const clock = formatTime(g.mission.timeLeft);
+  // Заложена бомба — вместо лент и таймера миссии её отсчёт красным (лент у миссии с бомбой нет).
+  const fuse = g.mission.fuse;
+  const tapes = fuse === null ? s.hudTapes(g.mission.tapes.size, MISSION.tapes) : '';
+  const clock = fuse === null ? formatTime(g.mission.timeLeft) : s.hudFuse(formatFuse(fuse));
   // По центру; длинная подсказка реплея справа сдвигает ленты и таймер левее — между ними две буквы.
   const mx = Math.min((ROOM_W - hudWidth(tapes + clock)) / 2, rx - 2 * HUD_STEP - hudWidth(tapes + clock));
   b.text(mx, 0, tapes, PAL.hud, HUD_STEP);
-  b.text(mx + hudWidth(tapes), 0, clock, g.mission.timeLeft < MISSION.lowTime ? PAL.danger : PAL.hud, HUD_STEP);
+  b.text(mx + hudWidth(tapes), 0, clock, fuse !== null || g.mission.timeLeft < MISSION.lowTime ? PAL.danger : PAL.hud, HUD_STEP);
   if (g.nina.dead && !g.mission.result) {
     b.text((ROOM_W - hudWidth(s.dead)) / 2, 12, s.dead, PAL.danger, HUD_STEP);
   }
@@ -385,6 +387,27 @@ export function drawGates(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: 
   }
 }
 
+// Заложенная бомба у точки закладки — мигающий «@».
+export function drawBomb(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number, time: number): void {
+  if (!g.bombSite || g.mission.fuse === null || Math.floor(time * 4) % 2) return;
+  b.push(g.bombSite.x - 0.5 + ox, g.bombSite.bottom - 0.75 + oy, '@', PAL.danger, 0.5);
+}
+
+// Взрыв: за BOMB.blast с экран снизу вверх заливает огонь (символы и цвета поля жара).
+export function drawBlast(b: Pick<GlyphBatch, 'push'>, t: number, time: number): void {
+  const k = Math.min(1, t / BOMB.blast);
+  const frame = Math.floor(time * 20);
+  for (let r = 0; r < ROOM_H * 2; r++) {
+    const low = r / (ROOM_H * 2); // 0 — верх экрана, 1 — низ
+    for (let c = 0; c < ROOM_W * 2; c++) {
+      const h = mix(hash(c + frame * 131, r + frame * 71));
+      if ((h % 1000) / 1000 >= k * (0.4 + low)) continue;
+      const level = 1 + ((h >>> 10) % (HEAT_RAMP.length - 1));
+      b.push(c / 2 + 0.25 - 0.5, r / 2 + 0.25 - 0.5, HEAT_RAMP[level], heatColor(level), 0.5);
+    }
+  }
+}
+
 // Всё, что живёт в комнате поверх тайлов; ox, oy — сдвиг перехода.
 function drawWorld(b: GlyphBatch, fig: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number, time: number): void {
   drawFires(b, g.fires, ox, oy);
@@ -395,6 +418,7 @@ function drawWorld(b: GlyphBatch, fig: Pick<GlyphBatch, 'push'>, g: Game, ox: nu
   drawLifts(b, g.lifts, g.rooms.get(g.roomId)!, ox, oy, time, hudLabel(g));
   drawFenceParts(b, g, ox, oy, time);
   drawItems(b, g.items, ox, oy);
+  drawBomb(b, g, ox, oy, time);
   drawTapes(b, g.tapes, ox, oy);
   if (g.source) drawSource(b, g.source, ox, oy, time);
   drawAndroids(fig, g, ox, oy, time);
@@ -455,8 +479,9 @@ export function drawGame(b: GlyphBatch, g: Game, time: number, fig: Pick<GlyphBa
     drawWorld(b, fig, g, 0, 0, time);
   }
   const failed = g.mission.result === 'failed';
+  if (g.mission.blown) drawBlast(b, g.endT, time);
   if (g.nina.dead || failed) drawStatic(b, failed ? FX.staticIn : g.nina.deadT, time);
   drawHud(b, g, time);
-  if (failed) drawFailed(b);
+  if (failed && (!g.mission.blown || g.endT >= BOMB.blast)) drawFailed(b);
   if (title) drawTitle(b, time);
 }

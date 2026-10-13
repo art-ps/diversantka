@@ -104,6 +104,17 @@ export const CAMERA = {
   dotStep: 0.5, // точки луча на экране — через
 };
 
+// Взрывчатка: время — с, размеры — клетки.
+export const BOMB = {
+  fuse: 90, // обратный отсчёт после закладки
+  fast: 10, // последние секунды отсчёта — тиканье чаще…
+  fastEvery: 0.5, // …раз в столько секунд (до того — раз в секунду)
+  blast: 1.5, // взрыв: огонь и помехи на весь экран, затем «МИССИЯ ПРОВАЛЕНА»
+  heatW: 16, // ширина поля жара у точки закладки к концу отсчёта
+  heatRise: 3, // высота языков над точкой
+  heatCool: 4, // остывание поля жара за шаг (как FIRE.pitCool)
+};
+
 // Двери и ключи: открытая дверь — рамка проёма тусклее закрытой.
 export const DOOR = {
   frameDim: 0.5, // яркость рамки открытой двери от цвета двери
@@ -328,6 +339,8 @@ export const SOUNDS: Record<Sfx, Tone[]> = {
   bike: [{ wave: 'sawtooth', f: 70, to: 160, dur: 2.5, gain: 0.22, filter: 'lowpass', cut: 700 }, { wave: 'square', f: 35, to: 80, dur: 2.5, gain: 0.1, filter: 'lowpass', cut: 400 }],
   mast: [hiss(0.6, 0.45, 'lowpass', 1200), { wave: 'square', f: 200, to: 40, dur: 0.4, gain: 0.18 }, { wave: 'triangle', f: 1200, to: 1100, dur: 0.8, gain: 0.07 }],
   seaSplash: [hiss(0.9, 0.45, 'lowpass', 1500), hiss(1.2, 0.35, 'lowpass', 300)],
+  fuse: [{ wave: 'square', f: 1200, dur: 0.03, gain: 0.06, filter: 'highpass', cut: 800 }], // тик отсчёта
+  explode: [hiss(1.5, 0.5, 'lowpass', 800), { wave: 'sine', f: 60, to: 25, dur: 1.5, gain: 0.45 }, hiss(0.6, 0.35, 'lowpass', 3000)], // взрыв
   aim: [{ wave: 'square', f: 1600, dur: 0.03, gain: 0.08, filter: 'highpass', cut: 1000 }, hiss(0.03, 0.12, 'highpass', 3000, 1, 0.06)], // щелчок затвора
   shot: [hiss(0.18, 0.45, 'lowpass', 2500), { wave: 'square', f: 180, to: 50, dur: 0.15, gain: 0.25, filter: 'lowpass', cut: 1200 }], // выстрел
   alarm: [{ wave: 'square', f: 880, dur: 0.4, gain: 0.08, filter: 'lowpass', cut: 3000 }, { wave: 'square', f: 660, dur: 0.4, gain: 0.08, at: 0.5, filter: 'lowpass', cut: 3000 }], // сирена — два тона

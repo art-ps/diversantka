@@ -26,6 +26,9 @@ export interface Strings {
   killed: string;
   blocked: string;
   needKey: (n: number) => string; // E у запертой двери без её ключа
+  needBomb: string; // E у точки закладки без бомбы в руках
+  plantFirst: string; // E у мотоцикла, пока бомба не заложена
+  hudFuse: (time: string) => string; // HUD вместо таймера миссии, пока идёт отсчёт бомбы
   // миссия: главная ЭВМ, щиток, строка итога для буфера обмена
   notEnoughTapes: (n: number, total: number) => string;
   tapesIn: string;
@@ -85,6 +88,9 @@ const RU: Strings = {
   killed: 'ВЫВЕДЕН',
   blocked: 'блок',
   needKey: n => `НУЖЕН КЛЮЧ ${n}`,
+  needBomb: 'НУЖНА ВЗРЫВЧАТКА',
+  plantFirst: 'ЗАЛОЖИ ВЗРЫВЧАТКУ',
+  hudFuse: time => `ВЗРЫВ ${time}`,
   notEnoughTapes: (n, total) => `НЕДОСТАТОЧНО ЛЕНТ ${n}/${total}`,
   tapesIn: 'ЛЕНТЫ ВВЕДЕНЫ',
   accessDenied: 'ДОСТУП ЗАКРЫТ',
@@ -151,6 +157,9 @@ const EN: Strings = {
   killed: 'DOWN',
   blocked: 'block',
   needKey: n => `NEED KEY ${n}`,
+  needBomb: 'NEED EXPLOSIVES',
+  plantFirst: 'PLANT THE EXPLOSIVES',
+  hudFuse: time => `BLAST ${time}`,
   notEnoughTapes: (n, total) => `NOT ENOUGH TAPES ${n}/${total}`,
   tapesIn: 'TAPES LOADED',
   accessDenied: 'ACCESS DENIED',

@@ -1,11 +1,13 @@
-import { FIRE, FLAMER } from '../config';
+import { BOMB, FIRE, FLAMER } from '../config';
 import { PAL } from '../render/palette';
 import type { Color } from '../render/glyphs';
 import { flamerPhase, type Flamer } from '../sim/flamer';
 import type { Room } from '../world/room';
+import type { Point } from '../world/spawns';
 import { createHeat, heatLevel, stepHeat, type HeatField } from './heat';
 
-export interface Fire { field: HeatField; kind: 'pit' | 'jet'; x: number; y: number; dir: 1 | -1; flamer?: string }
+// bomb — жар у заложенной бомбы: рисуется как яма, ширина очага растёт с отсчётом (bombHeat).
+export interface Fire { field: HeatField; kind: 'pit' | 'jet' | 'bomb'; x: number; y: number; dir: 1 | -1; flamer?: string }
 
 // Огненные ямы: каждый непрерывный отрезок `^` в строке — одно поле жара.
 export function pitFires(room: Room): Fire[] {
@@ -30,6 +32,18 @@ export const jetFire = (f: Flamer): Fire => ({
   kind: 'jet', x: f.x, y: f.y, dir: f.dir, flamer: f.id,
 });
 
+// Поле жара от точки закладки: BOMB.heatW клеток в ширину, очаг пока пуст — его зажигает bombHeat.
+export function bombFire(p: Point): Fire {
+  const field = createHeat(2 * BOMB.heatW, 2 * (1 + BOMB.heatRise), BOMB.heatCool, new Array(2 * BOMB.heatW).fill(0), 11);
+  return { field, kind: 'bomb', x: p.x - BOMB.heatW / 2, y: p.bottom, dir: 1 };
+}
+
+// Очаг у бомбы горит на доле k ширины (0 — только середина, 1 — вся), остальное — холодное.
+export function bombHeat(fire: Fire, k: number): void {
+  const w = fire.field.w, half = (Math.max(k, 0.1) * w) / 2;
+  for (let i = 0; i < w; i++) fire.field.bed[i] = Math.abs(i + 0.5 - w / 2) <= half ? 1 : 0;
+}
+
 export function stepFires(fires: Fire[], flamers: Flamer[], dt: number): void {
   for (const fire of fires) {
     if (fire.kind === 'jet') {
@@ -48,7 +62,7 @@ export function fireCells(fire: Fire): { x: number; y: number; level: number }[]
     for (let i = 0; i < f.w; i++) {
       const level = heatLevel(f, i, j);
       if (!level) continue;
-      if (fire.kind === 'pit') {
+      if (fire.kind !== 'jet') {
         out.push({ x: fire.x + (i + 0.5) / 2, y: fire.y - (f.h - 1 - j + 0.5) / 2, level });
       } else {
         const d = (f.h - 1 - j + 0.5) / 2, a = (i + 0.5) / 2 - f.w / 4;

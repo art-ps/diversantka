@@ -21,7 +21,7 @@ const ALL: Mark[] = ['noDamage', 'noFight', 'source'];
 // Все тексты языка, которые видит игрок; функции — с самыми длинными аргументами.
 const visible = (s: Strings): string[] => [
   s.energy, s.hudTapes(N, N) + '15:00', s.dead, s.credit, s.liftHint, s.replayHud, ...Object.values(s.prologue),
-  s.tapeFloat(N, N), s.sourceFound, s.fenceLive, s.killed, s.blocked, s.needKey(3),
+  s.tapeFloat(N, N), s.sourceFound, s.fenceLive, s.killed, s.blocked, s.needKey(3), s.needBomb, s.plantFirst, s.hudFuse('1:30'),
   s.notEnoughTapes(N - 1, N), s.tapesIn, s.accessDenied, s.fenceOff,
   s.resultLine('15:00', `${N}/${N}`, 999, ALL), s.resultLine('15:00', `${N}/${N}`, 999, []),
   ...s.bootLog, s.menuFlamer(ROOM), s.menuTapes, s.menuExit, s.flamerOff(ROOM), s.menuCamera(ROOM), s.cameraOff(ROOM), s.screenHint,
