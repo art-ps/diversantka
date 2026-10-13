@@ -1,8 +1,9 @@
-import { DT, HAZARD, NINA, ROOM_H, ROOM_W } from '../src/config';
+import { DT, HAZARD, MISSION, NINA, ROOM_H, ROOM_W } from '../src/config';
+import { DOOR_TILES, doorsOf, keyDoor } from '../src/sim/doors';
 import { LIFT_W, shaftRooms } from '../src/sim/lift';
 import type { Spot } from '../src/sim/mission';
 import type { Dir, Room } from '../src/world/room';
-import { parseLift, parsePoints, parseTerminals } from '../src/world/spawns';
+import { parseItems, parseLift, parsePoints, parseTerminals } from '../src/world/spawns';
 
 // Достижимость для тестов карты (приёмка №3): поиск пути по клеткам с учётом энергии. Узел «стоит» — тело в колонках
 // c, c+1 (центр x = c+1), ноги на строке r (низ тела = r); узел «на лестнице» — центр x = L+0.5. Переходы — шаг,
@@ -39,8 +40,8 @@ interface Node { id: string; c: number; r: number }
 interface Step { n: Node; cost: number }
 
 // Наименьший урон до каждого узла (ключ «S|комната|c|r» — стоит, «L|…» — на лестнице) из точек starts; узлы,
-// куда без гибели не дойти, в ответ не попадают.
-export function routeDamage(rooms: Map<string, Room>, starts: Spot[]): Map<string, number> {
+// куда без гибели не дойти, в ответ не попадают. open — номера открытых дверей; закрытая дверь — стена.
+export function routeDamage(rooms: Map<string, Room>, starts: Spot[], open: ReadonlySet<number> = new Set()): Map<string, number> {
   // Тайл с соседями: за краем — комната по выходу, нет выхода (или угол) — стена.
   const tile = (id: string, c: number, r: number): string => {
     const dc = c < 0 ? -1 : c >= ROOM_W ? 1 : 0, dr = r < 0 ? -1 : r >= ROOM_H ? 1 : 0;
@@ -62,9 +63,10 @@ export function routeDamage(rooms: Map<string, Room>, starts: Spot[]): Map<strin
       for (const cell of cells) liftCells.set(`${cell.id}|${cell.c}|${cell.r}`, cells);
     }
   }
+  const wall = (t: string) => t === '#' || (DOOR_TILES.includes(t) && !open.has(Number(t)));
   const passable = (id: string, c: number, r: number) => {
     const t = tile(id, c, r);
-    return t !== '#' && t !== '^';
+    return !wall(t) && t !== '^';
   };
   const clear = (id: string, c0: number, c1: number, r0: number, r1: number) => {
     for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (!passable(id, c, r)) return false;
@@ -78,7 +80,7 @@ export function routeDamage(rooms: Map<string, Room>, starts: Spot[]): Map<strin
   const water = (id: string, c0: number, c1: number, r: number) => (wet(id, c0, c1, r - H, r - 1) ? WATER_PER_CELL : 0);
   const support = (id: string, c: number, r: number) => {
     const t = tile(id, c, r);
-    return t === '#' || t === '=' || (t === 'H' && tile(id, c, r - 1) !== 'H') || liftCells.has(`${id}|${c}|${r}`);
+    return wall(t) || t === '=' || (t === 'H' && tile(id, c, r - 1) !== 'H') || liftCells.has(`${id}|${c}|${r}`);
   };
   // Центр тела ушёл за край — та же точка в соседней комнате; выхода нет — null.
   const norm = (id: string, c: number, r: number, cx: number): Node | null => {
@@ -202,6 +204,29 @@ export function targetDamage(rooms: Map<string, Room>, starts: Spot[]): Map<stri
     for (const [[, id, c, r], d] of standing) {
       if (id === t.room && Number(r) === t.bottom && Math.abs(Number(c) + 1 - t.x) <= 1 && d < (out.get(t.what) ?? Infinity)) out.set(t.what, d);
     }
+  }
+  return out;
+}
+
+// Узлы «стоит» из routeDamage: комната, колонка c (центр тела c+1), строка ног r.
+const standing = (dist: Map<string, number>) =>
+  [...dist.keys()].filter(k => k.startsWith('S|')).map(k => k.split('|')).map(([, id, c, r]) => ({ id, c: Number(c), r: Number(r) }));
+
+// Двери (тайлы 1–3): маршрут миссии — «ключ N → дверь N» по порядку номеров. Для каждого N, что есть на карте,
+// с открытыми дверями меньших номеров из starts достижимы ключ N (центр не дальше клетки) и место у двери N
+// (центр не дальше MISSION.useRange от середины проёма, ноги на полу под дверью). Ответ — что недостижимо.
+export function doorRoute(rooms: Map<string, Room>, starts: Spot[]): string[] {
+  const out: string[] = [];
+  const open = new Set<number>();
+  for (const n of [1, 2, 3]) {
+    const doors = [...rooms.values()].flatMap(r => doorsOf(r).filter(d => d.n === n).map(d => ({ room: r.id, x: d.x + 0.5, bottom: d.bottom })));
+    const keys = [...rooms.values()].flatMap(r => parseItems(r.meta.items, r.id).filter(i => keyDoor(i.kind) === n).map(i => ({ room: r.id, x: i.x, bottom: i.bottom })));
+    if (!doors.length && !keys.length) continue;
+    const nodes = standing(routeDamage(rooms, starts, open));
+    const at = (p: { room: string; x: number; bottom: number }, tol: number) => nodes.some(s => s.id === p.room && s.r === p.bottom && Math.abs(s.c + 1 - p.x) <= tol);
+    if (!keys.some(k => at(k, 1))) out.push(`ключ ${n}`);
+    if (!doors.some(d => at(d, MISSION.useRange))) out.push(`дверь ${n}`);
+    open.add(n);
   }
   return out;
 }

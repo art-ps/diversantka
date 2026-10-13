@@ -3,12 +3,13 @@ import { CLIPS } from '../anim/clips';
 import { J } from '../anim/clip';
 import { dogGlyphs } from '../anim/dog';
 import { simplePose } from '../anim/simple';
-import { FX, LIFT, MISSION, NINA, ROOM_H, ROOM_W, SOURCE } from '../config';
+import { DOOR, FX, LIFT, MISSION, NINA, ROOM_H, ROOM_W, SOURCE } from '../config';
 import { liftHint, TRANSITION_TIME, type Game } from '../game';
 import { LANGS, STR, str, type Strings } from '../i18n';
 import { fireCells, heatColor, type Fire } from '../fx/fires';
 import { HEAT_RAMP } from '../fx/heat';
 import { stormGlyphs } from '../fx/storm';
+import { DOOR_TILES, doorId, keyDoor } from '../sim/doors';
 import { flamerPhase } from '../sim/flamer';
 import { gliderRect } from '../sim/glider';
 import { LIFT_W, liftTop, type Lift } from '../sim/lift';
@@ -18,7 +19,7 @@ import type { Item, Projectile } from '../sim/items';
 import { particleAlpha, type Particle } from '../sim/particles';
 import type { Rect } from '../sim/rect';
 import type { Room } from '../world/room';
-import type { Point, TerminalSpawn } from '../world/spawns';
+import type { ItemKind, Point, TerminalSpawn } from '../world/spawns';
 import { BIKE_DIR, drawBike, ridePose } from './bike';
 import { drawFigure } from './figure';
 import { drawGlider, hangPose } from './glider';
@@ -60,7 +61,10 @@ export const hudCell = (x: number, y: number, hudId: string, time: number) =>
       Math.round(x) >= Math.floor(ROOM_W - 1 - hudWidth(hudId)) - 1)) ||
   (time < 8 && Math.round(y) === ROOM_H - 1 && Math.round(x) >= Math.floor(ROOM_W - 0.5 - CREDIT_W) - 1);
 
-export function drawRoom(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy: number, time: number, hudId: string): void {
+const NO_DOORS: ReadonlySet<string> = new Set();
+
+// open — открытые двери (Mission.doorsOpen): закрытая — столбцы «|» и «#» цветом двери, открытая — тусклая рамка проёма.
+export function drawRoom(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy: number, time: number, hudId: string, open = NO_DOORS): void {
   for (let r = 0; r < ROOM_H; r++) {
     for (let c = 0; c < ROOM_W; c++) {
       const x = c + ox, y = r + oy;
@@ -85,6 +89,11 @@ export function drawRoom(b: Pick<GlyphBatch, 'push'>, room: Room, ox: number, oy
             // Рябь (по мотивам pond-ripples из ascii.rest): волна бежит вдоль воды, на гребне — блик.
             const w = Math.sin(time * 3 - (2 * c + i) * 0.9 + (2 * r + j) * 1.3);
             sub(b, x, y, i, j, w > 0.3 ? '~' : w > -0.5 ? '-' : '.', dim(PAL.water, w > 0.85 ? 1 : 0.55 + 0.25 * (w + 1) / 2));
+          } else if (DOOR_TILES.includes(t)) {
+            const col = PAL.door[Number(t) - 1];
+            if (!open.has(doorId(room.id, Number(t)))) sub(b, x, y, i, j, i === 0 ? '|' : '#', col);
+            else if (j === 0 && room.tiles[r - 1]?.[c] !== t) sub(b, x, y, i, j, '+', dim(col, DOOR.frameDim)); // верх проёма
+            else if (j === 1 && room.tiles[r + 1]?.[c] !== t) sub(b, x, y, i, j, '-', dim(col, DOOR.frameDim)); // порог
           }
         }
       }
@@ -108,10 +117,15 @@ function gliderSkip(g: Game): Rect | undefined {
   return gliderRect({ screen: 0, x: body.x + body.w / 2, bottom: body.y + body.h });
 }
 
-const ITEM_GLYPH = { knife: '/', stone: 'o', wrench: 'Y' } as const;
+const ITEM_GLYPH = { knife: '/', stone: 'o', wrench: 'Y', key1: 'k', key2: 'k', key3: 'k' } as const;
+// Ключ — цветом своей двери, остальное — предметным.
+const itemColor = (kind: ItemKind): Color => {
+  const n = keyDoor(kind);
+  return n ? PAL.door[n - 1] : PAL.item;
+};
 
 export function drawItems(b: Pick<GlyphBatch, 'push'>, items: Item[], ox: number, oy: number): void {
-  for (const i of items) b.push(i.x + ox - 0.5, i.bottom - 0.25 + oy - 0.5, ITEM_GLYPH[i.kind], PAL.item, 0.5);
+  for (const i of items) b.push(i.x + ox - 0.5, i.bottom - 0.25 + oy - 0.5, ITEM_GLYPH[i.kind], itemColor(i.kind), 0.5);
 }
 
 // Терминал: экран над тумбой; главная ЭВМ — втрое шире.
@@ -245,7 +259,7 @@ function drawNina(b: GlyphBatch, fig: Pick<GlyphBatch, 'push'>, g: Game, ox: num
   const pose = currentPose(g.anim, CLIPS);
   const x = body.x + body.w / 2 + ox, y = body.y + body.h + oy;
   drawFigure(fig, pose, x, y, facing, PAL.nina, g.nina.state === 'ladder');
-  if (g.nina.held) fig.push(x + facing * pose[2 * J.rHand] - 0.5, y - pose[2 * J.rHand + 1] - 0.5, ITEM_GLYPH[g.nina.held], PAL.item, 0.5);
+  if (g.nina.held) fig.push(x + facing * pose[2 * J.rHand] - 0.5, y - pose[2 * J.rHand + 1] - 0.5, ITEM_GLYPH[g.nina.held], itemColor(g.nina.held), 0.5);
 }
 
 const FLOAT_COLOR = { damage: PAL.danger, enemy: PAL.item, blocked: PAL.hudDim } as const;
@@ -384,14 +398,14 @@ export function drawGame(b: GlyphBatch, g: Game, time: number, fig: Pick<GlyphBa
     const ox = v[0] * ROOM_W * (1 - e), oy = v[1] * ROOM_H * (1 - e);
     const from = g.rooms.get(g.transition.from)!;
     drawSky(b, from, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time);
-    drawRoom(b, from, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time, hudLabel(g));
+    drawRoom(b, from, ox - v[0] * ROOM_W, oy - v[1] * ROOM_H, time, hudLabel(g), g.mission.doorsOpen);
     drawSky(b, cur, ox, oy, time, gliderSkip(g));
-    drawRoom(b, cur, ox, oy, time, hudLabel(g));
+    drawRoom(b, cur, ox, oy, time, hudLabel(g), g.mission.doorsOpen);
     drawWorld(b, fig, g, ox, oy, time);
   } else {
     const back = title ? outside(b, TITLE_BOX) : b;
     drawSky(back, cur, 0, 0, time, gliderSkip(g));
-    drawRoom(back, cur, 0, 0, time, hudLabel(g));
+    drawRoom(back, cur, 0, 0, time, hudLabel(g), g.mission.doorsOpen);
     drawWorld(b, fig, g, 0, 0, time);
   }
   const failed = g.mission.result === 'failed';

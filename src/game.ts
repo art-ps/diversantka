@@ -7,6 +7,7 @@ import { androidClip, playClip, simplePose } from './anim/simple';
 import { IDLE, type Intent } from './input/intent';
 import { createDog, updateDog, type Dog } from './sim/dog';
 import { createAndroid, updateAndroid, type Android } from './sim/android';
+import { doorId, doorsOf, doorSpot, keyDoor, solidRoom, type Door } from './sim/doors';
 import { createFlamer, flamerPhase, flameRect, stepFlamer, type Flamer } from './sim/flamer';
 import { resolveCombat, resolveDogs, type HitEvent } from './sim/fight';
 import { spawnFloater, stepFloaters, type Floater } from './sim/floaters';
@@ -82,6 +83,9 @@ export interface Game {
   replay: boolean; // идёт реплей по ссылке ?r= — ставит main.ts; HUD показывает подсказку вместо id комнаты
   board: Board | null; // рекорды для экрана итогов — ставит main.ts при победе
   rec: number[]; // запись нажатий с начала полёта (src/sim/record.ts); повтор пролога и «заново» начинают её с нуля
+  doors: Door[]; // двери комнаты (тайлы 1–3)
+  heldId: string | null; // id предмета в руках героини — чтобы потратить ключ навсегда
+  spent: Set<string>; // потраченные предметы (ключ открыл дверь) — не возвращаются и после гибели
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start): Game {
@@ -89,6 +93,7 @@ export function createGame(rooms: Map<string, Room>, start: Start): Game {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
     items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
     lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false, replay: false, board: null, rec: [],
+    doors: [], heldId: null, spent: new Set(),
   };
   enterRoom(g, start.room);
   return g;
@@ -163,7 +168,7 @@ export function enterRoom(g: Game, id: string): void {
   const room = g.rooms.get(id)!;
   g.items = parseItems(room.meta.items, id)
     .map((s, i) => ({ id: `${id}#i${i}`, ...s }))
-    .filter(i => !g.taken.has(i.id));
+    .filter(i => !g.taken.has(i.id) && !g.spent.has(i.id));
   g.tapes = parsePoints(room.meta.tapes, id, 'ленты')
     .map((p, i) => ({ id: `${id}#t${i}`, ...p }))
     .filter(t => !g.mission.tapes.has(t.id));
@@ -182,6 +187,7 @@ export function enterRoom(g: Game, id: string): void {
   g.bike = parsePoints(room.meta.bike, id, 'мотоцикла')[0] ?? null;
   g.source = parsePoints(room.meta.source, id, 'источника')[0] ?? null;
   g.fence = parseFence(room.meta.fence, id);
+  g.doors = doorsOf(room);
   g.dogs = enemies
     .filter((e): e is { s: DogSpawn; id: string } => e.s.kind === 'dog')
     .map(e => createDog(e.id, e.s))
@@ -218,6 +224,7 @@ function respawn(g: Game): void {
   g.taken.clear();
   enterRoom(g, p.room);
   g.nina = createNina(p.x, p.bottom);
+  g.heldId = null;
   g.anim = createAnimator();
 }
 
@@ -244,6 +251,24 @@ function touchSource(g: Game, s: Point, nr: Rect, dt: number): void {
   if (Math.random() < SOURCE.sparksPerSec * dt) {
     g.particles.push({ ch: Math.random() < 0.5 ? '.' : '*', x: s.x + (Math.random() - 0.5), y: s.bottom - 1, vx: (Math.random() - 0.5) * 0.6, vy: -SOURCE.sparkRise, t: 0, life: SOURCE.sparkLife, gravity: 0, size: 0.5, color: PAL.source });
   }
+}
+
+// Комната id, какой её видят физика, пули и лучи: закрытые двери — стена, открытые — проход.
+export const liveRoom = (g: Game, id = g.roomId): Room => solidRoom(g.rooms.get(id)!, g.mission.doorsOpen);
+
+// E у закрытой двери: ключ её номера в руках — дверь открыта до конца миссии, ключ потрачен навсегда;
+// без ключа — «НУЖЕН КЛЮЧ N». false — рядом закрытой двери нет.
+function useDoor(g: Game): boolean {
+  const d = g.doors.find(d => !g.mission.doorsOpen.has(doorId(g.roomId, d.n)) && near(g.nina, doorSpot(d)));
+  if (!d) return false;
+  if (keyDoor(g.nina.held) === d.n) {
+    g.mission.doorsOpen.add(doorId(g.roomId, d.n));
+    if (g.heldId) g.spent.add(g.heldId);
+    g.nina.held = null;
+    g.heldId = null;
+    g.sfx.push('door');
+  } else spawnFloater(g.floaters, str().needKey(d.n), d.x + 0.5, d.top - 0.5, 'blocked');
+  return true;
 }
 
 // Платформы лифтов в текущей комнате — опора сверху, как «=».
@@ -420,7 +445,7 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
     return;
   }
   if (g.nina.dead) {
-    updateNina(g.nina, IDLE, g.rooms.get(g.roomId)!, dt, NINA, liftTops(g));
+    updateNina(g.nina, IDLE, liveRoom(g), dt, NINA, liftTops(g));
     updateAnimator(g.anim, g.nina, CLIPS, dt);
     if (it.jumpPressed && g.nina.deadT >= NINA.respawnDelay) respawn(g);
     if (g.dmgAcc >= 0.5) {
@@ -434,7 +459,7 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
     stepFires(g.fires, g.flamers, dt);
     return;
   }
-  const room = g.rooms.get(g.roomId)!;
+  const room = liveRoom(g);
   g.nina.immortal = g.mission.secret; // и после возрождения: новая Нина узнаёт об источнике здесь
   const e0 = g.nina.energy;
   const inv0 = g.nina.invulnT; // выросла за шаг — получен удар
@@ -457,7 +482,7 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
       spawnFloater(g.floaters, str().fenceLive, g.bike.x, g.bike.bottom - 2.5, 'damage');
       g.sfx.push('zap');
       if (g.fence) for (let y = g.fence.top; y <= g.fence.bottom; y += 2) sparks(g.particles, g.fence.x + 0.5, y + 0.5, PAL.fireHot, 3);
-    } else callLift(g);
+    } else if (!useDoor(g)) callLift(g);
   }
   stepLifts(g, it, dt);
   const state0 = g.nina.state, vy0 = g.nina.body.vy, y0 = g.nina.body.y, peak0 = g.nina.peakY, atk0 = g.nina.attack;
@@ -481,10 +506,14 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
   const { picked, thrown } = useThrowButton(g.nina, it, g.items);
   if (picked) {
     g.taken.add(picked.id);
+    g.heldId = picked.id;
     g.items = g.items.filter(i => i !== picked);
     g.sfx.push('pickup');
   }
-  if (thrown) g.projectiles.push(thrown);
+  if (thrown) {
+    g.projectiles.push(thrown);
+    g.heldId = null;
+  }
   // Ленты — в сумку касанием, руки остаются свободными.
   const nr = bodyRect(g.nina.body);
   for (const t of g.tapes) {
@@ -587,7 +616,7 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
   g.floaters = stepFloaters(g.floaters, dt);
   g.particles = stepParticles(g.particles, dt);
   if (g.nina.dead) g.sfx.push('death'); // гибель — в этом шаге: мёртвая героиня сюда больше не доходит
-  const ex = exitFor(g.nina.body, room, id => g.rooms.get(id));
+  const ex = exitFor(g.nina.body, room, id => (g.rooms.has(id) ? liveRoom(g, id) : undefined));
   if (ex) {
     g.nina.body.x += ex.dx;
     g.nina.body.y += ex.dy;

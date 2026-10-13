@@ -22,6 +22,7 @@ export interface Mission {
   hits: number; // полученные удары за миссию; чекпоинт их не откатывает
   secret: boolean; // источник найден; чекпоинт его не откатывает
   attacks: number; // попадания героини по врагам (рука, нога, прыжок, бросок); чекпоинт не откатывает
+  doorsOpen: Set<string>; // открытые двери «комната#N» (src/sim/doors.ts); гибель их не закрывает — чекпоинт не откатывает
   result: 'won' | 'failed' | null;
   checkpoint: Checkpoint;
 }
@@ -31,7 +32,7 @@ export interface MissionResult { time: string; tapes: string; hits: number; secr
 
 export function createMission(start: Spot): Mission {
   return {
-    timeLeft: MISSION.time, tapes: new Set(), tapesIn: false, fenceOff: false, flamersOff: new Set(), hits: 0, secret: false, attacks: 0, result: null,
+    timeLeft: MISSION.time, tapes: new Set(), tapesIn: false, fenceOff: false, flamersOff: new Set(), hits: 0, secret: false, attacks: 0, doorsOpen: new Set(), result: null,
     checkpoint: { ...start, timeLeft: MISSION.time, tapes: [], tapesIn: false, fenceOff: false, flamersOff: [], lifts: {} },
   };
 }

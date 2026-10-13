@@ -1,7 +1,7 @@
 import { ROOM_W } from '../config';
 
-export type ItemKind = 'knife' | 'stone' | 'wrench';
-export const ITEM_KINDS: ItemKind[] = ['knife', 'stone', 'wrench'];
+export type ItemKind = 'knife' | 'stone' | 'wrench' | 'key1' | 'key2' | 'key3';
+export const ITEM_KINDS: ItemKind[] = ['knife', 'stone', 'wrench', 'key1', 'key2', 'key3'];
 
 export interface ItemSpawn { kind: ItemKind; x: number; bottom: number }
 export interface AndroidSpawn { kind: 'android'; x: number; bottom: number; patrol: [number, number] }
@@ -14,7 +14,7 @@ const num = (v: string) => (v.trim() === '' ? NaN : Number(v));
 
 // «kind@x,bottom»
 function at(rec: string): { kind: string; x: number; bottom: number } | null {
-  const m = /^([a-z]+)@([^,\s]+),([^,\s]+)/.exec(rec);
+  const m = /^([a-z0-9]+)@([^,\s]+),([^,\s]+)/.exec(rec);
   if (!m) return null;
   const x = num(m[2]), bottom = num(m[3]);
   return Number.isFinite(x) && Number.isFinite(bottom) ? { kind: m[1], x, bottom } : null;
@@ -88,7 +88,7 @@ export function parseTerminals(s: string | undefined, file: string): TerminalSpa
 
 export function parseItems(s: string | undefined, file: string): ItemSpawn[] {
   return parts(s).map(rec => {
-    const kind = /^([a-z]+)@/.exec(rec)?.[1];
+    const kind = /^([a-z0-9]+)@/.exec(rec)?.[1];
     if (kind && !ITEM_KINDS.includes(kind as ItemKind)) throw new Error(`${file}: неизвестный предмет «${kind}»`);
     const p = at(rec);
     if (!p) throw new Error(`${file}: плохая запись предмета «${rec}»`);

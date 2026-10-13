@@ -1,4 +1,5 @@
 import { MISSION, NINA, ROOM_H } from '../config';
+import { doorsOf, keyDoor } from '../sim/doors';
 import { LIFT_W, shaftRooms } from '../sim/lift';
 import { parseRoom, tileAt, validateWorld, type Room } from './room';
 import { parseAmbient, parseEnemies, parseFence, parseItems, parseLift, parsePoints, parseTerminals } from './spawns';
@@ -14,7 +15,7 @@ export function loadWorld(): Map<string, Room> {
     if (rooms.has(room.id)) throw new Error(`${path}: повтор id ${room.id}`);
     rooms.set(room.id, room);
   }
-  const errors = [...validateWorld(rooms), ...validateMission(rooms), ...validateLifts(rooms), ...validateAmbient(rooms)];
+  const errors = [...validateWorld(rooms), ...validateMission(rooms), ...validateLifts(rooms), ...validateAmbient(rooms), ...validateDoors(rooms)];
   if (errors.length) throw new Error(errors.join('\n'));
   return rooms;
 }
@@ -64,6 +65,31 @@ export function validateLifts(rooms: Map<string, Room>): string[] {
         if (tileAt(room, c, y % ROOM_H) !== '.') errors.push(`${room.id}: в шахте лифта ${r.id} клетка ${c},${y % ROOM_H} не пустая`);
       }
     }
+  }
+  return errors;
+}
+
+// Двери и ключи: на номер N на всей карте — ровно одна дверь и ровно один ключ, либо ни того ни другого.
+// Дверь закрывает проём целиком: над ней стена, под ней пол («#» или «=»).
+export function validateDoors(rooms: Map<string, Room>): string[] {
+  const errors: string[] = [];
+  const doors = [0, 0, 0, 0], keys = [0, 0, 0, 0];
+  for (const r of rooms.values()) {
+    for (const d of doorsOf(r)) {
+      doors[d.n]++;
+      const below = r.tiles[d.bottom]?.[d.x];
+      if (r.tiles[d.top - 1]?.[d.x] !== '#' || (below !== '#' && below !== '=')) errors.push(`${r.id}: дверь ${d.n} не закрывает проём от пола до стены`);
+    }
+    for (const i of parseItems(r.meta.items, r.id)) {
+      const n = keyDoor(i.kind);
+      if (n) keys[n]++;
+    }
+  }
+  for (const n of [1, 2, 3]) {
+    if (doors[n] > 1) errors.push(`дверей ${n} на карте ${doors[n]}, нужна одна`);
+    if (keys[n] > 1) errors.push(`ключей ${n} на карте ${keys[n]}, нужен один`);
+    if (doors[n] && !keys[n]) errors.push(`у двери ${n} нет ключа`);
+    if (keys[n] && !doors[n]) errors.push(`ключ ${n} без двери`);
   }
   return errors;
 }

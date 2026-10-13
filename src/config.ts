@@ -69,7 +69,16 @@ export const COMBAT = {
     knife: { speed: 24, gravity: 0, damage: 1 },
     stone: { speed: 16, gravity: 30, damage: 1 },
     wrench: { speed: 18, gravity: 30, damage: 1 },
+    // ключи бросаются как нож, но летят по дуге, как камень
+    key1: { speed: 16, gravity: 30, damage: 1 },
+    key2: { speed: 16, gravity: 30, damage: 1 },
+    key3: { speed: 16, gravity: 30, damage: 1 },
   },
+};
+
+// Двери и ключи: открытая дверь — рамка проёма тусклее закрытой.
+export const DOOR = {
+  frameDim: 0.5, // яркость рамки открытой двери от цвета двери
 };
 
 // Андроид-охранник: скорости — клеток/с, время — с.
@@ -291,6 +300,7 @@ export const SOUNDS: Record<Sfx, Tone[]> = {
   bike: [{ wave: 'sawtooth', f: 70, to: 160, dur: 2.5, gain: 0.22, filter: 'lowpass', cut: 700 }, { wave: 'square', f: 35, to: 80, dur: 2.5, gain: 0.1, filter: 'lowpass', cut: 400 }],
   mast: [hiss(0.6, 0.45, 'lowpass', 1200), { wave: 'square', f: 200, to: 40, dur: 0.4, gain: 0.18 }, { wave: 'triangle', f: 1200, to: 1100, dur: 0.8, gain: 0.07 }],
   seaSplash: [hiss(0.9, 0.45, 'lowpass', 1500), hiss(1.2, 0.35, 'lowpass', 300)],
+  door: [{ wave: 'square', f: 150, to: 70, dur: 0.25, gain: 0.14, filter: 'lowpass', cut: 900 }, hiss(0.3, 0.22, 'lowpass', 700), { wave: 'triangle', f: 600, to: 400, dur: 0.08, gain: 0.08, at: 0.2 }], // засов и тяжёлая створка
   record: [523, 659, 784, 1047].map((f, i) => ({ wave: 'square' as const, f, dur: 0.16, gain: 0.08, at: i * 0.08, filter: 'lowpass' as const, cut: 3000 })), // восходящее арпеджио — место 1
 };
 

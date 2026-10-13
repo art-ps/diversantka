@@ -25,6 +25,7 @@ export interface Strings {
   fenceLive: string;
   killed: string;
   blocked: string;
+  needKey: (n: number) => string; // E у запертой двери без её ключа
   // миссия: главная ЭВМ, щиток, строка итога для буфера обмена
   notEnoughTapes: (n: number, total: number) => string;
   tapesIn: string;
@@ -81,6 +82,7 @@ const RU: Strings = {
   fenceLive: 'ЗАБОР ПОД ТОКОМ',
   killed: 'ВЫВЕДЕН',
   blocked: 'блок',
+  needKey: n => `НУЖЕН КЛЮЧ ${n}`,
   notEnoughTapes: (n, total) => `НЕДОСТАТОЧНО ЛЕНТ ${n}/${total}`,
   tapesIn: 'ЛЕНТЫ ВВЕДЕНЫ',
   accessDenied: 'ДОСТУП ЗАКРЫТ',
@@ -144,6 +146,7 @@ const EN: Strings = {
   fenceLive: 'FENCE IS LIVE',
   killed: 'DOWN',
   blocked: 'block',
+  needKey: n => `NEED KEY ${n}`,
   notEnoughTapes: (n, total) => `NOT ENOUGH TAPES ${n}/${total}`,
   tapesIn: 'TAPES LOADED',
   accessDenied: 'ACCESS DENIED',
