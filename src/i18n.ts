@@ -30,6 +30,9 @@ export interface Strings {
   blocked: string;
   needKey: (n: number) => string; // E у запертой двери без её ключа
   needBomb: string; // E у точки закладки без бомбы в руках
+  goalBomb: string; // задание миссии 2 до закладки: сцена приезда, карта
+  goalEscape: string; // задание миссии 2 после закладки: карта
+  plantHint: string; // над героиней у точки закладки с бомбой в руках
   plantFirst: string; // E у мотоцикла, пока бомба не заложена
   hudFuse: (time: string) => string; // HUD вместо таймера миссии, пока идёт отсчёт бомбы
   // миссия: главная ЭВМ, щиток, строка итога для буфера обмена
@@ -61,8 +64,9 @@ export interface Strings {
   // пауза — карта
   mapTitle: string;
   mapLegend: string;
+  mapLegend2: string; // легенда карты миссии 2
   mapHint: string;
-  mapIcons: Record<'terminal' | 'main' | 'switch' | 'bike', string>;
+  mapIcons: Record<'terminal' | 'main' | 'switch' | 'bike' | 'target', string>;
   // стартовый экран
   titleName: string;
   titleTask: string;
@@ -96,6 +100,9 @@ const RU: Strings = {
   blocked: 'блок',
   needKey: n => `НУЖЕН КЛЮЧ ${n}`,
   needBomb: 'НУЖНА ВЗРЫВЧАТКА',
+  goalBomb: 'ЗАЛОЖИ БОМБУ В РЕАКТОРЕ',
+  goalEscape: 'УХОДИ К МОТОЦИКЛУ',
+  plantHint: 'E — ЗАЛОЖИТЬ',
   plantFirst: 'ЗАЛОЖИ ВЗРЫВЧАТКУ',
   hudFuse: time => `ВЗРЫВ ${time}`,
   notEnoughTapes: (n, total) => `НЕДОСТАТОЧНО ЛЕНТ ${n}/${total}`,
@@ -130,8 +137,9 @@ const RU: Strings = {
   failedHint: 'ПРЫЖОК — ЗАНОВО',
   mapTitle: 'ПАУЗА · КАРТА',
   mapLegend: 'Т ТЕРМИНАЛ  Э ЭВМ  Щ ЩИТОК  Г ГАРАЖ  ▓ ЛЕНТА',
+  mapLegend2: 'Т ТЕРМИНАЛ  Г ГАРАЖ  Р РЕАКТОР',
   mapHint: 'ESC/START — ПРОДОЛЖИТЬ · M — ЗВУК',
-  mapIcons: { terminal: 'Т', main: 'Э', switch: 'Щ', bike: 'Г' },
+  mapIcons: { terminal: 'Т', main: 'Э', switch: 'Щ', bike: 'Г', target: 'Р' },
   titleName: 'ДИВЕРСАНТКА',
   titleTask: `${MISSION.tapes} ЛЕНТ · ЭВМ · ЗАБОР · МОТОЦИКЛ. ${MISSION.time / 60} МИНУТ`,
   titleTask2: `БОМБА · РЕАКТОР · МОТОЦИКЛ. ${MISSIONS[2].time / 60} МИНУТ`,
@@ -169,6 +177,9 @@ const EN: Strings = {
   blocked: 'block',
   needKey: n => `NEED KEY ${n}`,
   needBomb: 'NEED EXPLOSIVES',
+  goalBomb: 'PLANT THE BOMB IN THE REACTOR',
+  goalEscape: 'GET BACK TO THE BIKE',
+  plantHint: 'E — PLANT',
   plantFirst: 'PLANT THE EXPLOSIVES',
   hudFuse: time => `BLAST ${time}`,
   notEnoughTapes: (n, total) => `NOT ENOUGH TAPES ${n}/${total}`,
@@ -203,8 +214,9 @@ const EN: Strings = {
   failedHint: 'JUMP — RESTART',
   mapTitle: 'PAUSED · MAP',
   mapLegend: 'T TERMINAL  C COMPUTER  S SWITCH  G GARAGE  ▓ TAPE',
+  mapLegend2: 'T TERMINAL  G GARAGE  R REACTOR',
   mapHint: 'ESC/START — RESUME · M — SOUND',
-  mapIcons: { terminal: 'T', main: 'C', switch: 'S', bike: 'G' },
+  mapIcons: { terminal: 'T', main: 'C', switch: 'S', bike: 'G', target: 'R' },
   titleName: 'DIVERSANTKA',
   titleTask: `${MISSION.tapes} TAPES · COMPUTER · FENCE · BIKE. ${MISSION.time / 60} MIN`,
   titleTask2: `BOMB · REACTOR · BIKE. ${MISSIONS[2].time / 60} MIN`,

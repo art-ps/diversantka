@@ -41,13 +41,15 @@ export function layoutMap(rooms: Map<string, Room>, root: string): { pos: Map<st
   return { pos, conflicts };
 }
 
-export type MapIcon = 'terminal' | 'main' | 'switch' | 'bike' | 'tape';
+export type MapIcon = 'terminal' | 'main' | 'switch' | 'bike' | 'tape' | 'target';
 
-// Значки комнаты на карте: терминалы, главная ЭВМ, щиток, мотоцикл (гараж), неподобранные ленты (id — как в enterRoom).
-export function mapIcons(room: Room, taken: ReadonlySet<string>): MapIcon[] {
+// Значки комнаты на карте: терминалы, главная ЭВМ, щиток, мотоцикл (гараж), точка закладки, пока бомба не заложена,
+// неподобранные ленты (id — как в enterRoom).
+export function mapIcons(room: Room, taken: ReadonlySet<string>, planted = false): MapIcon[] {
   const out: MapIcon[] = parseTerminals(room.meta.terminals, room.id).map(t => (t.main ? 'main' : 'terminal'));
   if (parsePoints(room.meta.switch, room.id, 'щитка').length) out.push('switch');
   if (parsePoints(room.meta.bike, room.id, 'мотоцикла').length) out.push('bike');
+  if (!planted && parsePoints(room.meta.bomb, room.id, 'точки закладки').length) out.push('target');
   parsePoints(room.meta.tapes, room.id, 'ленты').forEach((_, i) => {
     if (!taken.has(`${room.id}#t${i}`)) out.push('tape');
   });

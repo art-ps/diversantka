@@ -2,6 +2,7 @@ import { ROOM_W } from '../config';
 import type { Game } from '../game';
 import { str } from '../i18n';
 import { layoutMap, mapIcons, type MapIcon } from '../world/map';
+import { parsePoints } from '../world/spawns';
 import type { Color, GlyphBatch } from './glyphs';
 import { PAL } from './palette';
 
@@ -12,7 +13,7 @@ const STEP = 0.6; // шаг букв, как в HUD
 const SLOTS = 4; // значков в блоке комнаты — верхний ряд полклеток
 
 // Цвета значков; буквы — str().mapIcons (первые буквы слов легенды), лента — «▓» во всех языках.
-const ICON_COLOR: Record<MapIcon, Color> = { terminal: PAL.hud, main: PAL.item, switch: PAL.hud, bike: PAL.item, tape: PAL.tape };
+const ICON_COLOR: Record<MapIcon, Color> = { terminal: PAL.hud, main: PAL.item, switch: PAL.hud, bike: PAL.item, tape: PAL.tape, target: PAL.danger };
 const iconChar = (icon: MapIcon) => (icon === 'tape' ? '▓' : str().mapIcons[icon]);
 
 const centered = (b: Pick<GlyphBatch, 'text'>, y: number, s: string, c: Color) => b.text((ROOM_W - s.length * STEP) / 2, y, s, c, STEP);
@@ -22,21 +23,26 @@ export function drawMap(b: Pick<GlyphBatch, 'push' | 'text'>, g: Game, time: num
   const s = str();
   centered(b, 2, s.mapTitle, PAL.hud);
   const { pos } = layoutMap(g.rooms, g.start.room);
-  const seen = [...g.seen].filter(id => pos.has(id));
-  if (seen.length) {
-    const xs = seen.map(id => pos.get(id)!.x), ys = seen.map(id => pos.get(id)!.y);
+  const bomb = g.mission.goal === 'bomb', planted = g.mission.fuse !== null;
+  if (bomb) centered(b, 3, planted ? s.goalEscape : s.goalBomb, PAL.hud);
+  // миссия 2: комната с точкой закладки видна с начала, даже непосещённая
+  const targets = bomb ? [...g.rooms.values()].filter(r => parsePoints(r.meta.bomb, r.id, 'точки закладки').length).map(r => r.id) : [];
+  const shown = [...new Set([...g.seen, ...targets])].filter(id => pos.has(id));
+  if (shown.length) {
+    const xs = shown.map(id => pos.get(id)!.x), ys = shown.map(id => pos.get(id)!.y);
     const minX = Math.min(...xs), minY = Math.min(...ys);
     const w = (Math.max(...xs) - minX) * MAP_PX + 2, h = (Math.max(...ys) - minY) * MAP_PY + 1;
     const ox = Math.floor((MAP_AREA.x0 + MAP_AREA.x1 + 1 - w) / 2) - minX * MAP_PX;
     const oy = Math.floor((MAP_AREA.y0 + MAP_AREA.y1 + 1 - h) / 2) - minY * MAP_PY;
     const blink = Math.floor(time * 3) % 2 === 0;
-    for (const id of seen) {
+    for (const id of shown) {
       const p = pos.get(id)!, room = g.rooms.get(id)!;
       const x = ox + p.x * MAP_PX, y = oy + p.y * MAP_PY;
       const right = room.exits.right, down = room.exits.down;
-      if (right && g.seen.has(right) && pos.get(right)?.x === p.x + 1 && pos.get(right)?.y === p.y) b.push(x + 2, y, '-', PAL.hudDim);
-      if (down && g.seen.has(down) && pos.get(down)?.x === p.x && pos.get(down)?.y === p.y + 1) b.push(x + 0.5, y + 1, '|', PAL.hudDim);
-      const icons = mapIcons(room, g.mission.tapes).slice(0, SLOTS);
+      const mine = g.seen.has(id);
+      if (mine && right && g.seen.has(right) && pos.get(right)?.x === p.x + 1 && pos.get(right)?.y === p.y) b.push(x + 2, y, '-', PAL.hudDim);
+      if (mine && down && g.seen.has(down) && pos.get(down)?.x === p.x && pos.get(down)?.y === p.y + 1) b.push(x + 0.5, y + 1, '|', PAL.hudDim);
+      const icons = (mine ? mapIcons(room, g.mission.tapes, planted) : mapIcons(room, new Set(), planted).filter(i => i === 'target')).slice(0, SLOTS);
       const lit = id === g.roomId && blink;
       for (let j = 0; j < 2; j++) {
         for (let i = 0; i < SLOTS; i++) {
@@ -48,6 +54,6 @@ export function drawMap(b: Pick<GlyphBatch, 'push' | 'text'>, g: Game, time: num
       }
     }
   }
-  centered(b, 22, s.mapLegend, PAL.hudDim);
+  centered(b, 22, bomb ? s.mapLegend2 : s.mapLegend, PAL.hudDim);
   centered(b, 23, s.mapHint, PAL.hudDim);
 }

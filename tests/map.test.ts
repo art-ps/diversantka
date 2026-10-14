@@ -8,6 +8,8 @@ import { drawMap, MAP_AREA } from '../src/render/map';
 import { drawGame } from '../src/render/scene';
 import { layoutMap, mapIcons } from '../src/world/map';
 import type { Room } from '../src/world/room';
+import { MISSIONS } from '../src/missions';
+import { PAL } from '../src/render/palette';
 import { loadRoomsFs, roomOf } from './helpers';
 
 const { mapTitle: MAP_TITLE, mapLegend: MAP_LEGEND, mapHint: MAP_HINT } = STR.ru;
@@ -59,6 +61,12 @@ it('значки: терминал, главная ЭВМ, щиток, гара�
   expect(mapIcons(rooms.get('secret-1')!, none)).toEqual([]);
 });
 
+it('значок реактора: в комнате с точкой закладки, пока бомба не заложена', () => {
+  const room = { ...roomOf({}, {}), id: 'r', meta: { bomb: '20,22' } } as Room;
+  expect(mapIcons(room, new Set())).toEqual(['target']);
+  expect(mapIcons(room, new Set(), true)).toEqual([]);
+});
+
 const collect = (g: ReturnType<typeof createGame>, time: number) => {
   const glyphs: { x: number; y: number; ch: string }[] = [], texts: string[] = [];
   drawMap({ push: (x, y, ch) => { glyphs.push({ x, y, ch }); }, text: (_x, _y, s) => { texts.push(s); } }, g, time);
@@ -94,4 +102,35 @@ it('в паузе кадр — карта и HUD, комнату не рисуе
   drawGame({ push: (_x: number, _y: number, ch: string) => { chars.push(ch); }, text: (_x: number, _y: number, s: string) => { texts.push(s); } } as never, g, 1);
   expect(texts).toContain(MAP_TITLE);
   expect(chars.some(ch => '#%&8'.includes(ch))).toBe(false);
+});
+
+const collectFull = (g: ReturnType<typeof createGame>) => {
+  const pushes: { ch: string; color: unknown }[] = [], texts: string[] = [];
+  drawMap({ push: (_x, _y, ch, color) => { pushes.push({ ch, color }); }, text: (_x, _y, s) => { texts.push(s); } }, g, 0);
+  return { pushes, texts };
+};
+
+it('карта миссии 2: реактор виден с начала, задание и своя легенда; после закладки — «уходи»', () => {
+  const g = createGame(loadRoomsFs('rooms2'), MISSIONS[2].start, 2);
+  g.seen = new Set(['gate']);
+  const a = collectFull(g);
+  expect(a.texts).toContain(STR.ru.goalBomb);
+  expect(a.texts).toContain(STR.ru.mapLegend2);
+  expect(a.texts).not.toContain(MAP_LEGEND);
+  expect(a.pushes.filter(p => p.ch === 'Р' && p.color === PAL.danger)).toHaveLength(1);
+  expect(a.pushes.filter(p => p.ch === '-' || p.ch === '|')).toHaveLength(0); // связей с непосещённым реактором нет
+  g.mission.fuse = 90;
+  const b = collectFull(g);
+  expect(b.texts).toContain(STR.ru.goalEscape);
+  expect(b.texts).not.toContain(STR.ru.goalBomb);
+  expect(b.pushes.some(p => p.ch === 'Р')).toBe(false);
+});
+
+it('карта миссии 1: без задания, прежняя легенда', () => {
+  const g = createGame(loadRoomsFs(), { room: 'lab-1', x: 4, bottom: 22 });
+  g.seen = new Set(['lab-1']);
+  const { texts } = collectFull(g);
+  expect(texts).toContain(MAP_LEGEND);
+  expect(texts).not.toContain(STR.ru.goalBomb);
+  expect(texts).not.toContain(STR.ru.goalEscape);
 });

@@ -27,7 +27,7 @@ const visible = (s: Strings): string[] => [
   ...s.bootLog, s.menuFlamer(ROOM), s.menuTapes, s.menuExit, s.flamerOff(ROOM), s.menuCamera(ROOM), s.cameraOff(ROOM), s.screenHint,
   s.won, ...s.resultRows('15:00', `${N}/${N}`, 999), ...Object.values(s.marks), ...Object.values(s.marksShort), s.best, s.newRecord,
   s.copyHint, s.copiedHint, s.failed, s.failedHint,
-  s.mapTitle, s.mapLegend, s.mapHint, ...Object.values(s.mapIcons),
+  s.mapTitle, s.mapLegend, s.mapHint, ...Object.values(s.mapIcons), s.goalBomb, s.goalEscape, s.plantHint, s.mapLegend2,
   s.titleName, s.titleTask, ...s.titleKeys.flat(), s.titleStart, s.titleFocus,
   s.hudBomb(false) + '12:00', s.hudBomb(true) + '12:00', ...Object.values(s.missionName), s.titleTask2, `${s.titleMission}  1 · 2`,
 ];
@@ -94,7 +94,7 @@ it.each(LANGS)('%s: строки помещаются — HUD, надписи п
   // реплей: подсказка справа; ленты с таймером (сдвинутые левее) всё ещё правее шкалы энергии
   expect(ROOM_W - 1 - hudWidth(s.replayHud) - 0.6 - mid).toBeGreaterThan(1 + hudWidth(s.energy) + 10 * 0.6);
   // по центру экрана, над героиней, внизу справа
-  for (const t of [s.dead, s.liftHint, ...Object.values(s.prologue), s.failed, s.failedHint, s.mapTitle, s.mapLegend, s.mapHint, s.credit]) {
+  for (const t of [s.dead, s.liftHint, ...Object.values(s.prologue), s.failed, s.failedHint, s.mapTitle, s.mapLegend, s.mapHint, s.credit, s.goalBomb, s.goalEscape, s.plantHint, s.mapLegend2]) {
     expect(hudWidth(t), t).toBeLessThanOrEqual(ROOM_W - 2);
   }
   // экран ЭВМ и итог — внутри рамки
