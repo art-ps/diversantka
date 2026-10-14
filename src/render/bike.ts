@@ -1,4 +1,4 @@
-import { BIKE } from '../config';
+import { BIKE, MISSION } from '../config';
 import { J, type Pose } from '../anim/clip';
 import { figureGlyphs, type Glyph } from './figure';
 import type { Color, GlyphBatch } from './glyphs';
@@ -60,6 +60,12 @@ export function bikeGlyphs(x: number, bottom: number, dist: number, dir: 1 | -1 
 
 export function drawBike(b: Pick<GlyphBatch, 'push'>, x: number, bottom: number, dist: number, dir: 1 | -1 = 1): void {
   for (const g of bikeGlyphs(x, bottom, dist, dir)) b.push(g.x - 0.5, g.y - 0.5, g.ch, g.color, g.size);
+}
+
+// Сцена приезда: центр мотоцикла через t с — из-за левого края экрана до стоянки stop, сбрасывая скорость.
+export function arriveBikeX(t: number, stop: number): number {
+  const k = Math.min(1, Math.max(0, t / MISSION.arriveRide));
+  return stop - (1 - k) ** 2 * (stop + BIKE_W);
 }
 
 // Нина в седле: последняя поза приседа, таз на сиденье, кисти на руле, локти чуть вверх.

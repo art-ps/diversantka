@@ -97,6 +97,7 @@ export interface Game {
   gate: number; // решётки комнаты: 0 — подняты, 1 — опущены
   bombSite: Point | null; // точка закладки взрывчатки в комнате («bomb:»)
   missionId: MissionNo; // какая миссия идёт: набор комнат, таймер и цель — MISSIONS[missionId]
+  arrival: number | null; // сцена приезда миссии 2: секунд с её начала; null — сцены нет. Мир и таймер стоят, шаги пишутся
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start, missionId: MissionNo = 1): Game {
@@ -105,7 +106,7 @@ export function createGame(rooms: Map<string, Room>, start: Start, missionId: Mi
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
     items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start, goal, time), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
     lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false, replay: false, board: null, rec: [],
-    doors: [], heldId: null, spent: new Set(), guards: [], cameras: [], gates: [], alarmT: 0, alarmAge: 0, gate: 0, bombSite: null, missionId,
+    doors: [], heldId: null, spent: new Set(), guards: [], cameras: [], gates: [], alarmT: 0, alarmAge: 0, gate: 0, bombSite: null, missionId, arrival: null,
   };
   enterRoom(g, start.room);
   return g;
@@ -118,6 +119,21 @@ export function createPrologue(rooms: Map<string, Room>, title = false): Game {
   g.prologue = { d: PROLOGUE.startD, phase: title ? 'title' : 'fly', t: 0 };
   g.withPrologue = true;
   return g;
+}
+
+// Миссия 2 со сцены приезда: мотоцикл въезжает на стоянку, героиня слезает у старта, затем пошёл таймер.
+// «Заново» в миссии 2 тоже начинается отсюда.
+export function createArrival(rooms: Map<string, Room>): Game {
+  const g = createGame(rooms, MISSIONS[2].start, 2);
+  g.arrival = 0;
+  g.withPrologue = true;
+  return g;
+}
+
+// «Заново» после итога или провала: та же миссия с её начала — пролог, сцена приезда или старт.
+function restart(g: Game): Game {
+  if (!g.withPrologue) return createGame(g.rooms, g.start, g.missionId);
+  return g.missionId === 2 ? createArrival(g.rooms) : createPrologue(g.rooms, true);
 }
 
 // Посадка: место — стартовый чекпоинт, таймер пошёл.
@@ -265,7 +281,7 @@ function stepEnd(g: Game, it: Intent, dt: number): void {
   if (g.endT < shown) return;
   if (t0 < shown && g.board?.place === 1) g.sfx.push('record');
   if (g.mission.result === 'won' && it.usePressed) g.clip = missionResult(g.mission).line;
-  if (it.jumpPressed && g.endT >= shown + MISSION.restartDelay) Object.assign(g, g.withPrologue ? createPrologue(g.rooms, true) : createGame(g.rooms, g.start, g.missionId));
+  if (it.jumpPressed && g.endT >= shown + MISSION.restartDelay) Object.assign(g, restart(g));
 }
 
 // Источник: касание — энергия больше не убывает до конца миссии; чекпоинт этого не откатывает.
@@ -469,6 +485,14 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
       stepPrologue(g, p, it, dt);
       return;
     }
+  }
+  if (g.arrival !== null) {
+    // Сцена приезда: ввод не действует, но шаг пишется — реплей проходит сцену так же.
+    g.rec.push(code);
+    if (g.arrival === 0) g.sfx.push('bike');
+    g.arrival += dt;
+    if (g.arrival > MISSION.arriveTime - dt / 2) g.arrival = null; // ровно arriveTime / DT шагов, без погрешности суммы
+    return;
   }
   if (g.mission.result) {
     stepEnd(g, it, dt);

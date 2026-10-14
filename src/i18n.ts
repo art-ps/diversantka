@@ -1,4 +1,5 @@
 import { MISSION } from './config';
+import type { MissionNo } from './missions';
 
 // Языки игры. Порядок — как в строке выбора на стартовом экране.
 export type Lang = 'en' | 'ru';
@@ -19,6 +20,7 @@ export interface Strings {
   credit: string;
   liftHint: string;
   replayHud: string; // справа в HUD вместо id комнаты, пока идёт реплей по ссылке
+  missionName: Record<MissionNo, string>; // над миром в сцене приезда
   prologue: Record<'title' | 'fly' | 'fall' | 'splash' | 'crash', string>;
   // всплывающие надписи
   tapeFloat: (n: number, total: number) => string;
@@ -83,6 +85,7 @@ const RU: Strings = {
   credit: 'движения: mocap.cs.cmu.edu',
   liftHint: 'E — ВЫЗВАТЬ ЛИФТ',
   replayHud: 'ЗАПИСЬ · ПРОБЕЛ — ИГРАТЬ',
+  missionName: { 1: 'МИССИЯ 1 · БАЗА', 2: 'МИССИЯ 2 · БУНКЕР' },
   prologue: { title: '', fly: 'ПРЫЖОК — ОТЦЕПИТЬСЯ', fall: '', splash: 'В МОРЕ · ЗАНОВО', crash: 'УДАР О МАЧТУ · ЗАНОВО' },
   tapeFloat: (n, total) => `ЛЕНТА ${n}/${total}`,
   sourceFound: 'ИСТОЧНИК НАЙДЕН',
@@ -153,6 +156,7 @@ const EN: Strings = {
   credit: 'motion: mocap.cs.cmu.edu',
   liftHint: 'E — CALL LIFT',
   replayHud: 'REPLAY · SPACE — PLAY',
+  missionName: { 1: 'MISSION 1 · BASE', 2: 'MISSION 2 · BUNKER' },
   prologue: { title: '', fly: 'JUMP — LET GO', fall: '', splash: 'SPLASHDOWN · RETRY', crash: 'HIT THE MAST · RETRY' },
   tapeFloat: (n, total) => `TAPE ${n}/${total}`,
   sourceFound: 'SOURCE FOUND',

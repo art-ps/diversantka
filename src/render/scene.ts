@@ -21,7 +21,7 @@ import { particleAlpha, type Particle } from '../sim/particles';
 import type { Rect } from '../sim/rect';
 import type { Room } from '../world/room';
 import type { ItemKind, Point, TerminalSpawn } from '../world/spawns';
-import { BIKE_DIR, drawBike, ridePose } from './bike';
+import { arriveBikeX, BIKE_DIR, bikeGlyphs, drawBike, ridePose, riderGlyphs } from './bike';
 import { drawFigure } from './figure';
 import { drawGlider, hangPose } from './glider';
 import { drawMap } from './map';
@@ -142,11 +142,22 @@ export function drawTerminals(b: Pick<GlyphBatch, 'push'>, ts: TerminalSpawn[], 
   }
 }
 
+// Идёт езда сцены приезда: мотоцикл с героиней в пути, на стоянке его ещё нет.
+const riding = (g: Game) => g.arrival !== null && g.arrival < MISSION.arriveRide;
+
+// Сцена приезда: мотоцикл фарой вправо въезжает слева до стоянки, героиня в седле.
+export function drawArrival(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number): void {
+  if (!g.bike || !riding(g)) return;
+  const x = arriveBikeX(g.arrival!, g.bike.x);
+  const glyphs = [...bikeGlyphs(x, g.bike.bottom, x - arriveBikeX(0, g.bike.x), 1), ...riderGlyphs(x, g.bike.bottom, RIDER, 1)];
+  for (const s of glyphs) b.push(s.x - 0.5 + ox, s.y - 0.5 + oy, s.ch, s.color, s.size);
+}
+
 // Щиток (горит красным, пока забор под током), мотоцикл, забор.
 export function drawFenceParts(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number, time: number): void {
   const on = !g.mission.fenceOff;
   if (g.panel) b.push(g.panel.x - 0.5 + ox, g.panel.bottom - 2.5 + oy, '▓', on ? PAL.danger : PAL.hud);
-  if (g.bike) drawBike(b, g.bike.x + ox, g.bike.bottom + oy, 0, BIKE_DIR);
+  if (g.bike && !riding(g)) drawBike(b, g.bike.x + ox, g.bike.bottom + oy, 0, g.missionId === 2 ? 1 : BIKE_DIR); // миссия 2 — как приехал
   if (g.fence) {
     for (let y = g.fence.top; y <= g.fence.bottom; y++) {
       const flick = on && Math.floor(time * 15 + y * 7) % 3 === 0;
@@ -271,6 +282,7 @@ function drawNina(b: GlyphBatch, fig: Pick<GlyphBatch, 'push'>, g: Game, ox: num
     drawGlider(b, body.x + body.w / 2 + ox, body.y + body.h + oy, HANG);
     return;
   }
+  if (riding(g)) return; // в седле — рисует drawArrival
   if (!g.nina.dead && blinkOff(g.nina.invulnT, time)) return;
   const pose = currentPose(g.anim, CLIPS);
   const x = body.x + body.w / 2 + ox, y = body.y + body.h + oy;
@@ -343,6 +355,7 @@ function drawHud(b: GlyphBatch, g: Game, time: number): void {
     b.text((ROOM_W - hudWidth(s.dead)) / 2, 12, s.dead, PAL.danger, HUD_STEP);
   }
   if (time < 8) b.text(ROOM_W - 0.5 - hudWidth(s.credit), ROOM_H - 1, s.credit, PAL.hudDim, HUD_STEP);
+  if (g.arrival !== null) b.text((ROOM_W - hudWidth(s.missionName[g.missionId])) / 2, 2, s.missionName[g.missionId], PAL.hud, HUD_STEP);
   const p = g.prologue;
   if (p) {
     const msg = s.prologue[p.phase]; // подсказка в полёте и исход пролога
@@ -418,6 +431,7 @@ function drawWorld(b: GlyphBatch, fig: Pick<GlyphBatch, 'push'>, g: Game, ox: nu
   drawCameras(b, g, liveRoom(g), ox, oy);
   drawLifts(b, g.lifts, g.rooms.get(g.roomId)!, ox, oy, time, hudLabel(g));
   drawFenceParts(b, g, ox, oy, time);
+  drawArrival(b, g, ox, oy);
   drawItems(b, g.items, ox, oy);
   drawBomb(b, g, ox, oy, time);
   drawTapes(b, g.tapes, ox, oy);
