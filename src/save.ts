@@ -1,5 +1,6 @@
 import type { Lang } from './i18n';
 import type { MissionNo } from './missions';
+import type { MissionResult } from './sim/mission';
 
 // Итог между сессиями браузера: пройдена ли миссия, найден ли секрет; звук выключен (M); язык; таблица рекордов.
 // Только флаги и числа, без имён и личных данных. Рекорды второй миссии — под ключом diversantka.records.2.
@@ -22,6 +23,15 @@ export function saveResult(s: Store | undefined, secret: boolean): void {
     if (secret) s?.setItem(SAVE.secret, '1');
   } catch {
     // приватный режим или нет места — игра идёт дальше
+  }
+}
+
+// Миссия 1 пройдена в этом браузере — миссия 2 открыта на стартовом экране. Нет хранилища или оно бросает — закрыта.
+export function loadDone(s: Pick<Storage, 'getItem'> | undefined): boolean {
+  try {
+    return s?.getItem(SAVE.done) === '1';
+  } catch {
+    return false;
   }
 }
 
@@ -103,4 +113,12 @@ export function saveRecord(s: Pick<Storage, 'getItem' | 'setItem'> | undefined, 
     return null; // приватный режим или нет места — игра идёт, места нет
   }
   return i + 1;
+}
+
+// Победа в своей игре (не реплей): миссия 1 пишет «пройдено» (открывает миссию 2) и секрет; рекорд — в таблицу
+// своей миссии. Возвращает таблицу для экрана итогов.
+export function saveWin(s: Pick<Storage, 'getItem' | 'setItem'> | undefined, mission: MissionNo, r: MissionResult): Board {
+  if (mission === 1) saveResult(s, r.secret);
+  const place = saveRecord(s, r, mission);
+  return { records: loadRecords(s, mission), place };
 }

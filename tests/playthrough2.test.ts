@@ -1,10 +1,9 @@
 import { expect, it } from 'vitest';
 import { BOMB, DT, MISSION, NINA } from '../src/config';
-import { createGame, liveRoom, stepGame, type Game } from '../src/game';
+import { createArrival, createGame, liveRoom, stepGame, type Game } from '../src/game';
 import { IDLE, type Intent } from '../src/input/intent';
-import { formatTime, missionResult } from '../src/sim/mission';
-import { packRecord, replayStep, unpackRecord } from '../src/sim/record';
-import { BUNKER_START } from '../src/world';
+import { elapsed, formatTime, missionResult } from '../src/sim/mission';
+import { packRecord, replayStep, unpackReplay } from '../src/sim/record';
 import { tileAt } from '../src/world/room';
 import { loadRoomsFs } from './helpers';
 import { routeDamage } from './reach';
@@ -21,7 +20,7 @@ const pos = (g: Game) => `${g.roomId} ${g.nina.body.x} ${g.nina.body.y} ${g.miss
 
 const cx = (g: Game) => g.nina.body.x + g.nina.body.w / 2;
 const bot = (g: Game) => g.nina.body.y + g.nina.body.h;
-const clock = (g: Game) => MISSION.time - g.mission.timeLeft;
+const clock = (g: Game) => elapsed(g.mission);
 const where = (g: Game) =>
   `${g.roomId} x=${cx(g).toFixed(2)} b=${bot(g).toFixed(2)} st=${g.nina.state} e=${g.nina.energy.toFixed(0)} hits=${g.mission.hits} t=${formatTime(clock(g))} held=${g.nina.held} fuse=${g.mission.fuse?.toFixed(1)}`;
 
@@ -123,8 +122,9 @@ const pick = (g: Game, kind: string) => {
 const use = (g: Game) => step(g, { usePressed: true });
 
 it('бункер проходится: шахта, казармы, склад, лаборатории, сейф, машинный зал, реакторная, вентиляция, выезд', () => {
-  const g = createGame(loadRoomsFs('rooms2'), BUNKER_START);
-  g.mission.goal = 'bomb'; // цель миссии 2 — включит план 5в.3
+  const g = createArrival(loadRoomsFs('rooms2'));
+  run(g, {}, 600, () => g.arrival === null); // сцена приезда — первые шаги записи
+  expect(g.arrival).toBeNull();
   idle(g, 10);
   // въезд: к будке, по люку в шахту; shaft-1: по площадке к люку x8; shaft-2: собака, вправо в казармы
   walkTo(g, 30.5);
@@ -258,9 +258,9 @@ it('запись прохождения бункера воспроизводи�
   expect(won, 'сначала должно пройти прохождение').not.toBeNull();
   const rec = won!.rec;
   expect(rec).toHaveLength(trace.length);
-  const g = createGame(loadRoomsFs('rooms2'), BUNKER_START);
-  g.mission.goal = 'bomb';
-  const r = { rec: await unpackRecord(await packRecord(rec)), i: 0 };
+  const g = createArrival(loadRoomsFs('rooms2'));
+  const r = { ...(await unpackReplay(await packRecord(rec, 2))), i: 0 };
+  expect(r.mission).toBe(2);
   for (let i = 0; i < rec.length; i++) {
     stepGame(g, replayStep(r, g.mission.result !== null)!, DT);
     if (pos(g) !== trace[i]) expect(pos(g), `шаг ${i}`).toBe(trace[i]);

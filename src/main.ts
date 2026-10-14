@@ -1,7 +1,7 @@
 import { ambientOf } from './audio/ambient';
 import { AudioGate } from './audio/gate';
 import { DT, FX, ROOM_H, ROOM_W } from './config';
-import { createPrologue, stepGame } from './game';
+import { startMission, stepGame } from './game';
 import { lang, setLang, str } from './i18n';
 import { InputDevices } from './input/devices';
 import { IDLE, IntentTracker, clearPressed, orPressed } from './input/intent';
@@ -11,10 +11,10 @@ import { Bloom } from './render/bloom';
 import { GlyphBatch } from './render/glyphs';
 import { PAL } from './render/palette';
 import { drawGame } from './render/scene';
-import { loadLang, loadMuted, loadRecords, saveLang, saveMuted, saveRecord, saveResult, storage } from './save';
+import { loadDone, loadLang, loadMuted, loadRecords, saveLang, saveMuted, saveWin, storage } from './save';
 import { missionResult } from './sim/mission';
-import { holdMove, packRecord, quitsReplay, replayStep, replayUrl, shareText, unpackRecord, type Replay } from './sim/record';
-import { loadWorld } from './world';
+import { holdMove, packRecord, quitsReplay, replayStep, replayUrl, shareText, unpackReplay, type Replay } from './sim/record';
+import { worldOf } from './world';
 
 function fail(msg: string) {
   const el = document.getElementById('error')!;
@@ -37,9 +37,9 @@ async function boot() {
   const gl = canvas.getContext('webgl2', { antialias: false, alpha: false });
   if (!gl) return fail(str().noWebgl);
 
-  let rooms;
   try {
-    rooms = loadWorld();
+    worldOf(1); // оба набора комнат проверяются при запуске: ошибка в файле видна сразу, а не при переходе
+    worldOf(2);
   } catch (e) {
     return fail(`Ошибка в файлах комнат:\n${(e as Error).message}`);
   }
@@ -62,19 +62,21 @@ async function boot() {
   let replay: Replay | null = null;
   if (param !== null) {
     try {
-      replay = { rec: await unpackRecord(param), i: 0 };
+      replay = { ...(await unpackReplay(param)), i: 0 };
     } catch {
       dropParam();
     }
   }
-  // Стартовый экран поверх первого кадра пролога; реплей — сразу полёт, как начиналась запись.
-  const game = createPrologue(rooms, replay === null);
+  // Стартовый экран поверх первого кадра пролога; реплей — с начала своей миссии, как начиналась запись
+  // (миссия 2 по ссылке — и без пройденной первой).
+  const game = startMission(replay?.mission ?? 1, replay === null);
+  let unlocked = loadDone(storage()); // миссия 2 открыта на стартовом экране
   let holdLeft = false; // выход из реплея движением: пока клавишу держат, стартовый экран её не видит
   const leaveReplay = () => {
     replay = null;
     holdLeft = true;
     dropParam();
-    Object.assign(game, createPrologue(rooms, true));
+    Object.assign(game, startMission(1, true));
   };
 
   const fit = () => {
@@ -111,6 +113,7 @@ async function boot() {
       leaveReplay();
       it = missed = IDLE; // нажатие, прервавшее реплей, не стартует полёт
     }
+    game.unlocked = unlocked; // после возможного выхода из реплея: новая игра узнаёт об открытой миссии 2 до шагов
     for (let i = 0; i < plan.steps; i++) {
       if (replay) {
         // Запись кончилась: итог есть — досматриваем его, нет (запись обрезана или испорчена) — обычный старт.
@@ -144,10 +147,9 @@ async function boot() {
       saved = true;
       if (replay) game.board = { records: loadRecords(storage(), game.missionId), place: null }; // чужая игра: в таблицу и флаги не пишем
       else {
-        saveResult(storage(), game.mission.secret);
-        const place = saveRecord(storage(), missionResult(game.mission), game.missionId);
-        game.board = { records: loadRecords(storage(), game.missionId), place };
-        share = packRecord(game.rec).then(p => replayUrl(location.href, p), () => null);
+        game.board = saveWin(storage(), game.missionId, missionResult(game.mission));
+        if (game.missionId === 1) unlocked = true; // и без хранилища миссия 2 открыта до конца сессии
+        share = packRecord(game.rec, game.missionId).then(p => replayUrl(location.href, p), () => null);
       }
     }
     if (!game.mission.result) saved = false;

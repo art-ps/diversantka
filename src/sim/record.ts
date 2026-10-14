@@ -1,4 +1,5 @@
 import { IDLE, type Intent } from '../input/intent';
+import type { MissionNo } from '../missions';
 
 // Запись нажатий: по числу на шаг симуляции. Биты 0–8 — флаги в порядке FLAGS, с бита 9 — moveX в сотых
 // со сдвигом +100 (0…200): стик геймпада аналоговый, мир видит ровно то, что записано (stepGame квантует).
@@ -28,8 +29,9 @@ export function decodeIntent(code: number): Intent {
   };
 }
 
-// Сериализация для ссылки: байт версии, затем deflate-raw от пар varint «значение, длина повтора», затем base64url.
-const VERSION = 1;
+// Сериализация для ссылки: байт версии, байт миссии, затем deflate-raw от пар varint «значение, длина повтора», затем
+// base64url. Версия 1 (ссылки до плана 5в.3) — без байта миссии: это миссия 1.
+const VERSION = 2;
 const MAX_STEPS = 500_000; // больше двух часов при 60 Гц — запись заведомо не наша, память не тратим
 
 function pushVarint(out: number[], n: number): void {
@@ -59,7 +61,7 @@ function fromBase64url(s: string): Uint8Array<ArrayBuffer> {
   return out;
 }
 
-export async function packRecord(rec: readonly number[]): Promise<string> {
+export async function packRecord(rec: readonly number[], mission: MissionNo = 1): Promise<string> {
   const raw: number[] = [];
   for (let i = 0; i < rec.length;) {
     let j = i + 1;
@@ -69,20 +71,24 @@ export async function packRecord(rec: readonly number[]): Promise<string> {
     i = j;
   }
   const z = await through(new Uint8Array(raw), new CompressionStream('deflate-raw'));
-  const out = new Uint8Array(z.length + 1);
+  const out = new Uint8Array(z.length + 2);
   out[0] = VERSION;
-  out.set(z, 1);
+  out[1] = mission;
+  out.set(z, 2);
   return toBase64url(out);
 }
 
 const MAX_LINK = 200_000;
 
-// Бросает на любой порче: не base64url, чужая версия, битый deflate, оборванный varint, слишком длинная запись.
-export async function unpackRecord(s: string): Promise<number[]> {
+// Запись и миссия из ссылки. Бросает на любой порче: не base64url, чужая версия, миссия не 1 и не 2, битый deflate,
+// оборванный varint, слишком длинная запись.
+export async function unpackReplay(s: string): Promise<{ rec: number[]; mission: MissionNo }> {
   if (s.length > MAX_LINK) throw new Error('record: too long'); // до декодирования: deflate раздувает ссылку в тысячи раз
   const bytes = fromBase64url(s);
-  if (bytes[0] !== VERSION) throw new Error('record: unknown version');
-  const raw = await through(bytes.slice(1), new DecompressionStream('deflate-raw'));
+  if (bytes[0] !== 1 && bytes[0] !== VERSION) throw new Error('record: unknown version');
+  const mission = bytes[0] === 1 ? 1 : bytes[1];
+  if (mission !== 1 && mission !== 2) throw new Error('record: unknown mission');
+  const raw = await through(bytes.slice(bytes[0] === 1 ? 1 : 2), new DecompressionStream('deflate-raw'));
   const rec: number[] = [];
   let p = 0;
   const varint = (): number => {
@@ -101,8 +107,11 @@ export async function unpackRecord(s: string): Promise<number[]> {
     if (k < 1 || rec.length + k > MAX_STEPS) throw new Error('record: bad run length');
     for (let i = 0; i < k; i++) rec.push(v);
   }
-  return rec;
+  return { rec, mission };
 }
+
+// Только шаги записи, без миссии.
+export const unpackRecord = async (s: string): Promise<number[]> => (await unpackReplay(s)).rec;
 
 // Ссылка на реплей: текущая страница без query и hash, плюс ?r=. На GitHub Pages, артефакте и локально — своя.
 export function replayUrl(href: string, packed: string): string {
@@ -119,12 +128,12 @@ export const shareText = (line: string, url: string | null): string => (url ? `$
 export const quitsReplay = (it: Intent): boolean =>
   it.moveX !== 0 || it.jumpPressed || it.attackPressed || it.throwPressed || it.usePressed;
 
-// Реплей: запись и номер следующего шага.
-export interface Replay { rec: readonly number[]; i: number }
+// Реплей: запись, номер следующего шага и миссия, с начала которой она идёт.
+export interface Replay { rec: readonly number[]; i: number; mission: MissionNo }
 
 // Намерение следующего шага реплея. ended — у миссии есть итог: дальше покой (выезд и экран итогов идут сами).
 // null — запись кончилась без итога (обрезана или чужая): выход в обычный старт.
-export function replayStep(r: Replay, ended: boolean): Intent | null {
+export function replayStep(r: Pick<Replay, 'rec' | 'i'>, ended: boolean): Intent | null {
   if (ended) return IDLE;
   if (r.i >= r.rec.length) return null;
   return decodeIntent(r.rec[r.i++]);

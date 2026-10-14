@@ -128,6 +128,11 @@ export function createPrologue(rooms: Map<string, Room>, title = false): Game {
   return g;
 }
 
+// Начало миссии n: 1 — пролог (title — со стартового экрана), 2 — сцена приезда. Так стартуют запуск и реплей по ссылке.
+export function startMission(n: MissionNo, title = false): Game {
+  return n === 1 ? createPrologue(worldOf(1), title) : createArrival(worldOf(2));
+}
+
 // Миссия 2 со сцены приезда: мотоцикл въезжает на стоянку, героиня слезает у старта, затем пошёл таймер.
 // «Заново» в миссии 2 тоже начинается отсюда.
 export function createArrival(rooms: Map<string, Room>): Game {
@@ -148,6 +153,12 @@ function next(g: Game): Game {
   }
   if (!g.withPrologue) return createGame(g.rooms, g.start, g.missionId);
   return g.missionId === 2 ? createArrival(g.rooms) : createPrologue(g.rooms, true);
+}
+
+// Переход в новую игру на месте: открытая миссия 2 (её ставит main.ts) переходит с ней.
+function become(g: Game, n: Game): void {
+  n.unlocked = g.unlocked;
+  Object.assign(g, n);
 }
 
 // Посадка: место — стартовый чекпоинт, таймер пошёл.
@@ -172,14 +183,14 @@ function stepPrologue(g: Game, p: Prologue, it: Intent, dt: number): void {
     } else if (it.moveX < 0) m.sel = 1;
     else if (it.moveX > 0 && g.unlocked) m.sel = 2;
     if (!it.jumpPressed) return;
-    if (m.sel === 2) Object.assign(g, createArrival(worldOf(2))); // миссия 2 — со сцены приезда, пролога нет
+    if (m.sel === 2) become(g, createArrival(worldOf(2))); // миссия 2 — со сцены приезда, пролога нет
     else p.phase = 'fly'; // это нажатие не отцепляет: полёт начинается с t = 0, окно armTime
     return;
   }
   p.t += dt;
   g.particles = stepParticles(g.particles, dt);
   if (p.phase !== 'fly') {
-    if (p.t >= PROLOGUE.retryDelay) Object.assign(g, createPrologue(g.rooms));
+    if (p.t >= PROLOGUE.retryDelay) become(g, createPrologue(g.rooms));
     return;
   }
   if (g.transition) {
@@ -308,7 +319,7 @@ function stepEnd(g: Game, it: Intent, dt: number): void {
     stepFires(g.fires, [], dt);
   }
   if (g.mission.result === 'won' && it.usePressed) g.clip = missionResult(g.mission).line;
-  if (it.jumpPressed && g.endT >= shown + MISSION.restartDelay) Object.assign(g, next(g));
+  if (it.jumpPressed && g.endT >= shown + MISSION.restartDelay) become(g, next(g));
 }
 
 // Источник: касание — энергия больше не убывает до конца миссии; чекпоинт этого не откатывает.
