@@ -138,6 +138,7 @@ it('бункер проходится: шахта, казармы, склад, �
   log.push(`barracks floor ${where(g)} guards=${g.guards.map(x => x.state)}`);
   walkTo(g, 20.5);
   run(g, {}, 900, () => g.guards[1].facing > 0 && g.guards[1].body.x > 35); // наверх — когда охранник галереи ушёл к краю спиной
+  expect(g.guards[1].facing > 0 && g.guards[1].body.x > 35).toBe(true); // дождались, а не вышли по лимиту шагов
   climb(g, 'up', () => g.nina.state === 'ground' && bot(g) < 15);
   walkTo(g, 35);
   log.push(`barracks gallery ${where(g)} guards=${g.guards.map(x => x.state)}`);
