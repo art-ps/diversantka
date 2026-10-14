@@ -1,5 +1,5 @@
 import { MISSION } from './config';
-import type { MissionNo } from './missions';
+import { MISSIONS, type MissionNo } from './missions';
 
 // Языки игры. Порядок — как в строке выбора на стартовом экране.
 export type Lang = 'en' | 'ru';
@@ -66,6 +66,8 @@ export interface Strings {
   // стартовый экран
   titleName: string;
   titleTask: string;
+  titleTask2: string; // задача миссии 2 — вместо titleTask, когда на стартовом экране выбрана она
+  titleMission: string; // строка выбора миссии «МИССИЯ  1 · 2»
   titleKeys: readonly (readonly [string, string, string])[]; // действие · клавиатура · геймпад; первая строка — шапка
   titleStart: string;
   titleFocus: string;
@@ -122,8 +124,8 @@ const RU: Strings = {
   marksShort: { noDamage: 'БУ', noFight: 'ББ', source: 'И' },
   best: 'ЛУЧШИЕ',
   newRecord: 'НОВЫЙ РЕКОРД',
-  copyHint: 'E/Y — СКОПИРОВАТЬ · ПРЫЖОК — ЗАНОВО',
-  copiedHint: 'СКОПИРОВАНО · ПРЫЖОК — ЗАНОВО',
+  copyHint: 'E/Y — СКОПИРОВАТЬ · ПРЫЖОК — ДАЛЬШЕ',
+  copiedHint: 'СКОПИРОВАНО · ПРЫЖОК — ДАЛЬШЕ',
   failed: 'МИССИЯ ПРОВАЛЕНА',
   failedHint: 'ПРЫЖОК — ЗАНОВО',
   mapTitle: 'ПАУЗА · КАРТА',
@@ -132,6 +134,8 @@ const RU: Strings = {
   mapIcons: { terminal: 'Т', main: 'Э', switch: 'Щ', bike: 'Г' },
   titleName: 'ДИВЕРСАНТКА',
   titleTask: `${MISSION.tapes} ЛЕНТ · ЭВМ · ЗАБОР · МОТОЦИКЛ. ${MISSION.time / 60} МИНУТ`,
+  titleTask2: `БОМБА · РЕАКТОР · МОТОЦИКЛ. ${MISSIONS[2].time / 60} МИНУТ`,
+  titleMission: 'МИССИЯ',
   titleKeys: [
     ['', 'КЛАВИАТУРА', 'ГЕЙМПАД'],
     ['ХОД', 'СТРЕЛКИ/WASD', 'СТИК/КРЕСТ'],
@@ -193,8 +197,8 @@ const EN: Strings = {
   marksShort: { noDamage: 'ND', noFight: 'NF', source: 'S' },
   best: 'BEST',
   newRecord: 'NEW RECORD',
-  copyHint: 'E/Y — COPY · JUMP — RESTART',
-  copiedHint: 'COPIED · JUMP — RESTART',
+  copyHint: 'E/Y — COPY · JUMP — NEXT',
+  copiedHint: 'COPIED · JUMP — NEXT',
   failed: 'MISSION FAILED',
   failedHint: 'JUMP — RESTART',
   mapTitle: 'PAUSED · MAP',
@@ -203,6 +207,8 @@ const EN: Strings = {
   mapIcons: { terminal: 'T', main: 'C', switch: 'S', bike: 'G' },
   titleName: 'DIVERSANTKA',
   titleTask: `${MISSION.tapes} TAPES · COMPUTER · FENCE · BIKE. ${MISSION.time / 60} MIN`,
+  titleTask2: `BOMB · REACTOR · BIKE. ${MISSIONS[2].time / 60} MIN`,
+  titleMission: 'MISSION',
   titleKeys: [
     ['', 'KEYBOARD', 'GAMEPAD'],
     ['MOVE', 'ARROWS/WASD', 'STICK/D-PAD'],

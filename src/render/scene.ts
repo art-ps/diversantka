@@ -498,5 +498,5 @@ export function drawGame(b: GlyphBatch, g: Game, time: number, fig: Pick<GlyphBa
   if (g.nina.dead || failed) drawStatic(b, failed ? FX.staticIn : g.nina.deadT, time);
   drawHud(b, g, time);
   if (failed && (!g.mission.blown || g.endT >= BOMB.blast)) drawFailed(b);
-  if (title) drawTitle(b, time);
+  if (title) drawTitle(b, time, g.menu, g.unlocked);
 }

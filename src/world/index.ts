@@ -18,6 +18,10 @@ const FILES: Record<MissionNo, Record<string, string>> = {
 // Старт второй миссии для тестов карты; описание миссий — src/missions.ts.
 export const BUNKER_START = MISSIONS[2].start;
 
+const loaded: Partial<Record<MissionNo, Map<string, Room>>> = {};
+// Набор комнат миссии, загруженный один раз: переходы между миссиями и «заново» файлы не перечитывают.
+export const worldOf = (n: MissionNo): Map<string, Room> => (loaded[n] ??= loadWorld(n));
+
 export function loadWorld(mission: MissionNo = 1): Map<string, Room> {
   const rooms = new Map<string, Room>();
   for (const [path, text] of Object.entries(FILES[mission])) {

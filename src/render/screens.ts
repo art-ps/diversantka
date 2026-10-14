@@ -7,6 +7,7 @@ import { bootLines, type Screen } from '../sim/terminal';
 import { BIKE_DIR, BIKE_PIPE, bikeGlyphs, riderGlyphs } from './bike';
 import type { Glyph } from './figure';
 import type { Color, GlyphBatch } from './glyphs';
+import type { Menu } from '../game';
 import { PAL } from './palette';
 
 const STEP = 0.6; // шаг букв, как в HUD
@@ -103,27 +104,37 @@ export function drawFailed(b: Pick<GlyphBatch, 'text'>): void {
 export const TITLE_BOX: Box = { x0: 9, x1: 38, y0: 1, y1: 18 };
 // Тексты — str(): название, задача, таблица клавиш (KEYMAP и fromGamepad в src/input/intent.ts), старт, подсказка про фокус.
 export const KEY_COLS = [0, 14, 27]; // начала колонок таблицы, в буквах
-// Над названием — строка выбора языка «< ENGLISH · РУССКИЙ >».
-const LANG_ROW = `< ${LANGS.map(l => LANG_NAMES[l]).join(' · ')} >`;
+// Над названием — строка выбора языка «< ENGLISH · РУССКИЙ >» и под ней строка миссии «МИССИЯ  1 · 2».
+// Миссия 2, пока первая не пройдена, — тусклее остального.
+export const LOCKED: Color = [PAL.hudDim[0] * 0.5, PAL.hudDim[1] * 0.5, PAL.hudDim[2] * 0.5, PAL.hudDim[3]];
 
-export function drawTitle(b: Pick<GlyphBatch, 'push' | 'text'>, time: number): void {
+// menu — фокус и выбранная миссия, unlocked — миссия 2 открыта.
+export function drawTitle(b: Pick<GlyphBatch, 'push' | 'text'>, time: number, menu: Menu = { row: 'lang', sel: 1 }, unlocked = false): void {
   const txt = str(), f = TITLE_BOX, mid = (f.x0 + f.x1 + 1) / 2, left = f.x0 + 2;
   const centered = (y: number, s: string, c: Color, step = STEP) => b.text(mid - (s.length * step) / 2, y, s, c, step);
   drawFrame(b, PAL.hudDim, f);
-  // Выбранный язык — цветом названия, остальное тускло; куски строки идут подряд.
-  let x = mid - (LANG_ROW.length * STEP) / 2;
-  const part = (p: string, c: Color) => {
-    b.text(x, f.y0 + 1, p, c, STEP);
-    x += p.length * STEP;
+  // Строка из кусков подряд, по центру: выбранное — цветом названия, рамка строки в фокусе — ярко, иначе тускло.
+  const row = (y: number, parts: [string, Color][]) => {
+    let x = mid - (parts.reduce((n, [p]) => n + p.length, 0) * STEP) / 2;
+    for (const [p, c] of parts) {
+      b.text(x, y, p, c, STEP);
+      x += p.length * STEP;
+    }
   };
-  part('< ', PAL.hudDim);
-  LANGS.forEach((l, i) => {
-    if (i) part(' · ', PAL.hudDim);
-    part(LANG_NAMES[l], l === lang() ? PAL.item : PAL.hudDim);
-  });
-  part(' >', PAL.hudDim);
+  const frame = (r: Menu['row']) => (menu.row === r ? PAL.hud : PAL.hudDim);
+  row(f.y0 + 1, [
+    ['< ', frame('lang')],
+    ...LANGS.flatMap((l, i): [string, Color][] => [...(i ? [[' · ', frame('lang')] as [string, Color]] : []), [LANG_NAMES[l], l === lang() ? PAL.item : PAL.hudDim]]),
+    [' >', frame('lang')],
+  ]);
+  row(f.y0 + 2, [
+    [`${txt.titleMission}  `, frame('mission')],
+    ['1', menu.sel === 1 ? PAL.item : PAL.hudDim],
+    [' · ', frame('mission')],
+    ['2', !unlocked ? LOCKED : menu.sel === 2 ? PAL.item : PAL.hudDim],
+  ]);
   centered(f.y0 + 3, txt.titleName, PAL.item, 1);
-  centered(f.y0 + 4, txt.titleTask, PAL.hud);
+  centered(f.y0 + 4, menu.sel === 2 ? txt.titleTask2 : txt.titleTask, PAL.hud);
   txt.titleKeys.forEach((row, i) => row.forEach((cell, j) => {
     if (cell) b.text(left + KEY_COLS[j] * STEP, f.y0 + 6 + i, cell, i === 0 || j === 0 ? PAL.hudDim : PAL.hud, STEP);
   }));

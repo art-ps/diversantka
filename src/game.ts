@@ -31,6 +31,7 @@ import { exitFor } from './sim/transition';
 import type { Dir, Room } from './world/room';
 import { setLang, str } from './i18n';
 import { MISSIONS, type MissionNo } from './missions';
+import { worldOf } from './world';
 import { figureGlyphs } from './render/figure';
 import { PAL } from './render/palette';
 import { parseCameras, parseEnemies, parseFence, parseItems, parsePoints, parseTerminals, type AndroidSpawn, type DogSpawn, type Fence, type GuardSpawn, type FlamerSpawn, type Point, type TerminalSpawn } from './world/spawns';
@@ -38,6 +39,9 @@ import { parseCameras, parseEnemies, parseFence, parseItems, parsePoints, parseT
 export { TRANSITION_TIME };
 
 export interface Start { room: string; x: number; bottom: number }
+
+// Стартовый экран: строка в фокусе (вверх/вниз) и выбранная миссия (влево/вправо на строке миссии).
+export interface Menu { row: 'lang' | 'mission'; sel: MissionNo }
 export interface Tape { id: string; x: number; bottom: number }
 // Пролог: d — путь дельтаплана, t — секунд в текущей фазе; title — стартовый экран, дельтаплан ждёт прыжка.
 export interface Prologue { d: number; phase: 'title' | 'fly' | 'fall' | 'splash' | 'crash'; t: number }
@@ -98,6 +102,8 @@ export interface Game {
   bombSite: Point | null; // точка закладки взрывчатки в комнате («bomb:»)
   missionId: MissionNo; // какая миссия идёт: набор комнат, таймер и цель — MISSIONS[missionId]
   arrival: number | null; // сцена приезда миссии 2: секунд с её начала; null — сцены нет. Мир и таймер стоят, шаги пишутся
+  menu: Menu; // стартовый экран: фокус и выбранная миссия
+  unlocked: boolean; // миссия 2 открыта (diversantka.done) — ставит main.ts; без неё на стартовом экране её не выбрать
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start, missionId: MissionNo = 1): Game {
@@ -107,6 +113,7 @@ export function createGame(rooms: Map<string, Room>, start: Start, missionId: Mi
     items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start, goal, time), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
     lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false, replay: false, board: null, rec: [],
     doors: [], heldId: null, spent: new Set(), guards: [], cameras: [], gates: [], alarmT: 0, alarmAge: 0, gate: 0, bombSite: null, missionId, arrival: null,
+    menu: { row: 'lang', sel: 1 }, unlocked: false,
   };
   enterRoom(g, start.room);
   return g;
@@ -130,8 +137,15 @@ export function createArrival(rooms: Map<string, Room>): Game {
   return g;
 }
 
-// «Заново» после итога или провала: та же миссия с её начала — пролог, сцена приезда или старт.
-function restart(g: Game): Game {
+// Прыжок на итоге или провале. Победа в 1 — миссия 2 со сцены приезда; победа в 2 — стартовый экран с фокусом
+// на миссии 2. Гибель и провал — та же миссия с её начала: пролог, сцена приезда или старт.
+function next(g: Game): Game {
+  if (g.mission.result === 'won') {
+    if (g.missionId === 1) return createArrival(worldOf(2));
+    const t = createPrologue(worldOf(1), true);
+    t.menu = { row: 'mission', sel: 2 };
+    return t;
+  }
   if (!g.withPrologue) return createGame(g.rooms, g.start, g.missionId);
   return g.missionId === 2 ? createArrival(g.rooms) : createPrologue(g.rooms, true);
 }
@@ -147,10 +161,19 @@ function beginMission(g: Game): void {
 // Полёт: дельтаплан ведёт сам, прыжок — отцепиться; всплеск и удар — пролог заново.
 function stepPrologue(g: Game, p: Prologue, it: Intent, dt: number): void {
   if (p.phase === 'title') {
-    // Строка «< ENGLISH · РУССКИЙ >»: влево — English, вправо — русский; удержание ничего не листает.
-    if (it.moveX < 0) setLang('en');
-    else if (it.moveX > 0) setLang('ru');
-    if (it.jumpPressed) p.phase = 'fly'; // это нажатие не отцепляет: полёт начинается с t = 0, окно armTime
+    // Вверх/вниз — строка языка или миссии. Язык: влево — English, вправо — русский. Миссия: влево — 1, вправо — 2,
+    // если открыта. Удержание ничего не листает.
+    const m = g.menu;
+    if (it.upPressed) m.row = 'lang';
+    if (it.downPressed) m.row = 'mission';
+    if (m.row === 'lang') {
+      if (it.moveX < 0) setLang('en');
+      else if (it.moveX > 0) setLang('ru');
+    } else if (it.moveX < 0) m.sel = 1;
+    else if (it.moveX > 0 && g.unlocked) m.sel = 2;
+    if (!it.jumpPressed) return;
+    if (m.sel === 2) Object.assign(g, createArrival(worldOf(2))); // миссия 2 — со сцены приезда, пролога нет
+    else p.phase = 'fly'; // это нажатие не отцепляет: полёт начинается с t = 0, окно armTime
     return;
   }
   p.t += dt;
@@ -281,7 +304,7 @@ function stepEnd(g: Game, it: Intent, dt: number): void {
   if (g.endT < shown) return;
   if (t0 < shown && g.board?.place === 1) g.sfx.push('record');
   if (g.mission.result === 'won' && it.usePressed) g.clip = missionResult(g.mission).line;
-  if (it.jumpPressed && g.endT >= shown + MISSION.restartDelay) Object.assign(g, restart(g));
+  if (it.jumpPressed && g.endT >= shown + MISSION.restartDelay) Object.assign(g, next(g));
 }
 
 // Источник: касание — энергия больше не убывает до конца миссии; чекпоинт этого не откатывает.

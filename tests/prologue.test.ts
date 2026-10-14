@@ -141,8 +141,8 @@ it('отцепление в последний кадр перед мачтой 
   expect(g.nina.body.x + g.nina.body.w).toBeLessThanOrEqual(36);
 });
 
-it('после итога или провала «заново» — стартовый экран; прыжок, начавший заново, и удержание его не пропускают', () => {
-  for (const result of ['won', 'failed'] as const) {
+it('после провала «заново» — стартовый экран; прыжок, начавший заново, и удержание его не пропускают', () => {
+  for (const result of ['failed'] as const) { // победа ведёт в миссию 2 — tests/mission-select.test.ts
     const g = fresh();
     flyTo(g, 'roof-1', 15);
     release(g);

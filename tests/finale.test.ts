@@ -35,7 +35,7 @@ it('fence: «x,верх..низ»; пусто — нет забора; крив�
   expect(() => parseFence('38,21..17', 'g')).toThrow('g: плохая запись забора «38,21..17»');
 });
 
-it('порядок в игре: ленты → ЭВМ → щиток → мотоцикл → выезд → итог → заново', () => {
+it('порядок в игре: ленты → ЭВМ → щиток → мотоцикл → выезд → итог → миссия 2', () => {
   const g = createGame(garage(), { room: 'g', x: 10, bottom: 22 });
   standAt(g, 25);
   use(g); // мотоцикл при включённом заборе
@@ -74,11 +74,12 @@ it('порядок в игре: ленты → ЭВМ → щиток → мот�
   jump(g); // рано — итог ещё на экране
   expect(g.mission.result).toBe('won');
   wait(g, MISSION.restartDelay);
-  jump(g);
+  jump(g); // победа в миссии 1 ведёт дальше — в миссию 2 со сцены приезда
   expect(g.mission.result).toBeNull();
-  expect(g.mission.tapes.size).toBe(0);
-  expect(g.mission.timeLeft).toBe(MISSION.time);
-  expect(g.nina.body.x).toBe(10);
+  expect(g.missionId).toBe(2);
+  expect(g.arrival).toBe(0);
+  expect(g.roomId).toBe('gate');
+  expect(g.mission.timeLeft).toBe(12 * 60);
 });
 
 it('таймер 0 — МИССИЯ ПРОВАЛЕНА; прыжок — заново, но не сразу', () => {
