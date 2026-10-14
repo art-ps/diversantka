@@ -64,7 +64,7 @@ function validateControls(rooms: Map<string, Room>): string[] {
   const errors: string[] = [];
   for (const r of rooms.values()) {
     for (const t of parseTerminals(r.meta.terminals, r.id)) {
-      for (const c of t.controls) if (!rooms.has(c)) errors.push(`${r.id}: терминал гасит огнемёты несуществующей комнаты ${c}`);
+      for (const c of t.controls) if (!rooms.has(c)) errors.push(`${r.id}: терминал гасит огнемёты и камеры несуществующей комнаты ${c}`);
     }
   }
   return errors;

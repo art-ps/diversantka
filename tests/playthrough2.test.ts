@@ -137,8 +137,9 @@ it('бункер проходится: шахта, казармы, склад, �
   walkTo(g, 32);
   log.push(`barracks floor ${where(g)} guards=${g.guards.map(x => x.state)}`);
   walkTo(g, 20.5);
+  run(g, {}, 900, () => g.guards[1].facing > 0 && g.guards[1].body.x > 35); // наверх — когда охранник галереи ушёл к краю спиной
   climb(g, 'up', () => g.nina.state === 'ground' && bot(g) < 15);
-  walkTo(g, 32);
+  walkTo(g, 35);
   log.push(`barracks gallery ${where(g)} guards=${g.guards.map(x => x.state)}`);
   exitTo(g, 1, 'store');
   // склад: с галереи по лестнице x9 вниз, охранник, терминал 1 гасит камеры лабораторий и огнемёт lab-b; ключ 1 на стеллаже
@@ -291,4 +292,27 @@ it('гибель с бомбой в руках: бомба снова на по�
   expect(g.mission.fuse).toBeNull();
   const reach = routeDamage(rooms, [start], new Set([1, 2]));
   expect([...reach.keys()].some(k => k.startsWith('S|reactor|') && k.endsWith('|22') && Math.abs(Number(k.split('|')[2]) + 1 - 20) <= MISSION.useRange)).toBe(true);
+});
+
+it('гибель с бомбой в другой комнате: после респауна бомба снова в сейфе, ровно одна, руки пусты', () => {
+  const rooms = loadRoomsFs('rooms2');
+  const g = createGame(rooms, { room: 'vault', x: 20 - NINA.w / 2, bottom: 20 }); // чекпоинт — постамент сейфа
+  g.mission.goal = 'bomb';
+  g.mission.doorsOpen = new Set(['vault#1']);
+  idle(g, 10);
+  pick(g, 'bomb');
+  walkTo(g, 25);
+  walkTo(g, 34.5);
+  climb(g, 'down', () => g.roomId === 'engine-1' && g.nina.state === 'ground');
+  expect(g.nina.held).toBe('bomb');
+  g.nina.dead = true;
+  g.nina.deadT = NINA.respawnDelay;
+  stepGame(g, { ...IDLE, jump: true, jumpPressed: true }, DT);
+  expect(g.nina.dead).toBe(false);
+  expect(g.roomId).toBe('vault');
+  expect(g.nina.held).toBeNull();
+  expect(g.heldId).toBeNull();
+  const bombs = g.items.filter(i => i.kind === 'bomb');
+  expect(bombs).toHaveLength(1);
+  expect([bombs[0].x, bombs[0].bottom]).toEqual([20, 20]);
 });

@@ -1,7 +1,7 @@
 id: engine-2
 exits: left=reactor right=engine-1 up=- down=-
 enemies: flamer@24,18.5 dir=left ; guard@32,22 patrol=30..35
-cameras: 18,2 arc=-40..40 period=5
+cameras: 18,2 arc=-40..40 period=6
 ambient: hum
 ---
 ########################################

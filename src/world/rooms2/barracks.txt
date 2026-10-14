@@ -1,6 +1,6 @@
 id: barracks
 exits: left=shaft-2 right=store up=- down=-
-enemies: guard@30,22 patrol=24..34 ; guard@28,14 patrol=24..34
+enemies: guard@30,22 patrol=24..34 ; guard@30,14 patrol=30..36
 ambient: hum
 ---
 ########################################

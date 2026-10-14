@@ -1,7 +1,7 @@
 id: lab-a
 exits: left=shaft-3 right=lab-b up=- down=-
 enemies: android@18,22 patrol=8..28
-cameras: 18,1 arc=-45..45 period=4
+cameras: 18,1 arc=-45..45 period=8
 ambient: hum
 ---
 ########################################

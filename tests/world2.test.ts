@@ -6,6 +6,7 @@ import { IDLE, type Intent } from '../src/input/intent';
 import { CHARSET } from '../src/render/atlas';
 import { drawMap, MAP_AREA, MAP_PX, MAP_PY } from '../src/render/map';
 import { drawGame } from '../src/render/scene';
+import { isSolid } from '../src/sim/physics';
 import { BUNKER_START, loadWorld, validateCameras, validateGates, validateMission } from '../src/world';
 import { layoutMap } from '../src/world/map';
 import { tileAt, type Room } from '../src/world/room';
@@ -58,7 +59,21 @@ it('старт бункера — въезд gate, мотоцикл там же,
   const gate = loadRoomsFs('rooms2').get('gate')!;
   expect(BUNKER_START.room).toBe('gate');
   expect(gate.meta.bike).toBe('5,22');
+  expect(parsePoints(gate.meta.bike, 'gate', 'мотоцикла')[0].x).toBeLessThan(BUNKER_START.x);
   expect(BUNKER_START.bottom).toBe(22);
+  // старт стоит на полу: клетка под ногами непроходима, над ней — проходима
+  expect(isSolid(tileAt(gate, BUNKER_START.x, BUNKER_START.bottom))).toBe(true);
+  expect(isSolid(tileAt(gate, BUNKER_START.x, BUNKER_START.bottom - 1))).toBe(false);
+});
+
+it('lab-a: камера не погашена — стоящая на открытом полу под лучом поднимает тревогу за один период', () => {
+  const period = parseCameras(loadRoomsFs('rooms2').get('lab-a')!.meta.cameras, 'lab-a')[0].period;
+  for (const x of [17, 30]) {
+    const g = at('lab-a', x, 22);
+    expect(g.mission.camerasOff.has('lab-a')).toBe(false);
+    run(g, {}, Math.round(period / DT), () => g.alarmT > 0);
+    expect(g.alarmT, `x=${x}`).toBeGreaterThan(0);
+  }
 });
 
 it('validateMission(bomb): одна точка закладки, одна бомба, мотоцикл в стартовой комнате; ленты не нужны', () => {
@@ -72,7 +87,7 @@ it('validateMission(bomb): одна точка закладки, одна бом
     ['b', R('b', {}, { bike: '4,22' })],
   ]);
   expect(validateMission(two, 'bomb', 'a')).toEqual([
-    'a: терминал гасит огнемёты несуществующей комнаты zz',
+    'a: терминал гасит огнемёты и камеры несуществующей комнаты zz',
     'точек закладки на карте 2, нужна одна',
     'бомб на карте 2, нужна одна',
     'мотоцикл в b, а нужен в стартовой комнате a',
