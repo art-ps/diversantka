@@ -7,6 +7,8 @@ import { MISSIONS } from '../src/missions';
 import { CHARSET } from '../src/render/atlas';
 import { arriveBikeX, BIKE_W } from '../src/render/bike';
 import { drawGame } from '../src/render/scene';
+import { createAndroid } from '../src/sim/android';
+import { createGuard } from '../src/sim/guard';
 import { elapsed } from '../src/sim/mission';
 import { decodeIntent } from '../src/sim/record';
 import { loadRoomsFs } from './helpers';
@@ -57,6 +59,23 @@ describe('сцена приезда', () => {
     stepGame(g, I({ moveX: 1 }), DT);
     expect(g.mission.timeLeft).toBeCloseTo(MISSIONS[2].time - DT, 9);
     expect(g.nina.body.x).toBeGreaterThan(x);
+  });
+
+  it('мир стоит: андроид и охранник в комнате не двигаются и не меняют состояние за сцену', () => {
+    const g = arrival();
+    const b = g.nina.body, spot = { x: b.x + 2, bottom: b.y + b.h, patrol: [b.x - 4, b.x + 8] as [number, number] };
+    g.androids.push(createAndroid('t#a', { kind: 'android', ...spot }));
+    g.guards.push(createGuard('t#g', { kind: 'guard', ...spot }));
+    const snap = () => JSON.stringify([g.androids, g.guards]);
+    const before = snap();
+    for (let i = 0; i < ARRIVE_STEPS; i++) stepGame(g, IDLE, DT);
+    expect(g.arrival).toBeNull();
+    expect(snap()).toBe(before);
+  });
+
+  it('названия миссий: ru и en', () => {
+    expect(STR.en.missionName[2]).toBe('MISSION 2 · BUNKER');
+    expect(STR.ru.missionName[2]).toBe('МИССИЯ 2 · БУНКЕР');
   });
 
   it('запись сцены воспроизводится: та же запись — то же состояние после сцены', () => {

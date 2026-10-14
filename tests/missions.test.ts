@@ -89,6 +89,18 @@ describe('часы миссии', () => {
     }
   });
 
+  it('таймер на нуле с некратным шагом: часы растут на DT каждый шаг, включая шаг перехода через ноль', () => {
+    const m = createMission(START, 'bomb', 1.005);
+    plantBomb(m);
+    for (let i = 0; i < 200; i++) {
+      const e = elapsed(m);
+      tickTimer(m, DT);
+      expect(elapsed(m), `шаг ${i}`).toBeCloseTo(e + DT, 12);
+    }
+    expect(m.timeLeft).toBe(0);
+    expect(m.result).toBeNull();
+  });
+
   it('после итога стоят; чекпоинт откатывает их вместе с таймером', () => {
     const m = createMission(START);
     tickTimer(m, 30);

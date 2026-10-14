@@ -133,8 +133,8 @@ export function drawTitle(b: Pick<GlyphBatch, 'push' | 'text'>, time: number, me
     [' · ', frame('mission')],
     ['2', !unlocked ? LOCKED : menu.sel === 2 ? PAL.item : PAL.hudDim],
   ]);
-  centered(f.y0 + 3, txt.titleName, PAL.item, 1);
-  centered(f.y0 + 4, menu.sel === 2 ? txt.titleTask2 : txt.titleTask, PAL.hud);
+  centered(f.y0 + 4, txt.titleName, PAL.item, 1);
+  centered(f.y0 + 5, menu.sel === 2 ? txt.titleTask2 : txt.titleTask, PAL.hud);
   txt.titleKeys.forEach((row, i) => row.forEach((cell, j) => {
     if (cell) b.text(left + KEY_COLS[j] * STEP, f.y0 + 6 + i, cell, i === 0 || j === 0 ? PAL.hudDim : PAL.hud, STEP);
   }));

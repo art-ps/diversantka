@@ -35,6 +35,18 @@ it('стартовый экран: название, задача, таблиц�
   for (const p of s.pushes) expect(CHARSET).toContain(p.ch);
 });
 
+it('стартовый экран: между строкой миссии и названием пустая строка; подсказки на своих строках под таблицей', () => {
+  const s = shot(title(), ON);
+  const y = (str: string) => s.texts.find(t => t.s === str)!.y;
+  expect(y(TITLE_NAME)).toBe(B.y0 + 4);
+  expect(y(TITLE_TASK)).toBe(B.y0 + 5);
+  expect(y(TITLE_KEYS[0][1])).toBe(B.y0 + 6);
+  expect(y(TITLE_KEYS[TITLE_KEYS.length - 1][0])).toBe(B.y0 + 6 + TITLE_KEYS.length - 1);
+  expect(y(TITLE_START)).toBe(B.y1 - 2);
+  expect(y(TITLE_FOCUS)).toBe(B.y1 - 1);
+  expect(s.texts.filter(t => t.y === B.y0 + 3)).toEqual([]);
+});
+
 it('«ПРОБЕЛ — НАЧАТЬ» мигает с частотой TITLE.blinkHz; остальное горит ровно', () => {
   const on = shot(title(), ON).strings, off = shot(title(), OFF).strings;
   expect(on).toContain(TITLE_START);

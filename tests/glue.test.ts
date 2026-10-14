@@ -50,7 +50,9 @@ describe('сквозной путь: победа 1 → Пробел → мис�
     run(g, IDLE, Math.round(MISSION.arriveTime / DT));
     expect(g.arrival).toBeNull();
     expect(g.mission.timeLeft).toBe(MISSIONS[2].time);
-    stepGame(g, I({ usePressed: true }), DT); // у мотоцикла без бомбы — не едет
+    ride(g); // у мотоцикла без бомбы — не едет
+    expect(g.mission.result).toBeNull();
+    expect(g.endT).toBe(0);
     run(g, IDLE, 60);
     plantBomb(g.mission);
     ride(g);
