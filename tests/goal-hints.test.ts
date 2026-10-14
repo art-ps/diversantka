@@ -67,6 +67,15 @@ describe('подсказки цели в комнате', () => {
     expect(plantHint(g)).toBe(false);
   });
 
+  it('бомба в руках у точки: v не рисуется, пока горит подсказка', () => {
+    const g = game();
+    g.nina.held = 'bomb';
+    standAt(g, 20);
+    expect(plantHint(g)).toBe(true);
+    expect(has(g, 'v', [0, 0.3])).toBe(false);
+    expect(shot(g).texts).toContain(STR.ru.plantHint);
+  });
+
   it('после закладки: нет X, нет v, нет подсказки', () => {
     const g = game();
     g.nina.held = 'bomb';

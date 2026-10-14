@@ -409,7 +409,7 @@ export function drawBomb(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: n
   const s = g.bombSite, blink = Math.floor(time * 4) % 2;
   if (g.mission.fuse === null) {
     b.push(s.x - 0.5 + ox, s.bottom - 0.75 + oy, 'X', PAL.danger, 0.5);
-    if (g.nina.held === 'bomb' && !blink) b.push(s.x - 0.5 + ox, s.bottom - 2.25 + oy, 'v', PAL.danger, 0.5);
+    if (g.nina.held === 'bomb' && !blink && !plantHint(g)) b.push(s.x - 0.5 + ox, s.bottom - 2.25 + oy, 'v', PAL.danger, 0.5);
     return;
   }
   if (!blink) b.push(s.x - 0.5 + ox, s.bottom - 0.75 + oy, '@', PAL.danger, 0.5);
