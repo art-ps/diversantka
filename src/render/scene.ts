@@ -4,7 +4,7 @@ import { J } from '../anim/clip';
 import { dogGlyphs } from '../anim/dog';
 import { simplePose } from '../anim/simple';
 import { BOMB, CAMERA, DOOR, FX, GUARD, LIFT, MISSION, NINA, ROOM_H, ROOM_W, SOURCE } from '../config';
-import { liftHint, liveRoom, TRANSITION_TIME, type Game } from '../game';
+import { liftHint, liveRoom, plantHint, TRANSITION_TIME, type Game } from '../game';
 import { LANGS, STR, str, type Strings } from '../i18n';
 import { fireCells, heatColor, type Fire } from '../fx/fires';
 import { HEAT_RAMP } from '../fx/heat';
@@ -219,8 +219,8 @@ export function drawLifts(b: Pick<GlyphBatch, 'push'>, lifts: Lift[], room: Room
 }
 
 // Подсказка над головой героини, по центру над ней, не за краем экрана.
-export function drawLiftHint(b: Pick<GlyphBatch, 'text'>, g: Game, ox: number, oy: number): void {
-  const s = str().liftHint, n = g.nina.body, w = hudWidth(s);
+export function drawHint(b: Pick<GlyphBatch, 'text'>, g: Game, ox: number, oy: number, s: string): void {
+  const n = g.nina.body, w = hudWidth(s);
   const x = Math.min(Math.max(n.x + n.w / 2 - w / 2, 0.5), ROOM_W - 0.5 - w);
   b.text(x + ox, n.y - 1.5 + oy, s, PAL.hud, HUD_STEP);
 }
@@ -357,6 +357,7 @@ function drawHud(b: GlyphBatch, g: Game, time: number): void {
   }
   if (time < 8) b.text(ROOM_W - 0.5 - hudWidth(s.credit), ROOM_H - 1, s.credit, PAL.hudDim, HUD_STEP);
   if (g.arrival !== null) b.text((ROOM_W - hudWidth(s.missionName[g.missionId])) / 2, 2, s.missionName[g.missionId], PAL.hud, HUD_STEP);
+  if (g.arrival !== null && g.mission.goal === 'bomb') b.text((ROOM_W - hudWidth(s.goalBomb)) / 2, 3, s.goalBomb, PAL.hud, HUD_STEP);
   const p = g.prologue;
   if (p) {
     const msg = s.prologue[p.phase]; // подсказка в полёте и исход пролога
@@ -402,10 +403,16 @@ export function drawGates(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: 
   }
 }
 
-// Заложенная бомба у точки закладки — мигающий «@».
+// Точка закладки: до закладки — метка «X» на полу, с бомбой в руках над ней мигает «v»; заложена — мигающий «@».
 export function drawBomb(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number, time: number): void {
-  if (!g.bombSite || g.mission.fuse === null || Math.floor(time * 4) % 2) return;
-  b.push(g.bombSite.x - 0.5 + ox, g.bombSite.bottom - 0.75 + oy, '@', PAL.danger, 0.5);
+  if (!g.bombSite) return;
+  const s = g.bombSite, blink = Math.floor(time * 4) % 2;
+  if (g.mission.fuse === null) {
+    b.push(s.x - 0.5 + ox, s.bottom - 0.75 + oy, 'X', PAL.danger, 0.5);
+    if (g.nina.held === 'bomb' && !blink) b.push(s.x - 0.5 + ox, s.bottom - 2.25 + oy, 'v', PAL.danger, 0.5);
+    return;
+  }
+  if (!blink) b.push(s.x - 0.5 + ox, s.bottom - 0.75 + oy, '@', PAL.danger, 0.5);
 }
 
 // Взрыв: за BOMB.blast с экран снизу вверх заливает огонь (символы и цвета поля жара).
@@ -444,7 +451,8 @@ function drawWorld(b: GlyphBatch, fig: Pick<GlyphBatch, 'push'>, g: Game, ox: nu
   drawParticles(b, g.particles, ox, oy);
   drawNina(b, fig, g, ox, oy, time);
   drawFloaters(b, g.floaters, ox, oy);
-  if (liftHint(g)) drawLiftHint(b, g, ox, oy);
+  if (liftHint(g)) drawHint(b, g, ox, oy, str().liftHint);
+  else if (plantHint(g)) drawHint(b, g, ox, oy, str().plantHint);
 }
 
 // Пропускает символы с центром в рамке f: под текстом стартового экрана нет ни дождя, ни моря, ни сетки

@@ -426,6 +426,11 @@ function callLift(g: Game): void {
 export const liftHint = (g: Game): boolean =>
   !g.prologue && !g.paused && !g.screen && !g.transition && !g.nina.dead && !g.mission.result && liftCall(g) !== null;
 
+// Подсказка «E — ЗАЛОЖИТЬ» над героиней: E сейчас заложит бомбу, и мир идёт.
+export const plantHint = (g: Game): boolean =>
+  !g.prologue && g.arrival === null && !g.paused && !g.screen && !g.transition && !g.nina.dead && !g.mission.result &&
+  g.bombSite !== null && g.mission.fuse === null && g.nina.held === 'bomb' && near(g.nina, g.bombSite);
+
 // Лифты: удержание вверх/вниз на платформе — к следующему этажу. Платформа везёт стоящую героиню и лежащие
 // предметы; поднимаясь, подхватывает падающую героиню, чьи ноги прошла.
 function stepLifts(g: Game, it: Intent, dt: number): void {
