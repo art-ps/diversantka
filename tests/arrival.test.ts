@@ -7,6 +7,7 @@ import { MISSIONS } from '../src/missions';
 import { CHARSET } from '../src/render/atlas';
 import { arriveBikeX, BIKE_W } from '../src/render/bike';
 import { drawGame } from '../src/render/scene';
+import { elapsed } from '../src/sim/mission';
 import { decodeIntent } from '../src/sim/record';
 import { loadRoomsFs } from './helpers';
 
@@ -51,7 +52,7 @@ describe('сцена приезда', () => {
     expect(g.screen).toBeNull();
     expect(g.mission.result).toBeNull();
     expect(g.mission.timeLeft).toBe(MISSIONS[2].time);
-    expect(g.mission.clock).toBe(0);
+    expect(elapsed(g.mission)).toBe(0);
     expect(g.rec).toHaveLength(ARRIVE_STEPS);
     stepGame(g, I({ moveX: 1 }), DT);
     expect(g.mission.timeLeft).toBeCloseTo(MISSIONS[2].time - DT, 9);
@@ -65,7 +66,7 @@ describe('сцена приезда', () => {
     for (const c of a.rec) stepGame(b, decodeIntent(c), DT);
     expect(b.rec).toEqual(a.rec);
     expect(b.nina.body).toEqual(a.nina.body);
-    expect(b.mission.clock).toBe(a.mission.clock);
+    expect(elapsed(b.mission)).toBe(elapsed(a.mission));
   });
 
   it('мотоцикл въезжает слева и встаёт на стоянку; героиня в седле, после езды — рядом, мотоцикл фарой вправо', () => {

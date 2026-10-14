@@ -6,7 +6,7 @@ import { IDLE, type Intent } from '../src/input/intent';
 import { MISSIONS } from '../src/missions';
 import { drawGame, hudCell, hudWidth } from '../src/render/scene';
 import { gliderAt, ROUTE } from '../src/sim/glider';
-import { createMission, elapsed, missionResult, plantBomb, restoreCheckpoint, saveCheckpoint, tickTimer } from '../src/sim/mission';
+import { createMission, elapsed, formatTime, missionResult, plantBomb, restoreCheckpoint, saveCheckpoint, tickTimer } from '../src/sim/mission';
 import { BUNKER_START, validateMission } from '../src/world';
 import type { Room } from '../src/world/room';
 import { FLOOR, loadRoomsFs, roomOf } from './helpers';
@@ -46,10 +46,26 @@ describe('MISSIONS', () => {
 });
 
 describe('часы миссии', () => {
+  // Время итога — побитово «длина таймера − остаток», как до часов: накопленная сумма dt расходится в младших битах,
+  // и Math.ceil в formatTime на границе секунды дал бы +1 с.
+  const ticks = (m: ReturnType<typeof createMission>, n: number) => { for (let i = 0; i < n; i++) tickTimer(m, DT); };
+  for (const [goal, time, ks] of [['tapes', MISSION.time, [1, 2, 59, 600, 899]], ['bomb', MISSIONS[2].time, [1, 61, 719]]] as const) {
+    it(`время итога (${time} с) — побитово таймер минус остаток, на границе секунды и в её середине`, () => {
+      for (const k of ks) {
+        const m = createMission(START, goal, time);
+        ticks(m, 60 * k);
+        expect(missionResult(m).seconds, `k=${k}`).toBe(time - m.timeLeft);
+        expect(missionResult(m).time, `k=${k}`).toBe(formatTime(k));
+        ticks(m, 30);
+        expect(missionResult(m).seconds, `k=${k}.5`).toBe(time - m.timeLeft);
+        expect(missionResult(m).time, `k=${k}.5`).toBe(formatTime(k + 1));
+      }
+    });
+  }
+
   it('идут с таймером; итог миссии 2 считает от часов, а не от 15 минут', () => {
     const m = createMission(START, 'bomb', 12 * 60);
     for (let i = 0; i < 60; i++) tickTimer(m, 1);
-    expect(m.clock).toBe(60);
     expect(elapsed(m)).toBe(60);
     expect(m.timeLeft).toBe(11 * 60);
     m.result = 'won';
@@ -64,7 +80,13 @@ describe('часы миссии', () => {
     expect(m.timeLeft).toBe(0);
     expect(m.result).toBeNull();
     tickTimer(m, 5);
-    expect(m.clock).toBe(15);
+    expect(elapsed(m)).toBe(15);
+    for (let i = 1; i <= 60; i++) {
+      const e = elapsed(m);
+      tickTimer(m, DT);
+      expect(elapsed(m)).toBeCloseTo(e + DT, 12);
+      expect(m.timeLeft).toBe(0);
+    }
   });
 
   it('после итога стоят; чекпоинт откатывает их вместе с таймером', () => {
@@ -73,29 +95,41 @@ describe('часы миссии', () => {
     saveCheckpoint(m, START);
     tickTimer(m, 20);
     restoreCheckpoint(m);
-    expect(m.clock).toBe(30);
+    expect(elapsed(m)).toBe(30);
     expect(m.timeLeft).toBe(MISSION.time - 30);
     m.result = 'failed';
     tickTimer(m, 5);
-    expect(m.clock).toBe(30);
+    expect(elapsed(m)).toBe(30);
+  });
+
+  it('чекпоинт откатывает и перебег после нуля таймера', () => {
+    const m = createMission(START, 'bomb', 10);
+    plantBomb(m);
+    tickTimer(m, 12);
+    saveCheckpoint(m, START);
+    tickTimer(m, 5);
+    expect(elapsed(m)).toBe(17);
+    restoreCheckpoint(m);
+    expect(m.timeLeft).toBe(0);
+    expect(elapsed(m)).toBe(12);
   });
 
   it('пауза часы не двигает, экран ЭВМ — двигает', () => {
     const g = createGame(new Map([['a', R('a', { terminals: '10,22' })]]), START);
     run(g, IDLE, 10);
-    const c0 = g.mission.clock;
+    const c0 = elapsed(g.mission);
     stepGame(g, I({ pausePressed: true }), DT);
     run(g, IDLE, 60);
-    expect(g.mission.clock).toBe(c0);
+    expect(elapsed(g.mission)).toBe(c0);
     stepGame(g, I({ pausePressed: true }), DT);
     g.nina.body.x = 10 - NINA.w / 2;
     run(g, IDLE, 5);
     stepGame(g, I({ usePressed: true }), DT);
     expect(g.screen).not.toBeNull();
-    const c1 = g.mission.clock;
+    const c1 = elapsed(g.mission);
     run(g, IDLE, 60);
     expect(g.screen).not.toBeNull();
-    expect(g.mission.clock).toBeCloseTo(c1 + 1, 6);
+    expect(elapsed(g.mission)).toBeCloseTo(c1 + 1, 6);
   });
 });
 
@@ -159,7 +193,7 @@ describe('HUD миссии 2', () => {
           const label = replay ? STR[l].replayHud : g.roomId;
           const right = t.find(x => x.s === label)!;
           const w = hudWidth(STR[l].hudBomb(held) + '12:00');
-          expect(obj.x, `${l} ${held} ${replay}`).toBeGreaterThanOrEqual(1 + hudWidth(STR[l].energy) + 10 * 0.6);
+          expect(obj.x, `${l} ${held} ${replay}`).toBeGreaterThanOrEqual(1 + hudWidth(STR[l].energy) + hudWidth('█'.repeat(10)));
           expect(obj.x + w, `${l} ${held} ${replay}`).toBeLessThanOrEqual(right.x);
           if (!replay) for (let x = Math.round(obj.x); x <= Math.round(obj.x + w - 0.6); x++) expect(hudCell(x, 0, label, 1), `${l} ${x}`).toBe(true);
         }

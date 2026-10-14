@@ -54,8 +54,9 @@ const widest = (f: (s: Strings) => string) => Math.max(...LANGS.map(l => hudWidt
 const ENERGY_W = widest(s => s.energy);
 const CREDIT_W = widest(s => s.credit);
 const LEFT_END = 1 + ENERGY_W + 10 * HUD_STEP;
-// Ленты (или бомба миссии 2) и таймер — по центру строки 0.
-const MID_HALF = Math.ceil(Math.max(...[(s: Strings) => s.hudTapes(0, MISSION.tapes), (s: Strings) => s.hudBomb(false), (s: Strings) => s.hudBomb(true)].map(f => widest(s => f(s) + '00:00'))) / 2);
+// Ленты (или бомба миссии 2) и таймер — по центру строки 0; ширина середины — по самой длинной из подписей.
+const midWidth = (s: Strings) => Math.max(...[s.hudTapes(0, MISSION.tapes), s.hudBomb(false), s.hudBomb(true)].map(t => hudWidth(t + '00:00')));
+const MID_HALF = Math.ceil(Math.max(...LANGS.map(l => midWidth(STR[l]))) / 2);
 
 export const hudCell = (x: number, y: number, hudId: string, time: number) =>
   (Math.round(y) === 0 &&
