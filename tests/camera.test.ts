@@ -332,7 +332,7 @@ describe('качающаяся камера: ширина луча и остыв
     for (const [dir, phases] of [[1, [4, 5, 6, 7]], [-1, [0, 1, 2, 3]]] as const) {
       for (const t0 of phases) {
         const g = swing(dir > 0 ? 2 : 38);
-        g.mission.timeLeft -= t0;
+        g.mission.clock += t0;
         g.nina.body.vx = dir * NINA.runSpeed;
         hold(g, { moveX: dir }, 36 / NINA.runSpeed);
         expect(g.alarmT, `t0=${t0} dir=${dir}`).toBe(0);

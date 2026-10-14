@@ -2,9 +2,12 @@ import { MISSION, NINA, ROOM_H } from '../config';
 import { isOpaque } from '../sim/camera';
 import { DOOR_TILES, doorsOf, gatesOf, keyDoor } from '../sim/doors';
 import { LIFT_W, shaftRooms } from '../sim/lift';
-import type { Mission, Spot } from '../sim/mission';
+import { MISSIONS, type MissionNo } from '../missions';
+import type { Mission } from '../sim/mission';
 import { parseRoom, tileAt, validateWorld, type Room } from './room';
 import { parseAmbient, parseCameras, parseEnemies, parseFence, parseItems, parseLift, parsePoints, parseTerminals } from './spawns';
+
+export type { MissionNo };
 
 // Наборы комнат: 1 — база НИИ (первая миссия), 2 — подземный бункер (вторая).
 const FILES: Record<MissionNo, Record<string, string>> = {
@@ -12,10 +15,8 @@ const FILES: Record<MissionNo, Record<string, string>> = {
   2: import.meta.glob('./rooms2/*.txt', { query: '?raw', import: 'default', eager: true }) as Record<string, string>,
 };
 
-export type MissionNo = 1 | 2;
-
-// Старт второй миссии: въезд, справа от мотоцикла (x — левый край тела, как в createNina).
-export const BUNKER_START: Spot = { room: 'gate', x: 9, bottom: 22 };
+// Старт второй миссии для тестов карты; описание миссий — src/missions.ts.
+export const BUNKER_START = MISSIONS[2].start;
 
 export function loadWorld(mission: MissionNo = 1): Map<string, Room> {
   const rooms = new Map<string, Room>();
@@ -27,9 +28,9 @@ export function loadWorld(mission: MissionNo = 1): Map<string, Room> {
     if (rooms.has(room.id)) throw new Error(`${path}: повтор id ${room.id}`);
     rooms.set(room.id, room);
   }
-  const goal = mission === 1 ? 'tapes' : 'bomb';
+  const { goal, start } = MISSIONS[mission];
   const errors = [
-    ...validateWorld(rooms), ...validateMission(rooms, goal), ...validateLifts(rooms), ...validateAmbient(rooms), ...validateDoors(rooms),
+    ...validateWorld(rooms), ...validateMission(rooms, goal, start.room), ...validateLifts(rooms), ...validateAmbient(rooms), ...validateDoors(rooms),
     ...validateCameras(rooms), ...validateGates(rooms),
   ];
   if (errors.length) throw new Error(errors.join('\n'));
@@ -39,7 +40,7 @@ export function loadWorld(mission: MissionNo = 1): Map<string, Room> {
 // Миссия на карте. tapes (первая): 6 лент, одна главная ЭВМ, один щиток, один мотоцикл, один источник.
 // bomb (вторая): одна точка закладки, одна бомба, один мотоцикл — в стартовой комнате start. У обеих терминалы гасят
 // существующие комнаты.
-export function validateMission(rooms: Map<string, Room>, goal: Mission['goal'] = 'tapes', start = BUNKER_START.room): string[] {
+export function validateMission(rooms: Map<string, Room>, goal: Mission['goal'] = 'tapes', start = MISSIONS[2].start.room): string[] {
   if (goal === 'bomb') return validateBomb(rooms, start);
   const errors = validateControls(rooms);
   let tapes = 0, mains = 0, panels = 0, bikes = 0, sources = 0;

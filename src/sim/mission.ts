@@ -6,6 +6,7 @@ export interface Spot { room: string; x: number; bottom: number }
 
 export interface Checkpoint extends Spot {
   timeLeft: number;
+  clock: number;
   tapes: string[];
   tapesIn: boolean;
   fenceOff: boolean;
@@ -16,6 +17,7 @@ export interface Checkpoint extends Spot {
 
 export interface Mission {
   timeLeft: number; // с
+  clock: number; // часы миссии, с: идут вместе с таймером, но не упираются в ноль — по ним камеры и итог
   tapes: Set<string>; // id подобранных лент
   tapesIn: boolean; // ленты введены в главную ЭВМ
   fenceOff: boolean;
@@ -35,22 +37,23 @@ export interface Mission {
 // seconds — время миссии числом (для таблицы рекордов), date — день прохождения «ГГГГ-ММ-ДД» по местному времени.
 export interface MissionResult { time: string; tapes: string; hits: number; secret: boolean; line: string; seconds: number; attacks: number; date: string }
 
-export function createMission(start: Spot, goal: Mission['goal'] = 'tapes'): Mission {
+export function createMission(start: Spot, goal: Mission['goal'] = 'tapes', time: number = MISSION.time): Mission {
   return {
-    fuse: null, blown: false, goal,
-    timeLeft: MISSION.time, tapes: new Set(), tapesIn: false, fenceOff: false, flamersOff: new Set(), camerasOff: new Set(), hits: 0, secret: false, attacks: 0, doorsOpen: new Set(), result: null,
-    checkpoint: { ...start, timeLeft: MISSION.time, tapes: [], tapesIn: false, fenceOff: false, flamersOff: [], camerasOff: [], lifts: {} },
+    fuse: null, blown: false, goal, clock: 0,
+    timeLeft: time, tapes: new Set(), tapesIn: false, fenceOff: false, flamersOff: new Set(), camerasOff: new Set(), hits: 0, secret: false, attacks: 0, doorsOpen: new Set(), result: null,
+    checkpoint: { ...start, timeLeft: time, clock: 0, tapes: [], tapesIn: false, fenceOff: false, flamersOff: [], camerasOff: [], lifts: {} },
   };
 }
 
 export function saveCheckpoint(m: Mission, at: Spot, lifts: Record<string, number> = {}): void {
-  m.checkpoint = { ...at, timeLeft: m.timeLeft, tapes: [...m.tapes], tapesIn: m.tapesIn, fenceOff: m.fenceOff, flamersOff: [...m.flamersOff], camerasOff: [...m.camerasOff], lifts: { ...lifts } };
+  m.checkpoint = { ...at, timeLeft: m.timeLeft, clock: m.clock, tapes: [...m.tapes], tapesIn: m.tapesIn, fenceOff: m.fenceOff, flamersOff: [...m.flamersOff], camerasOff: [...m.camerasOff], lifts: { ...lifts } };
 }
 
 // Состояние миссии — как в чекпоинте; возвращает место возрождения.
 export function restoreCheckpoint(m: Mission): Spot {
   const c = m.checkpoint;
   m.timeLeft = c.timeLeft;
+  m.clock = c.clock;
   m.tapes = new Set(c.tapes);
   m.tapesIn = c.tapesIn;
   m.fenceOff = c.fenceOff;
@@ -59,12 +62,13 @@ export function restoreCheckpoint(m: Mission): Spot {
   return { room: c.room, x: c.x, bottom: c.bottom };
 }
 
-// Секунд с начала миссии — часы камер и итог.
-export const elapsed = (m: Mission): number => MISSION.time - m.timeLeft;
+// Секунд с начала миссии — часы камер и итог. Не зависят от длины таймера миссии и идут после его нуля.
+export const elapsed = (m: Mission): number => m.clock;
 
 // Таймер миссии идёт всегда; с заложенной бомбой проигрыш решает её отсчёт: ноль — взрыв.
 export function tickTimer(m: Mission, dt: number): void {
   if (m.result) return;
+  m.clock += dt;
   m.timeLeft = Math.max(0, m.timeLeft - dt);
   if (m.fuse !== null) {
     m.fuse = Math.max(0, m.fuse - dt);

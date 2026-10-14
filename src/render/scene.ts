@@ -54,7 +54,8 @@ const widest = (f: (s: Strings) => string) => Math.max(...LANGS.map(l => hudWidt
 const ENERGY_W = widest(s => s.energy);
 const CREDIT_W = widest(s => s.credit);
 const LEFT_END = 1 + ENERGY_W + 10 * HUD_STEP;
-const MID_HALF = Math.ceil(widest(s => s.hudTapes(0, MISSION.tapes) + '00:00') / 2); // ленты и таймер — по центру строки 0
+// Ленты (или бомба миссии 2) и таймер — по центру строки 0.
+const MID_HALF = Math.ceil(Math.max(...[(s: Strings) => s.hudTapes(0, MISSION.tapes), (s: Strings) => s.hudBomb(false), (s: Strings) => s.hudBomb(true)].map(f => widest(s => f(s) + '00:00'))) / 2);
 
 export const hudCell = (x: number, y: number, hudId: string, time: number) =>
   (Math.round(y) === 0 &&
@@ -330,9 +331,9 @@ function drawHud(b: GlyphBatch, g: Game, time: number): void {
   b.text(barX + hudWidth('█'.repeat(filled)), 0, '░'.repeat(10 - filled), PAL.hudDim, HUD_STEP);
   const label = hudLabel(g), rx = ROOM_W - 1 - hudWidth(label);
   b.text(rx, 0, label, g.replay ? PAL.hud : PAL.hudDim, HUD_STEP);
-  // Заложена бомба — вместо лент и таймера миссии её отсчёт красным (лент у миссии с бомбой нет).
+  // Миссия с бомбой: вместо лент — бомба в руках или нет; заложена — вместо них и таймера её отсчёт красным.
   const fuse = g.mission.fuse;
-  const tapes = fuse === null ? s.hudTapes(g.mission.tapes.size, MISSION.tapes) : '';
+  const tapes = fuse !== null ? '' : g.mission.goal === 'bomb' ? s.hudBomb(g.nina.held === 'bomb') : s.hudTapes(g.mission.tapes.size, MISSION.tapes);
   const clock = fuse === null ? formatTime(g.mission.timeLeft) : s.hudFuse(formatFuse(fuse));
   // По центру; длинная подсказка реплея справа сдвигает ленты и таймер левее — между ними две буквы.
   const mx = Math.min((ROOM_W - hudWidth(tapes + clock)) / 2, rx - 2 * HUD_STEP - hudWidth(tapes + clock));

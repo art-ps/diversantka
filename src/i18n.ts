@@ -14,6 +14,7 @@ export interface Strings {
   // HUD и надписи над миром
   energy: string;
   hudTapes: (n: number, total: number) => string;
+  hudBomb: (held: boolean) => string; // HUD миссии 2 вместо лент, пока бомба не заложена: в руках или нет
   dead: string;
   credit: string;
   liftHint: string;
@@ -77,6 +78,7 @@ const LINE_MARKS_EN: Record<Mark, string> = { noDamage: 'no damage', noFight: 'n
 const RU: Strings = {
   energy: 'ЭНЕРГИЯ ',
   hudTapes: (n, total) => `ЛЕНТЫ ${n}/${total} · `,
+  hudBomb: held => (held ? 'БОМБА ЕСТЬ · ' : 'БОМБА — · '),
   dead: 'ПОГИБЛА · ПРЫЖОК — ЗАНОВО',
   credit: 'движения: mocap.cs.cmu.edu',
   liftHint: 'E — ВЫЗВАТЬ ЛИФТ',
@@ -146,6 +148,7 @@ const RU: Strings = {
 const EN: Strings = {
   energy: 'ENERGY ',
   hudTapes: (n, total) => `TAPES ${n}/${total} · `,
+  hudBomb: held => (held ? 'BOMB HELD · ' : 'BOMB — · '),
   dead: 'KILLED · JUMP — RETRY',
   credit: 'motion: mocap.cs.cmu.edu',
   liftHint: 'E — CALL LIFT',

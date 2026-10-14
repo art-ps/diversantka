@@ -30,6 +30,7 @@ import { touchesTile, touchHazards } from './sim/hazards';
 import { exitFor } from './sim/transition';
 import type { Dir, Room } from './world/room';
 import { setLang, str } from './i18n';
+import { MISSIONS, type MissionNo } from './missions';
 import { figureGlyphs } from './render/figure';
 import { PAL } from './render/palette';
 import { parseCameras, parseEnemies, parseFence, parseItems, parsePoints, parseTerminals, type AndroidSpawn, type DogSpawn, type Fence, type GuardSpawn, type FlamerSpawn, type Point, type TerminalSpawn } from './world/spawns';
@@ -95,14 +96,16 @@ export interface Game {
   alarmAge: number; // с начала текущей тревоги, с — по нему сирена; повторное попадание в луч его не сбрасывает
   gate: number; // решётки комнаты: 0 — подняты, 1 — опущены
   bombSite: Point | null; // точка закладки взрывчатки в комнате («bomb:»)
+  missionId: MissionNo; // какая миссия идёт: набор комнат, таймер и цель — MISSIONS[missionId]
 }
 
-export function createGame(rooms: Map<string, Room>, start: Start): Game {
+export function createGame(rooms: Map<string, Room>, start: Start, missionId: MissionNo = 1): Game {
+  const { goal, time } = MISSIONS[missionId];
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
-    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
+    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start, goal, time), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
     lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false, replay: false, board: null, rec: [],
-    doors: [], heldId: null, spent: new Set(), guards: [], cameras: [], gates: [], alarmT: 0, alarmAge: 0, gate: 0, bombSite: null,
+    doors: [], heldId: null, spent: new Set(), guards: [], cameras: [], gates: [], alarmT: 0, alarmAge: 0, gate: 0, bombSite: null, missionId,
   };
   enterRoom(g, start.room);
   return g;
@@ -111,8 +114,7 @@ export function createGame(rooms: Map<string, Room>, start: Start): Game {
 // Новая игра с пролога: дельтаплан над морем, миссия начнётся после посадки.
 // title — сначала стартовый экран (запуск и «заново»); рестарт после всплеска или мачты — сразу полёт.
 export function createPrologue(rooms: Map<string, Room>, title = false): Game {
-  const a = gliderAt(PROLOGUE.startD);
-  const g = createGame(rooms, { room: ROUTE[a.screen], x: a.x - NINA.w / 2, bottom: a.bottom });
+  const g = createGame(rooms, MISSIONS[1].start);
   g.prologue = { d: PROLOGUE.startD, phase: title ? 'title' : 'fly', t: 0 };
   g.withPrologue = true;
   return g;
@@ -122,7 +124,7 @@ export function createPrologue(rooms: Map<string, Room>, title = false): Game {
 function beginMission(g: Game): void {
   const b = g.nina.body;
   g.start = { room: g.roomId, x: b.x, bottom: b.y + b.h };
-  g.mission = createMission(g.start);
+  g.mission = createMission(g.start, MISSIONS[g.missionId].goal, MISSIONS[g.missionId].time);
   g.prologue = null;
 }
 
@@ -263,7 +265,7 @@ function stepEnd(g: Game, it: Intent, dt: number): void {
   if (g.endT < shown) return;
   if (t0 < shown && g.board?.place === 1) g.sfx.push('record');
   if (g.mission.result === 'won' && it.usePressed) g.clip = missionResult(g.mission).line;
-  if (it.jumpPressed && g.endT >= shown + MISSION.restartDelay) Object.assign(g, g.withPrologue ? createPrologue(g.rooms, true) : createGame(g.rooms, g.start));
+  if (it.jumpPressed && g.endT >= shown + MISSION.restartDelay) Object.assign(g, g.withPrologue ? createPrologue(g.rooms, true) : createGame(g.rooms, g.start, g.missionId));
 }
 
 // Источник: касание — энергия больше не убывает до конца миссии; чекпоинт этого не откатывает.
