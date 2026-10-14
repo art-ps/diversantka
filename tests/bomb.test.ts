@@ -209,3 +209,51 @@ describe('тексты', () => {
     expect(hudWidth(s.hudFuse('1:30'))).toBeLessThanOrEqual(hudWidth(s.hudTapes(6, 6) + '00:00'));
   });
 });
+
+describe('обмен бомбы на ключ', () => {
+  // Бомба на полу у x = 6, ключ 2 у x = 14.
+  const swapGame = () => {
+    const g = createGame(new Map([['a', R('a', { items: 'bomb@6,22 ; key2@14,22', bomb: '20,22', bike: '34,22' })]]), { room: 'a', x: 10, bottom: 22 });
+    g.mission.goal = 'bomb';
+    hold(g, {}, 0.1);
+    return g;
+  };
+  const lying = (g: Game) => g.items.map(i => `${i.kind}@${i.x.toFixed(1)}`).sort();
+
+  it('K над ключом с бомбой в руках — ключ в руках, бомба у ног; повторный K — обратно', () => {
+    const g = swapGame();
+    takeBomb(g);
+    expect(g.nina.held).toBe('bomb');
+    standAt(g, 14);
+    press(g, { throwPressed: true });
+    expect(g.nina.held).toBe('key2');
+    expect(g.heldId).toBe('a#i1');
+    expect(g.taken.has('a#i0')).toBe(false);
+    expect(g.taken.has('a#i1')).toBe(true);
+    const bomb = g.items.find(i => i.kind === 'bomb')!;
+    expect(bomb.id).toBe('a#i0');
+    expect(Math.abs(bomb.x - 14)).toBeLessThan(0.1);
+    expect(bomb.bottom).toBe(22);
+    expect(g.items).toHaveLength(1);
+    press(g, {});
+    press(g, { throwPressed: true });
+    expect(g.nina.held).toBe('bomb');
+    expect(g.heldId).toBe('a#i0');
+    expect(lying(g)).toEqual(['key2@14.0']);
+    expect([...g.taken]).toEqual(['a#i0']);
+  });
+
+  it('гибель после обмена — по одной бомбе и ключу на исходных местах, руки пусты', () => {
+    const g = swapGame();
+    takeBomb(g);
+    standAt(g, 14);
+    press(g, { throwPressed: true });
+    expect(g.nina.held).toBe('key2');
+    g.nina.dead = true;
+    g.nina.deadT = NINA.respawnDelay;
+    press(g, { jump: true, jumpPressed: true });
+    expect(g.nina.dead).toBe(false);
+    expect(g.nina.held).toBeNull();
+    expect(lying(g)).toEqual(['bomb@6.0', 'key2@14.0']);
+  });
+});

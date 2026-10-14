@@ -41,6 +41,32 @@ describe('подобрать и бросить', () => {
   });
 });
 
+describe('обмен в руках', () => {
+  it('ключ или бомба в руках, предмет под ногами — обмен: лежащий в руки, свой — к ногам', () => {
+    for (const held of ['bomb', 'key2'] as const) {
+      const n = standing(10);
+      n.held = held;
+      const r = useThrowButton(n, I({ throwPressed: true }), [knife(10.6)]);
+      expect(r.picked?.kind).toBe('knife');
+      expect(r.dropped).toBe(held);
+      expect(r.thrown).toBeUndefined();
+      expect(n.held).toBe('knife');
+    }
+  });
+
+  it('под ногами пусто — ничего; метательный в руках — бросок, а не обмен', () => {
+    const n = standing(10);
+    n.held = 'bomb';
+    expect(useThrowButton(n, I({ throwPressed: true }), [knife(20)])).toEqual({});
+    expect(n.held).toBe('bomb');
+    n.held = 'stone';
+    const r = useThrowButton(n, I({ throwPressed: true }), [knife(10.6)]);
+    expect(r.thrown?.kind).toBe('stone');
+    expect(r.picked).toBeUndefined();
+    expect(n.held).toBeNull();
+  });
+});
+
 describe('снаряды', () => {
   const p = (q: Partial<Projectile>): Projectile => ({ kind: 'knife', x: 5, y: 10, vx: 20, vy: 0, from: 'nina', damage: 1, alive: true, hitWall: false, ...q });
 

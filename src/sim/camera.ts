@@ -4,7 +4,7 @@ import type { CameraSpawn } from '../world/spawns';
 import type { Body } from './physics';
 import { contains, type Rect } from './rect';
 
-// seen — сколько секунд подряд героиня в луче; off — выключена с терминала.
+// seen — накопитель: растёт, пока героиня в луче, вне луча остывает; off — выключена с терминала.
 export interface Camera extends CameraSpawn { id: string; seen: number; off: boolean }
 
 export const createCamera = (id: string, s: CameraSpawn): Camera => ({ id, ...s, arc: [s.arc[0], s.arc[1]], seen: 0, off: false });
@@ -38,12 +38,18 @@ export function traceBeam(room: Room, c: CameraSpawn, a: number, target?: Rect):
 // Что камера видит у героини: тело без нижней четверти — ноги в луче не считаются, присед за укрытием работает.
 export const beamTarget = (b: Body): Rect => ({ x: b.x, y: b.y, w: b.w, h: b.h * (1 - CAMERA.feet) });
 
-// Шаг камер комнаты в момент t: target в луче CAMERA.detect подряд — true (тревога). target null — героини нет.
+// Шаг камер комнаты в момент t: накопитель seen дошёл до CAMERA.detect — true (тревога). target null — героини нет.
+// Видит луч шириной ±CAMERA.beamWidth: три луча — по краям и посередине; вне луча seen остывает со скоростью CAMERA.cool.
 export function stepCameras(cams: Camera[], room: Room, t: number, target: Rect | null, dt: number): boolean {
   let alarm = false;
   for (const c of cams) {
-    const hit = !c.off && target !== null && traceBeam(room, c, cameraAngle(c, t), target).hit;
-    c.seen = hit ? c.seen + dt : 0;
+    if (c.off) {
+      c.seen = 0;
+      continue;
+    }
+    const a = cameraAngle(c, t), w = CAMERA.beamWidth;
+    const hit = target !== null && [a - w, a, a + w].some(x => traceBeam(room, c, x, target).hit);
+    c.seen = hit ? c.seen + dt : Math.max(0, c.seen - dt * CAMERA.cool);
     if (c.seen >= CAMERA.detect - 1e-9) alarm = true;
   }
   return alarm;

@@ -572,7 +572,12 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
   } else g.splashAcc = 0;
   g.inWater = wet;
   stepSfx(g, y0, dt);
-  const { picked, thrown } = useThrowButton(g.nina, it, g.items);
+  const { picked, dropped, thrown } = useThrowButton(g.nina, it, g.items);
+  if (dropped && g.heldId) {
+    // обмен: свой предмет — к ногам; после гибели или выхода из комнаты он снова на месте спавна
+    g.taken.delete(g.heldId);
+    g.items.push({ id: g.heldId, kind: dropped, x: g.nina.body.x + g.nina.body.w / 2, bottom: picked!.bottom });
+  }
   if (picked) {
     g.taken.add(picked.id);
     g.heldId = picked.id;

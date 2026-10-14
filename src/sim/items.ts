@@ -26,20 +26,21 @@ export interface Projectile {
 export const itemRect = (i: Point): Rect => ({ x: i.x - 0.5, y: i.bottom - 1, w: 1, h: 1 });
 
 // Кнопка броска: с пустыми руками подбирает предмет под ногами, с предметом — бросает.
-// Бросают только предметы из COMBAT.items; ключи и взрывчатку — нет.
+// Бросают только предметы из COMBAT.items; ключ или взрывчатку в руках меняют на предмет под ногами:
+// dropped — что положено к ногам (его Item ставит вызывающий: id предмета знает он).
 const isThrowable = (k: ItemKind): k is keyof typeof COMBAT.items => k in COMBAT.items;
 
-export function useThrowButton(n: Nina, it: Intent, items: Item[]): { picked?: Item; thrown?: Projectile } {
+export function useThrowButton(n: Nina, it: Intent, items: Item[]): { picked?: Item; dropped?: ItemKind; thrown?: Projectile } {
   if (!it.throwPressed || n.dead || n.hurtT > 0 || n.state === 'ladder') return {};
-  if (!n.held) {
+  if (!n.held || !isThrowable(n.held)) {
     const r = bodyRect(n.body);
     const picked = items.find(i => overlap(itemRect(i), r));
     if (!picked) return {};
+    const dropped = n.held ?? undefined;
     n.held = picked.kind;
-    return { picked };
+    return dropped ? { picked, dropped } : { picked };
   }
   const kind = n.held;
-  if (!isThrowable(kind)) return {}; // ключи и взрывчатку не бросают — улетели бы о стену и пропали
   n.held = null;
   n.throwT = COMBAT.throwTime;
   const cfg = COMBAT.items[kind];

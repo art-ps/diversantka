@@ -17,12 +17,13 @@ import { FLOOR, roomOf } from './helpers';
 const R = (id: string, rows: Record<number, string>, meta: Record<string, string> = {}, exits: Room['exits'] = {}): Room => ({ ...roomOf(rows, exits), id, meta });
 const I = (p: Partial<Intent> = {}): Intent => ({ ...IDLE, ...p });
 const hold = (g: Game, p: Partial<Intent>, s: number) => { for (let i = 0; i < Math.round(s / DT); i++) stepGame(g, I(p), DT); };
+const cx = (g: Game) => g.nina.body.x + g.nina.body.w / 2;
 const standAt = (g: Game, x: number) => {
   Object.assign(g.nina.body, { x: x - NINA.w / 2, y: 22 - NINA.h, vx: 0, vy: 0 });
   hold(g, {}, 0.1);
 };
 
-// Пол — строка 22; решётка A в колонке 30, строки 18–21, над ней стена; камера смотрит вправо вдоль строки camRow.
+// Пол — строка 22; решётка A в колонке 30, строки 18–21, над ней стена; камера смотрит вправо вдоль строки camRow (17 — на высоте головы: присед из луча уходит).
 const gateRows = (): Record<number, string> => {
   const rows: Record<number, string> = { 22: FLOOR };
   for (let r = 1; r < 22; r++) rows[r] = '.'.repeat(30) + (r < 18 ? '#' : 'A');
@@ -101,7 +102,7 @@ describe('луч', () => {
 
 describe('тревога', () => {
   it('стоя в луче: до 0.3 с тихо, после — тревога на 20 с и сирена', () => {
-    const g = game(19); // уже 0.1 с в луче
+    const g = game(17); // уже 0.1 с в луче
     g.sfx = [];
     hold(g, {}, 0.15);
     expect(g.alarmT).toBe(0);
@@ -110,21 +111,22 @@ describe('тревога', () => {
     expect(g.sfx).toContain('alarm');
   });
 
-  it('присед уводит голову из луча на высоте груди — тревоги нет', () => {
-    const g = game(19);
+  it('присед уводит голову из луча на высоте головы — тревоги нет', () => {
+    const g = game(17);
     hold(g, { down: true }, 2);
     expect(g.nina.crouching).toBe(true);
     expect(g.alarmT).toBe(0);
   });
 
   it('ноги в луче не считаются', () => {
-    const g = game(21);
+    // камера вплотную справа — луч шириной ±3° на 3 клетках не выходит из строки 21
+    const g = createGame(new Map([['a', R('a', gateRows(), { cameras: '27,21 arc=-90..-90 period=1' })]]), { room: 'a', x: 24, bottom: 22 });
     hold(g, {}, 2);
     expect(g.alarmT).toBe(0);
   });
 
   it('сирена — раз в секунду тревоги', () => {
-    const g = game(19);
+    const g = game(17);
     hold(g, {}, 0.4); // тревога
     g.sfx = [];
     hold(g, { down: true }, 3.5);
@@ -133,7 +135,7 @@ describe('тревога', () => {
   });
 
   it('сирена — раз в секунду, и пока героиня стоит в луче', () => {
-    const g = game(19);
+    const g = game(17);
     hold(g, {}, 0.4); // тревога
     g.sfx = [];
     hold(g, {}, 3.5);
@@ -143,7 +145,7 @@ describe('тревога', () => {
   });
 
   it('тревога, начатая в середине секунды, даёт ровно один сигнал за первые 0.9 с', () => {
-    const g = game(19);
+    const g = game(17);
     hold(g, { down: true }, 0.98); // часы миссии — около границы секунды
     g.sfx = [];
     for (let i = 0; i < 120 && g.alarmT === 0; i++) stepGame(g, IDLE, DT); // встала — тревога
@@ -154,7 +156,7 @@ describe('тревога', () => {
   });
 
   it('повторное попадание в луч продлевает тревогу снова до 20 с', () => {
-    const g = game(19);
+    const g = game(17);
     hold(g, {}, 0.5);
     expect(g.alarmT).toBe(CAMERA.alarm);
     hold(g, { down: true }, 3);
@@ -166,7 +168,7 @@ describe('тревога', () => {
   it('тревога кончается через 20 с без луча; андроид другого этажа в тревоге идёт на героиню', () => {
     const rows = gateRows();
     rows[14] = '='.repeat(30) + '#'; // этаж андроида над героиней
-    const g = createGame(new Map([['a', R('a', rows, { cameras: '0,19 arc=90..90 period=1', enemies: 'android@10,14 patrol=4..20' })]]), { room: 'a', x: 24, bottom: 22 });
+    const g = createGame(new Map([['a', R('a', rows, { cameras: '0,17 arc=90..90 period=1', enemies: 'android@10,14 patrol=4..20' })]]), { room: 'a', x: 24, bottom: 22 });
     hold(g, {}, 0.1);
     expect(g.androids[0].state).toBe('patrol');
     hold(g, {}, 0.3);
@@ -232,7 +234,7 @@ describe('выключение с терминала', () => {
     expect(menuItems(term, has).map(i => i.label)).toEqual(['ОТКЛ. КАМЕРЫ a', 'ОТКЛ. ОГНЕМЁТ b', 'ВЫХОД']);
     expect(menuItems(term).map(i => i.label)).toEqual(['ОТКЛ. ОГНЕМЁТ a', 'ОТКЛ. ОГНЕМЁТ b', 'ВЫХОД']); // первая миссия — как было
 
-    const g = game(19, { terminals: '24,22 controls=a' }); // в луче 0.1 с — меньше detect
+    const g = game(17, { terminals: '24,22 controls=a' }); // в луче 0.1 с — меньше detect
     stepGame(g, I({ usePressed: true }), DT);
     expect(g.screen?.items.map(i => i.label)).toEqual(['ОТКЛ. КАМЕРЫ a', 'ВЫХОД']);
     hold(g, {}, MISSION.bootTime);
@@ -252,7 +254,7 @@ describe('выключение с терминала', () => {
 
 describe('гибель', () => {
   it('выключенные камеры остаются выключенными, тревога и решётка сброшены', () => {
-    const g = game(19, { terminals: '24,22 controls=a' });
+    const g = game(17, { terminals: '24,22 controls=a' });
     stepGame(g, I({ usePressed: true }), DT);
     hold(g, {}, MISSION.bootTime);
     stepGame(g, I({ jumpPressed: true, jump: true }), DT); // ОТКЛ. КАМЕРЫ a
@@ -274,7 +276,7 @@ describe('гибель', () => {
 
 describe('рисунок', () => {
   it('камера «o», луч точками; при тревоге красный; решётка — «=» сверху вниз', () => {
-    const g = game(19);
+    const g = game(17);
     const collect = () => {
       const out: { ch: string; c: readonly number[] }[] = [];
       drawCameras({ push: (_x, _y, ch, c) => { out.push({ ch, c }); } }, g, liveRoom(g), 0, 0);
@@ -297,5 +299,54 @@ describe('рисунок', () => {
     expect(gates(0)).toEqual(['-', '-']);
     expect(gates(0.5).filter(ch => ch === '=')).toHaveLength(8);
     expect(gates(1).filter(ch => ch === '=')).toHaveLength(16);
+  });
+});
+
+describe('качающаяся камера: ширина луча и остывание', () => {
+  // Камера 20,1 качается ±40° за 8 с над открытым полом; платформа «=» в строке 19, колонки 8–15.
+  const swing = (x: number) => {
+    const rows: Record<number, string> = { 22: FLOOR, 19: '.'.repeat(8) + '='.repeat(8) };
+    return createGame(new Map([['a', R('a', rows, { cameras: '20,1 arc=-40..40 period=8' })]]), { room: 'a', x: x - NINA.w / 2, bottom: 22 });
+  };
+  const until = (g: Game, p: Partial<Intent>, s: number) => {
+    for (let i = 0; i < Math.round(s / DT) && g.alarmT === 0; i++) stepGame(g, I(p), DT);
+  };
+
+  it('стоит на открытом полу — тревога за один период', () => {
+    for (const x of [7, 13, 20, 27, 33]) {
+      const g = swing(x);
+      until(g, {}, 8);
+      expect(g.alarmT, `x=${x}`).toBeGreaterThan(0);
+    }
+  });
+
+  it('присела под платформой — тревоги нет за два периода', () => {
+    const g = swing(11.5);
+    hold(g, { down: true }, 16);
+    expect(g.nina.crouching).toBe(true);
+    expect(g.alarmT).toBe(0);
+  });
+
+  it('пробег сквозь луч навстречу качанию — без тревоги', () => {
+    // Луч идёт вправо в первую половину периода, влево — во вторую; бег от края комнаты на полной скорости.
+    for (const [dir, phases] of [[1, [4, 5, 6, 7]], [-1, [0, 1, 2, 3]]] as const) {
+      for (const t0 of phases) {
+        const g = swing(dir > 0 ? 2 : 38);
+        g.mission.timeLeft -= t0;
+        g.nina.body.vx = dir * NINA.runSpeed;
+        hold(g, { moveX: dir }, 36 / NINA.runSpeed);
+        expect(g.alarmT, `t0=${t0} dir=${dir}`).toBe(0);
+        expect(Math.abs(cx(g) - (dir > 0 ? 38 : 2))).toBeLessThan(1);
+      }
+    }
+  });
+
+  it('накопитель вне луча остывает, а не сбрасывается: два коротких захода подряд — тревога', () => {
+    const g = game(17);
+    hold(g, {}, 0.1); // в луче 0.2 с
+    hold(g, { down: true }, 0.2); // остыл на 0.1
+    expect(g.cameras[0].seen).toBeCloseTo(0.1, 1);
+    hold(g, {}, 0.25);
+    expect(g.alarmT).toBeGreaterThan(0);
   });
 });
