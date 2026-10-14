@@ -1,4 +1,4 @@
-import { BOMB, FIRE, FLAMER } from '../config';
+import { BOMB, FIRE, FLAMER, ROOM_H, ROOM_W } from '../config';
 import { PAL } from '../render/palette';
 import type { Color } from '../render/glyphs';
 import { flamerPhase, type Flamer } from '../sim/flamer';
@@ -36,6 +36,13 @@ export const jetFire = (f: Flamer): Fire => ({
 export function bombFire(p: Point): Fire {
   const field = createHeat(2 * BOMB.heatW, 2 * (1 + BOMB.heatRise), BOMB.heatCool, new Array(2 * BOMB.heatW).fill(0), 11);
   return { field, kind: 'bomb', x: p.x - BOMB.heatW / 2, y: p.bottom, dir: 1 };
+}
+
+// Огонь фоном на экране итогов миссии 2: очаг во всю ширину у нижнего края, языки — под рамкой. Прогрет, как яма.
+export function resultFire(): Fire {
+  const field = createHeat(2 * ROOM_W, 2 * (1 + BOMB.resultRise), BOMB.heatCool, undefined, 13);
+  for (let i = 0; i < 24; i++) stepHeat(field, 1 / 24);
+  return { field, kind: 'pit', x: 0, y: ROOM_H, dir: 1 };
 }
 
 // Очаг у бомбы горит на доле k ширины (0 — только середина, 1 — вся), остальное — холодное.

@@ -1,7 +1,8 @@
 import type { Lang } from './i18n';
+import type { MissionNo } from './missions';
 
 // Итог между сессиями браузера: пройдена ли миссия, найден ли секрет; звук выключен (M); язык; таблица рекордов.
-// Только флаги и числа, без имён и личных данных. Рекорды второй миссии лягут под ключ diversantka.records.2.
+// Только флаги и числа, без имён и личных данных. Рекорды второй миссии — под ключом diversantka.records.2.
 export const SAVE = { done: 'diversantka.done', secret: 'diversantka.secret', mute: 'diversantka.mute', lang: 'diversantka.lang', records: 'diversantka.records' } as const;
 
 type Store = Pick<Storage, 'setItem'>;
@@ -74,10 +75,13 @@ const isRow = (v: unknown): v is RecordRow => {
     && typeof r.secret === 'boolean' && typeof r.date === 'string';
 };
 
-// Рекорды по возрастанию времени. Нет хранилища, оно бросает или запись испорчена — рекордов нет.
-export function loadRecords(s: Pick<Storage, 'getItem'> | undefined): RecordRow[] {
+// Ключ таблицы миссии: первая — diversantka.records, вторая — diversantka.records.2.
+export const recordsKey = (mission: MissionNo): string => (mission === 1 ? SAVE.records : `${SAVE.records}.${mission}`);
+
+// Рекорды миссии по возрастанию времени. Нет хранилища, оно бросает или запись испорчена — рекордов нет.
+export function loadRecords(s: Pick<Storage, 'getItem'> | undefined, mission: MissionNo = 1): RecordRow[] {
   try {
-    const v: unknown = JSON.parse(s?.getItem(SAVE.records) ?? '[]');
+    const v: unknown = JSON.parse(s?.getItem(recordsKey(mission)) ?? '[]');
     return Array.isArray(v) ? v.filter(isRow).sort((a, b) => a.seconds - b.seconds).slice(0, RECORDS_MAX) : [];
   } catch {
     return [];
@@ -86,15 +90,15 @@ export function loadRecords(s: Pick<Storage, 'getItem'> | undefined): RecordRow[
 
 // Новый результат в таблицу: после всех с тем же временем (раньше записанная — выше). Возвращает место 1–10;
 // null — не вошёл в десятку или хранилище недоступно.
-export function saveRecord(s: Pick<Storage, 'getItem' | 'setItem'> | undefined, r: RecordRow): number | null {
+export function saveRecord(s: Pick<Storage, 'getItem' | 'setItem'> | undefined, r: RecordRow, mission: MissionNo = 1): number | null {
   if (!s) return null;
-  const list = loadRecords(s);
+  const list = loadRecords(s, mission);
   const at = list.findIndex(x => x.seconds > r.seconds);
   const i = at < 0 ? list.length : at;
   if (i >= RECORDS_MAX) return null;
   list.splice(i, 0, { seconds: r.seconds, hits: r.hits, attacks: r.attacks, secret: r.secret, date: r.date });
   try {
-    s.setItem(SAVE.records, JSON.stringify(list.slice(0, RECORDS_MAX)));
+    s.setItem(recordsKey(mission), JSON.stringify(list.slice(0, RECORDS_MAX)));
   } catch {
     return null; // приватный режим или нет места — игра идёт, места нет
   }

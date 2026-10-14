@@ -142,11 +142,11 @@ async function boot() {
     if (game.mission.result === 'won' && !saved) {
       // Победа: флаги, таблица рекордов (место — для экрана итогов и звука), запись нажатий — в ссылку.
       saved = true;
-      if (replay) game.board = { records: loadRecords(storage()), place: null }; // чужая игра: в таблицу и флаги не пишем
+      if (replay) game.board = { records: loadRecords(storage(), game.missionId), place: null }; // чужая игра: в таблицу и флаги не пишем
       else {
         saveResult(storage(), game.mission.secret);
-        const place = saveRecord(storage(), missionResult(game.mission));
-        game.board = { records: loadRecords(storage()), place };
+        const place = saveRecord(storage(), missionResult(game.mission), game.missionId);
+        game.board = { records: loadRecords(storage(), game.missionId), place };
         share = packRecord(game.rec).then(p => replayUrl(location.href, p), () => null);
       }
     }

@@ -36,7 +36,8 @@ export interface Mission {
 }
 
 // seconds — время миссии числом (для таблицы рекордов), date — день прохождения «ГГГГ-ММ-ДД» по местному времени.
-export interface MissionResult { time: string; tapes: string; hits: number; secret: boolean; line: string; seconds: number; attacks: number; date: string }
+// tapes — «n/6» у миссии с лентами, null — у миссии с бомбой.
+export interface MissionResult { time: string; tapes: string | null; hits: number; secret: boolean; line: string; seconds: number; attacks: number; date: string }
 
 export function createMission(start: Spot, goal: Mission['goal'] = 'tapes', time: number = MISSION.time): Mission {
   return {
@@ -138,7 +139,7 @@ export const isoDay = (d: Date): string => `${d.getFullYear()}-${pad2(d.getMonth
 export function missionResult(m: Mission, now: Date = new Date()): MissionResult {
   const seconds = elapsed(m);
   const time = formatTime(seconds);
-  const tapes = `${m.tapes.size}/${MISSION.tapes}`;
+  const tapes = m.goal === 'bomb' ? null : `${m.tapes.size}/${MISSION.tapes}`;
   const line = str().resultLine(time, tapes, m.hits, marksOf(m));
   return { time, tapes, hits: m.hits, secret: m.secret, line, seconds, attacks: m.attacks, date: isoDay(now) };
 }

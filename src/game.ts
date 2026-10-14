@@ -1,5 +1,5 @@
 import { ANIM, BOMB, CAMERA, FIRE, FLAMER, FX, LIFT, MISSION, NINA, PROLOGUE, ROOM_H, ROOM_W, SFX, SOURCE, TRANSITION_TIME } from './config';
-import { bombFire, bombHeat, jetFire, pitFires, stepFires, type Fire } from './fx/fires';
+import { bombFire, bombHeat, jetFire, pitFires, resultFire, stepFires, type Fire } from './fx/fires';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { dogGlyphs } from './anim/dog';
 import { CLIPS } from './anim/clips';
@@ -303,6 +303,10 @@ function stepEnd(g: Game, it: Intent, dt: number): void {
   const shown = g.mission.result === 'won' ? MISSION.outroTime : g.mission.blown ? BOMB.blast : 0;
   if (g.endT < shown) return;
   if (t0 < shown && g.board?.place === 1) g.sfx.push('record');
+  if (g.mission.result === 'won' && g.missionId === 2) {
+    if (t0 < shown) g.fires = [resultFire()]; // итоги бункера — на фоне огня; мира больше нет, урона нет
+    stepFires(g.fires, [], dt);
+  }
   if (g.mission.result === 'won' && it.usePressed) g.clip = missionResult(g.mission).line;
   if (it.jumpPressed && g.endT >= shown + MISSION.restartDelay) Object.assign(g, next(g));
 }
