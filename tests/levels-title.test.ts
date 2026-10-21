@@ -96,6 +96,19 @@ describe('стартовый экран: лестница уровней', () =>
     expect(g.menu.sel).toBeLessThanOrEqual(8);
   });
 
+  it('↓ при удержании → на строке миссии шаг один, дальше — после repeatDelay (таймер не копится на строке языка)', () => {
+    const g = createPrologue(loadRoomsFs(), true);
+    g.unlocked = 50;
+    run(g, RIGHT, 40); // на строке языка держат вправо
+    stepGame(g, I({ moveX: 1, down: true, downPressed: true }), DT);
+    expect(g.menu.row).toBe('mission');
+    expect(g.menu.sel).toBe(2);
+    run(g, RIGHT, Math.floor(TITLE.repeatDelay / DT) - 3);
+    expect(g.menu.sel).toBe(2);
+    run(g, RIGHT, 4);
+    expect(g.menu.sel).toBe(3);
+  });
+
   it('пробел на сгенерированном — его сцена приезда', () => {
     const g = title(4);
     run(g, RIGHT, 1); stepGame(g, IDLE, DT); run(g, RIGHT, 1);

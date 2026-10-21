@@ -1,7 +1,7 @@
 import { ambientOf } from './audio/ambient';
 import { AudioGate } from './audio/gate';
 import { DT, FX, ROOM_H, ROOM_W } from './config';
-import { startMission, stepGame } from './game';
+import { startMission, stepGame, type Game } from './game';
 import { lang, setLang, str } from './i18n';
 import { InputDevices } from './input/devices';
 import { IDLE, IntentTracker, clearPressed, orPressed } from './input/intent';
@@ -72,7 +72,15 @@ async function boot() {
   }
   // Стартовый экран поверх первого кадра пролога; реплей — с начала своей миссии, как начиналась запись
   // (миссия 2 по ссылке — и без пройденной первой).
-  const game = startMission(replay?.mission ?? 1, replay === null);
+  let first: Game;
+  try {
+    first = startMission(replay?.mission ?? 1, replay === null);
+  } catch {
+    dropParam(); // уровень из ссылки не собрался — обычный старт, а не пустой экран
+    replay = null;
+    first = startMission(1, true);
+  }
+  const game = first;
   game.replayOld = replayOld;
   let unlocked = loadLevel(storage()); // открытый максимум на стартовом экране
   let holdLeft = false; // выход из реплея движением: пока клавишу держат, стартовый экран её не видит

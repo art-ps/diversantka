@@ -100,8 +100,8 @@ export interface Game {
   alarmAge: number; // с начала текущей тревоги, с — по нему сирена; повторное попадание в луч его не сбрасывает
   gate: number; // решётки комнаты: 0 — подняты, 1 — опущены
   bombSite: Point | null; // точка закладки взрывчатки в комнате («bomb:»)
-  missionId: MissionNo; // какая миссия идёт: набор комнат, таймер и цель — MISSIONS[missionId]
-  arrival: number | null; // сцена приезда миссии 2: секунд с её начала; null — сцены нет. Мир и таймер стоят, шаги пишутся
+  missionId: MissionNo; // какая миссия идёт: таймер, цель и старт — missionDef(missionId), комнаты — worldOf(missionId)
+  arrival: number | null; // сцена приезда миссии n ≥ 2: секунд с её начала; null — сцены нет. Мир и таймер стоят, шаги пишутся
   menu: Menu; // стартовый экран: фокус и выбранная миссия
   menuHold: { dir: -1 | 0 | 1; t: number }; // стартовый экран: куда держат стрелку на строке миссии и сколько, с
   unlocked: number; // максимальный открытый уровень (diversantka.level) — ставит main.ts; выше на стартовом экране не выбрать
@@ -173,8 +173,10 @@ function stepPrologue(g: Game, p: Prologue, it: Intent, dt: number): void {
     // Вверх/вниз — строка языка или миссии. Язык: влево — English, вправо — русский. Миссия: влево/вправо — на 1,
     // удержание — подряд (TITLE.repeatDelay, затем раз в TITLE.repeatEvery), от 1 до открытой.
     const m = g.menu, h = g.menuHold;
+    const row0 = m.row;
     if (it.upPressed) m.row = 'lang';
     if (it.downPressed) m.row = 'mission';
+    if (m.row !== row0) { h.dir = 0; h.t = 0; } // смена строки — удержание считается заново: шаг, пауза repeatDelay
     const dir = Math.sign(it.moveX) as -1 | 0 | 1;
     const ticks = (t: number) => (t < TITLE.repeatDelay ? 0 : 1 + Math.floor((t - TITLE.repeatDelay) / TITLE.repeatEvery));
     let step = 0;

@@ -3,6 +3,7 @@ import type { MissionNo } from './missions';
 import type { MissionResult } from './sim/mission';
 
 // Итог между сессиями браузера: пройдена ли миссия, найден ли секрет; звук выключен (M); язык; таблица рекордов.
+// Открытый уровень — diversantka.level (число; нет ключа — по diversantka.done: 2 или 1).
 // Только флаги и числа, без имён и личных данных. Рекорды второй миссии — под ключом diversantka.records.2.
 export const SAVE = { done: 'diversantka.done', secret: 'diversantka.secret', mute: 'diversantka.mute', lang: 'diversantka.lang', records: 'diversantka.records', level: 'diversantka.level' } as const;
 
@@ -139,8 +140,8 @@ export function saveRecord(s: Pick<Storage, 'getItem' | 'setItem'> | undefined, 
   return i + 1;
 }
 
-// Победа в своей игре (не реплей): миссия 1 пишет «пройдено» (открывает миссию 2) и секрет; рекорд — в таблицу
-// своей миссии. Возвращает таблицу для экрана итогов.
+// Победа в своей игре (не реплей): миссия 1 пишет «пройдено» и секрет; любая победа n открывает уровень n + 1
+// (diversantka.level); рекорд — в таблицу своей миссии. Возвращает таблицу для экрана итогов.
 export function saveWin(s: Pick<Storage, 'getItem' | 'setItem'> | undefined, mission: MissionNo, r: MissionResult): Board {
   if (mission === 1) saveResult(s, r.secret);
   saveLevel(s, mission + 1);

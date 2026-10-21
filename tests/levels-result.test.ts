@@ -4,7 +4,7 @@ import { startMission, stepGame, type Game } from '../src/game';
 import { setLang, STR } from '../src/i18n';
 import { IDLE } from '../src/input/intent';
 import { drawMap } from '../src/render/map';
-import { createMission, missionResult } from '../src/sim/mission';
+import { createMission, missionResult, plantBomb, startBike } from '../src/sim/mission';
 
 afterEach(() => setLang('ru'));
 
@@ -42,4 +42,15 @@ it('легенда карты: сгенерированный с бомбой �
   for (let i = 0; i < Math.round(MISSION.arriveTime / DT) + 1; i++) stepGame(t, IDLE, DT);
   expect(mapTexts(t)).toEqual(expect.arrayContaining([STR.ru.mapLegend, STR.ru.goalTapes(t.mission.tapesNeed)]));
   expect(STR.en.mapLegendGen).toBe('T TERMINAL  G GARAGE  R RIG');
+});
+
+it('итог в игре: строка клипа называет номер миссии (уровень 3)', () => {
+  const g = startMission(3);
+  for (let i = 0; i < Math.round(MISSION.arriveTime / DT) + 1; i++) stepGame(g, IDLE, DT);
+  plantBomb(g.mission);
+  expect(startBike(g.mission)).toBe(true);
+  for (let i = 0; i < Math.ceil(MISSION.outroTime / DT) + 2; i++) stepGame(g, IDLE, DT);
+  expect(g.mission.result).toBe('won');
+  stepGame(g, { ...IDLE, usePressed: true }, DT);
+  expect(g.clip).toContain('миссия 3');
 });

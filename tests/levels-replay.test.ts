@@ -16,6 +16,13 @@ it('версия 3: заголовок — версия, номер varint, у N
   for (const n of [1, 2, 3, 4, 200]) expect(await unpackReplay(await packRecord(rec, n))).toEqual({ rec, mission: n });
 });
 
+it('ссылка версии 2 читается: заголовок [2, 2] + запись → миссия 2', async () => {
+  const rec = [1, 2, 3, 3, 3];
+  const p = bytes(await packRecord(rec, 2)); // заголовок v3 для миссии 2 — [3, 2], той же длины, что у v2
+  p[0] = 2;
+  expect(await unpackReplay(b64(p))).toEqual({ rec, mission: 2 });
+});
+
 it('другая версия генератора — ReplayVersionError; номер 0 и оборванный varint — ошибка', async () => {
   const p = bytes(await packRecord([1, 2, 3], 5));
   p[2] = (GEN.version + 1) & 0xff;
