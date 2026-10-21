@@ -98,7 +98,7 @@ describe('packRecord / unpackRecord', () => {
     const s = await packRecord([1, 2, 3, 3, 3]);
     await expect(unpackRecord('не запись')).rejects.toThrow();
     await expect(unpackRecord('')).rejects.toThrow();
-    await expect(unpackRecord('Aw' + s.slice(2))).rejects.toThrow(); // версия 3
+    await expect(unpackRecord('BA' + s.slice(2))).rejects.toThrow(); // версия 4
     await expect(unpackRecord(s.slice(0, 4))).rejects.toThrow();
   });
 

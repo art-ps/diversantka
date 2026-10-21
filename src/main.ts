@@ -13,7 +13,7 @@ import { PAL } from './render/palette';
 import { drawGame } from './render/scene';
 import { loadLang, loadLevel, loadMuted, loadRecords, saveLang, saveMuted, saveWin, storage } from './save';
 import { missionResult } from './sim/mission';
-import { holdMove, packRecord, quitsReplay, replayStep, replayUrl, shareText, unpackReplay, type Replay } from './sim/record';
+import { holdMove, packRecord, quitsReplay, replayStep, replayUrl, ReplayVersionError, shareText, unpackReplay, type Replay } from './sim/record';
 import { worldOf } from './levels';
 
 function fail(msg: string) {
@@ -60,16 +60,19 @@ async function boot() {
   };
   const param = new URLSearchParams(location.search).get('r');
   let replay: Replay | null = null;
+  let replayOld = false; // ссылка записана другой версией генератора — надпись на стартовом экране
   if (param !== null) {
     try {
       replay = { ...(await unpackReplay(param)), i: 0 };
-    } catch {
+    } catch (e) {
+      replayOld = e instanceof ReplayVersionError;
       dropParam();
     }
   }
   // Стартовый экран поверх первого кадра пролога; реплей — с начала своей миссии, как начиналась запись
   // (миссия 2 по ссылке — и без пройденной первой).
   const game = startMission(replay?.mission ?? 1, replay === null);
+  game.replayOld = replayOld;
   let unlocked = loadLevel(storage()); // открытый максимум на стартовом экране
   let holdLeft = false; // выход из реплея движением: пока клавишу держат, стартовый экран её не видит
   const leaveReplay = () => {

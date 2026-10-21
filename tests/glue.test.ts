@@ -90,17 +90,17 @@ describe('сквозной путь: победа 1 → Пробел → мис�
   });
 });
 
-describe('запись версии 2', () => {
+describe('запись версий 2 и 3', () => {
   const rec = [encodeIntent(I({ moveX: 1 })), encodeIntent(I({ moveX: 1 })), encodeIntent(JUMP), 7];
 
-  it('байт версии 2, байт миссии; туда и обратно для обеих миссий; unpackRecord — только шаги', async () => {
+  it('версия 3: байт версии, байт миссии; туда и обратно для обеих миссий; unpackRecord — только шаги', async () => {
     for (const mission of [1, 2] as const) {
       const p = await packRecord(rec, mission);
-      expect([...toBytes(p).subarray(0, 2)]).toEqual([2, mission]);
+      expect([...toBytes(p).subarray(0, 2)]).toEqual([3, mission]);
       expect(await unpackReplay(p)).toEqual({ rec, mission });
       expect(await unpackRecord(p)).toEqual(rec);
     }
-    expect([...toBytes(await packRecord(rec)).subarray(0, 2)]).toEqual([2, 1]); // без номера — миссия 1
+    expect([...toBytes(await packRecord(rec)).subarray(0, 2)]).toEqual([3, 1]); // без номера — миссия 1
     expect(await unpackReplay(await packRecord([], 2))).toEqual({ rec: [], mission: 2 });
   });
 
@@ -113,7 +113,7 @@ describe('запись версии 2', () => {
   it('миссия не 1 и не 2, чужая версия — ошибка', async () => {
     const v2 = toBytes(await packRecord(rec, 2));
     for (const m of [0, 3, 255]) await expect(unpackReplay(fromBytes(new Uint8Array([2, m, ...v2.subarray(2)])))).rejects.toThrow('unknown mission');
-    await expect(unpackReplay(fromBytes(new Uint8Array([3, 2, ...v2.subarray(2)])))).rejects.toThrow('unknown version');
+    await expect(unpackReplay(fromBytes(new Uint8Array([4, 2, ...v2.subarray(2)])))).rejects.toThrow('unknown version');
   });
 
   it('строка и ссылка для миссии 2: «бункер» в строке, миссия 2 в записи по ссылке', async () => {

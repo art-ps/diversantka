@@ -1,4 +1,5 @@
 import { IDLE, type Intent } from '../input/intent';
+import { GEN } from '../config';
 import type { MissionNo } from '../missions';
 
 // Запись нажатий: по числу на шаг симуляции. Биты 0–8 — флаги в порядке FLAGS, с бита 9 — moveX в сотых
@@ -29,10 +30,19 @@ export function decodeIntent(code: number): Intent {
   };
 }
 
-// Сериализация для ссылки: байт версии, байт миссии, затем deflate-raw от пар varint «значение, длина повтора», затем
-// base64url. Версия 1 (ссылки до плана 5в.3) — без байта миссии: это миссия 1.
-const VERSION = 2;
+// Сериализация для ссылки: байт версии, затем номер миссии varint и у сгенерированных (с 3-й) — байт GEN.version, затем
+// deflate-raw от пар varint «значение, длина повтора», затем base64url. Версия 1 (до плана 5в.3) — без номера: миссия 1;
+// версия 2 (до плана 6.2) — номер одним байтом, только 1 и 2.
+const VERSION = 3;
 const MAX_STEPS = 500_000; // больше двух часов при 60 Гц — запись заведомо не наша, память не тратим
+const MAX_MISSION = 1_000_000; // номер из ссылки выше — враждебный: генерировать такой уровень игра не пойдёт
+
+// Ссылка записана другой версией генератора: уровень с тем же номером у зрителя другой — реплей не показываем.
+export class ReplayVersionError extends Error {
+  constructor() {
+    super('record: other generator version');
+  }
+}
 
 function pushVarint(out: number[], n: number): void {
   while (n >= 0x80) {
@@ -71,24 +81,48 @@ export async function packRecord(rec: readonly number[], mission: MissionNo = 1)
     i = j;
   }
   const z = await through(new Uint8Array(raw), new CompressionStream('deflate-raw'));
-  const out = new Uint8Array(z.length + 2);
-  out[0] = VERSION;
-  out[1] = mission;
-  out.set(z, 2);
+  const head = [VERSION];
+  pushVarint(head, mission);
+  if (mission >= 3) head.push(GEN.version);
+  const out = new Uint8Array(head.length + z.length);
+  out.set(head, 0);
+  out.set(z, head.length);
   return toBase64url(out);
 }
 
 const MAX_LINK = 200_000;
 
-// Запись и миссия из ссылки. Бросает на любой порче: не base64url, чужая версия, миссия не 1 и не 2, битый deflate,
-// оборванный varint, слишком длинная запись.
+// Запись и миссия из ссылки. Бросает на любой порче: не base64url, чужая версия записи, номер миссии 0 или выше
+// миллиона, другая версия генератора (ReplayVersionError), битый deflate, оборванный varint, слишком длинная запись.
 export async function unpackReplay(s: string): Promise<{ rec: number[]; mission: MissionNo }> {
   if (s.length > MAX_LINK) throw new Error('record: too long'); // до декодирования: deflate раздувает ссылку в тысячи раз
   const bytes = fromBase64url(s);
-  if (bytes[0] !== 1 && bytes[0] !== VERSION) throw new Error('record: unknown version');
-  const mission = bytes[0] === 1 ? 1 : bytes[1];
-  if (mission !== 1 && mission !== 2) throw new Error('record: unknown mission');
-  const raw = await through(bytes.slice(bytes[0] === 1 ? 1 : 2), new DecompressionStream('deflate-raw'));
+  let mission: number, start: number;
+  if (bytes[0] === 1) {
+    mission = 1;
+    start = 1;
+  } else if (bytes[0] === 2) {
+    mission = bytes[1];
+    start = 2;
+    if (mission !== 1 && mission !== 2) throw new Error('record: unknown mission');
+  } else if (bytes[0] === VERSION) {
+    let p = 1, mul = 1;
+    mission = 0;
+    for (;;) {
+      if (p >= bytes.length || mul > 2 ** 28) throw new Error('record: truncated mission');
+      const b = bytes[p++];
+      mission += (b & 0x7f) * mul;
+      if (b < 0x80) break;
+      mul *= 0x80;
+    }
+    if (mission < 1 || mission > MAX_MISSION) throw new Error('record: unknown mission');
+    if (mission >= 3) {
+      if (p >= bytes.length) throw new Error('record: truncated mission');
+      if (bytes[p++] !== GEN.version) throw new ReplayVersionError();
+    }
+    start = p;
+  } else throw new Error('record: unknown version');
+  const raw = await through(bytes.slice(start), new DecompressionStream('deflate-raw'));
   const rec: number[] = [];
   let p = 0;
   const varint = (): number => {
