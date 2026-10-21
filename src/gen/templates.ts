@@ -75,6 +75,9 @@ export const mirror = (t: Template): Template => ({
   slots: t.slots.map(mirrorSlot),
 });
 
+// Зеркалятся только шаблоны без up/down: шахта в колонках 29–31 у зеркала уехала бы в 8–10.
+export const mirrorable = (t: Template): boolean => !t.tags.has('start') && !t.fits.has('up') && !t.fits.has('down');
+
 const cells = (cols: number[], rows: number[]): [number, number][] => cols.flatMap(c => rows.map(r => [c, r] as [number, number]));
 
 // Клетки проёма выхода [колонка, строка] (стандарт спеки) и перемычки над и под проёмом left/right.
@@ -177,7 +180,7 @@ export function loadTemplates(): Template[] {
     const t = parseTemplate(text, path);
     if (ids.has(t.id)) throw new Error(`${path}: повтор id шаблона ${t.id}`);
     ids.add(t.id);
-    const all = t.tags.has('start') ? [t] : [t, mirror(t)];
+    const all = mirrorable(t) ? [t, mirror(t)] : [t];
     const errors = all.flatMap(checkTemplate);
     if (errors.length) throw new Error(errors.join('\n'));
     out.push(...all);

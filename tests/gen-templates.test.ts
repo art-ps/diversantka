@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkTemplate, cameraText, enemyText, flamerText, mirror, OPENING, parseSlots, parseTemplate, seal } from '../src/gen/templates';
+import { checkTemplate, cameraText, enemyText, flamerText, mirror, mirrorable, OPENING, parseSlots, parseTemplate, seal } from '../src/gen/templates';
 
 const WALL = '#'.repeat(40);
 // Сетка 25 строк: заданные строки — как есть, остальные — стена.
@@ -143,5 +143,24 @@ describe('заделка и проверка стандарта', () => {
     expect(checkTemplate(parseTemplate(tpl(head, rows)))).toEqual([]);
     expect(checkTemplate(parseTemplate(tpl(head.replace('bike: 5,22\n', ''), rows))).join('\n')).toMatch(/bike/);
     expect(checkTemplate(parseTemplate(tpl(head.replace('fits: right down', 'fits: right'), rows))).join('\n')).toMatch(/right down/);
+  });
+});
+
+describe('зеркалятся не все', () => {
+  const shaft = fill(22, 24, '#'.repeat(29) + '.H.' + '#'.repeat(8));
+  const down = () => parseTemplate(tpl(HALL_HEAD.replace('fits: left right', 'fits: left right down').replace('enemy@31,22 patrol=27..35', 'enemy@34,22 patrol=32..36'), { ...HALL_ROWS, ...shaft }));
+
+  it('mirrorable: коридор — да, стартовый и с выходом down — нет', () => {
+    expect(mirrorable(hall())).toBe(true);
+    const yard = parseTemplate(tpl('id: yard\nfits: right down\ntags: start', {}));
+    expect(mirrorable(yard)).toBe(false);
+    expect(mirrorable(down())).toBe(false);
+  });
+
+  it('шаблон с down по стандарту, а его зеркало — нет (шахта уезжает в колонки 8–10)', () => {
+    expect(checkTemplate(down())).toEqual([]);
+    const msg = checkTemplate(mirror(down()));
+    expect(msg.length).toBeGreaterThan(0);
+    expect(msg.join('\n')).toMatch(/down/);
   });
 });
