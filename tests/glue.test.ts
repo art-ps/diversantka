@@ -61,21 +61,22 @@ describe('сквозной путь: победа 1 → Пробел → мис�
     expect(r.line.startsWith('Диверсантка · бункер · ')).toBe(true);
     g.board = saveWin(s, g.missionId, r);
     expect(g.board.place).toBe(1);
-    expect([...s.data.keys()].sort()).toEqual([SAVE.done, SAVE.records, 'diversantka.records.2']);
+    expect([...s.data.keys()].sort()).toEqual([SAVE.done, SAVE.level, SAVE.records, 'diversantka.records.2']);
+    expect(s.getItem(SAVE.level)).toBe('3');
     run(g, IDLE, Math.round(MISSION.outroTime / DT) + 1);
     expect(texts(g)).toEqual(expect.arrayContaining(['МИССИЯ ВЫПОЛНЕНА', 'НОВЫЙ РЕКОРД']));
     run(g, IDLE, Math.round(MISSION.restartDelay / DT) + 1);
-    g.unlocked = true;
+    g.unlocked = 2;
     stepGame(g, JUMP, DT);
     expect(g.missionId).toBe(3);
     expect(g.arrival).toBe(0);
-    expect(g.unlocked).toBe(true); // открытая миссия переживает переход
+    expect(g.unlocked).toBe(2); // открытая миссия переживает переход
   });
 
   it('saveWin миссии 2 не пишет «пройдено» и секрет', () => {
     const s = store();
     saveWin(s, 2, { time: '01:00', tapes: null, hits: 0, secret: true, line: '', seconds: 60, attacks: 0, date: '2026-10-14' });
-    expect([...s.data.keys()]).toEqual(['diversantka.records.2']);
+    expect([...s.data.keys()].sort()).toEqual([SAVE.level, 'diversantka.records.2']);
     expect(loadDone(s)).toBe(false);
   });
 
@@ -133,7 +134,7 @@ describe('реплей с миссией', () => {
     expect(startMission(1, true).prologue!.phase).toBe('title');
     expect(startMission(1).prologue).toEqual({ d: PROLOGUE.startD, phase: 'fly', t: 0 });
     const g = startMission(2);
-    expect(g.unlocked).toBe(false);
+    expect(g.unlocked).toBe(1);
     expect(g.missionId).toBe(2);
     expect(g.arrival).toBe(0);
   });

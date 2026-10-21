@@ -4,7 +4,7 @@ import type { MissionResult } from './sim/mission';
 
 // Итог между сессиями браузера: пройдена ли миссия, найден ли секрет; звук выключен (M); язык; таблица рекордов.
 // Только флаги и числа, без имён и личных данных. Рекорды второй миссии — под ключом diversantka.records.2.
-export const SAVE = { done: 'diversantka.done', secret: 'diversantka.secret', mute: 'diversantka.mute', lang: 'diversantka.lang', records: 'diversantka.records' } as const;
+export const SAVE = { done: 'diversantka.done', secret: 'diversantka.secret', mute: 'diversantka.mute', lang: 'diversantka.lang', records: 'diversantka.records', level: 'diversantka.level' } as const;
 
 type Store = Pick<Storage, 'setItem'>;
 
@@ -32,6 +32,30 @@ export function loadDone(s: Pick<Storage, 'getItem'> | undefined): boolean {
     return s?.getItem(SAVE.done) === '1';
   } catch {
     return false;
+  }
+}
+
+// Максимальный открытый уровень на стартовом экране. Ключа нет или он испорчен — по старому флагу: миссия 1 пройдена — 2,
+// иначе 1. Нет хранилища или оно бросает — 1.
+export function loadLevel(s: Pick<Storage, 'getItem'> | undefined): number {
+  let v: string | null | undefined;
+  try {
+    v = s?.getItem(SAVE.level);
+  } catch {
+    return 1;
+  }
+  const n = Number(v);
+  if (v !== null && v !== undefined && Number.isInteger(n) && n >= 1) return n;
+  return loadDone(s) ? 2 : 1;
+}
+
+// Открыть уровень n, если он выше открытого. Приватный режим — в этой сессии уровень всё равно открыт (main.ts).
+export function saveLevel(s: Pick<Storage, 'getItem' | 'setItem'> | undefined, n: number): void {
+  if (!s || n <= loadLevel(s)) return;
+  try {
+    s.setItem(SAVE.level, String(n));
+  } catch {
+    // нет места — игра идёт
   }
 }
 
@@ -119,6 +143,7 @@ export function saveRecord(s: Pick<Storage, 'getItem' | 'setItem'> | undefined, 
 // своей миссии. Возвращает таблицу для экрана итогов.
 export function saveWin(s: Pick<Storage, 'getItem' | 'setItem'> | undefined, mission: MissionNo, r: MissionResult): Board {
   if (mission === 1) saveResult(s, r.secret);
+  saveLevel(s, mission + 1);
   const place = saveRecord(s, r, mission);
   return { records: loadRecords(s, mission), place };
 }

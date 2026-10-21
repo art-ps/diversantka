@@ -1,4 +1,4 @@
-import { ANIM, BOMB, CAMERA, FIRE, FLAMER, FX, LIFT, MISSION, NINA, PROLOGUE, ROOM_H, ROOM_W, SFX, SOURCE, TRANSITION_TIME } from './config';
+import { ANIM, BOMB, CAMERA, FIRE, FLAMER, FX, LIFT, MISSION, NINA, PROLOGUE, ROOM_H, ROOM_W, SFX, SOURCE, TITLE, TRANSITION_TIME } from './config';
 import { bombFire, bombHeat, jetFire, pitFires, resultFire, stepFires, type Fire } from './fx/fires';
 import { createAnimator, updateAnimator, type Animator } from './anim/animator';
 import { dogGlyphs } from './anim/dog';
@@ -103,7 +103,9 @@ export interface Game {
   missionId: MissionNo; // какая миссия идёт: набор комнат, таймер и цель — MISSIONS[missionId]
   arrival: number | null; // сцена приезда миссии 2: секунд с её начала; null — сцены нет. Мир и таймер стоят, шаги пишутся
   menu: Menu; // стартовый экран: фокус и выбранная миссия
-  unlocked: boolean; // миссия 2 открыта (diversantka.done) — ставит main.ts; без неё на стартовом экране её не выбрать
+  menuHold: { dir: -1 | 0 | 1; t: number }; // стартовый экран: куда держат стрелку на строке миссии и сколько, с
+  unlocked: number; // максимальный открытый уровень (diversantka.level) — ставит main.ts; выше на стартовом экране не выбрать
+  replayOld: boolean; // реплей по ссылке не открылся: другая версия генератора — ставит main.ts, рисует стартовый экран
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start, missionId: MissionNo = 1): Game {
@@ -113,7 +115,7 @@ export function createGame(rooms: Map<string, Room>, start: Start, missionId: Mi
     items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start, goal, time, tapes), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
     lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false, replay: false, board: null, rec: [],
     doors: [], heldId: null, spent: new Set(), guards: [], cameras: [], gates: [], alarmT: 0, alarmAge: 0, gate: 0, bombSite: null, missionId, arrival: null,
-    menu: { row: 'lang', sel: 1 }, unlocked: false,
+    menu: { row: 'lang', sel: 1 }, menuHold: { dir: 0, t: 0 }, unlocked: 1, replayOld: false,
   };
   enterRoom(g, start.room);
   return g;
@@ -150,7 +152,7 @@ function next(g: Game): Game {
   return g.missionId === 1 ? createPrologue(g.rooms, true) : createArrival(g.rooms, g.missionId);
 }
 
-// Переход в новую игру на месте: открытая миссия 2 (её ставит main.ts) переходит с ней.
+// Переход в новую игру на месте: открытый уровень (его ставит main.ts) переходит с ней.
 function become(g: Game, n: Game): void {
   n.unlocked = g.unlocked;
   Object.assign(g, n);
@@ -168,18 +170,29 @@ function beginMission(g: Game): void {
 // Полёт: дельтаплан ведёт сам, прыжок — отцепиться; всплеск и удар — пролог заново.
 function stepPrologue(g: Game, p: Prologue, it: Intent, dt: number): void {
   if (p.phase === 'title') {
-    // Вверх/вниз — строка языка или миссии. Язык: влево — English, вправо — русский. Миссия: влево — 1, вправо — 2,
-    // если открыта. Удержание ничего не листает.
-    const m = g.menu;
+    // Вверх/вниз — строка языка или миссии. Язык: влево — English, вправо — русский. Миссия: влево/вправо — на 1,
+    // удержание — подряд (TITLE.repeatDelay, затем раз в TITLE.repeatEvery), от 1 до открытой.
+    const m = g.menu, h = g.menuHold;
     if (it.upPressed) m.row = 'lang';
     if (it.downPressed) m.row = 'mission';
+    const dir = Math.sign(it.moveX) as -1 | 0 | 1;
+    const ticks = (t: number) => (t < TITLE.repeatDelay ? 0 : 1 + Math.floor((t - TITLE.repeatDelay) / TITLE.repeatEvery));
+    let step = 0;
+    if (dir !== h.dir) {
+      h.dir = dir;
+      h.t = 0;
+      step = dir;
+    } else if (dir) {
+      const t0 = h.t;
+      h.t += dt;
+      if (ticks(h.t) > ticks(t0)) step = dir;
+    }
     if (m.row === 'lang') {
       if (it.moveX < 0) setLang('en');
       else if (it.moveX > 0) setLang('ru');
-    } else if (it.moveX < 0) m.sel = 1;
-    else if (it.moveX > 0 && g.unlocked) m.sel = 2;
+    } else m.sel = Math.min(Math.max(1, g.unlocked), Math.max(1, m.sel + step));
     if (!it.jumpPressed) return;
-    if (m.sel !== 1) become(g, createArrival(worldOf(m.sel), m.sel)); // миссия 2 — со сцены приезда, пролога нет
+    if (m.sel !== 1) become(g, createArrival(worldOf(m.sel), m.sel)); // со 2-й — со сцены приезда, пролога нет
     else p.phase = 'fly'; // это нажатие не отцепляет: полёт начинается с t = 0, окно armTime
     return;
   }

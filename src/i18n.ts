@@ -75,6 +75,8 @@ export interface Strings {
   titleName: string;
   titleTask: string;
   titleTask2: string; // задача миссии 2 — вместо titleTask, когда на стартовом экране выбрана она
+  titleTaskGen: (goal: 'tapes' | 'bomb', tapes: number, minutes: number) => string; // задача сгенерированного уровня
+  replayOld: string; // стартовый экран: ссылка ?r= записана другой версией генератора
   titleMission: string; // строка выбора миссии «МИССИЯ  1 · 2»
   titleKeys: readonly (readonly [string, string, string])[]; // действие · клавиатура · геймпад; первая строка — шапка
   titleStart: string;
@@ -159,6 +161,9 @@ const RU: Strings = {
   titleName: 'ДИВЕРСАНТКА',
   titleTask: `${MISSION.tapes} ЛЕНТ · ЭВМ · ЗАБОР · МОТОЦИКЛ. ${MISSION.time / 60} МИНУТ`,
   titleTask2: `БОМБА · РЕАКТОР · МОТОЦИКЛ. ${MISSIONS[2].time / 60} МИНУТ`,
+  titleTaskGen: (goal, tapes, minutes) =>
+    `${goal === 'bomb' ? 'БОМБА' : `${tapes} ${ruPlural(tapes, 'ЛЕНТА', 'ЛЕНТЫ', 'ЛЕНТ')} · ЭВМ · ЗАБОР`} · МОТОЦИКЛ. ${minutes} ${ruPlural(minutes, 'МИНУТА', 'МИНУТЫ', 'МИНУТ')}`,
+  replayOld: 'ЗАПИСЬ ДРУГОЙ ВЕРСИИ ИГРЫ',
   titleMission: 'МИССИЯ',
   titleKeys: [
     ['', 'КЛАВИАТУРА', 'ГЕЙМПАД'],
@@ -240,6 +245,8 @@ const EN: Strings = {
   titleName: 'DIVERSANTKA',
   titleTask: `${MISSION.tapes} TAPES · COMPUTER · FENCE · BIKE. ${MISSION.time / 60} MIN`,
   titleTask2: `BOMB · REACTOR · BIKE. ${MISSIONS[2].time / 60} MIN`,
+  titleTaskGen: (goal, tapes, minutes) => `${goal === 'bomb' ? 'BOMB' : `${tapes} TAPES · COMPUTER · FENCE`} · BIKE. ${minutes} MIN`,
+  replayOld: 'RECORDED ON ANOTHER VERSION',
   titleMission: 'MISSION',
   titleKeys: [
     ['', 'KEYBOARD', 'GAMEPAD'],

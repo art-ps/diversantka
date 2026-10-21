@@ -18,7 +18,7 @@ const JUMP = I({ jump: true, jumpPressed: true });
 const UP = I({ up: true, upPressed: true }), DOWN = I({ down: true, downPressed: true });
 const LEFT = I({ moveX: -1 }), RIGHT = I({ moveX: 1 });
 const run = (g: Game, it: Intent, n: number) => { for (let i = 0; i < n; i++) stepGame(g, it, DT); };
-const title = (unlocked: boolean) => {
+const title = (unlocked: number) => {
   const g = createPrologue(loadRoomsFs(), true);
   g.unlocked = unlocked;
   return g;
@@ -41,7 +41,7 @@ describe('стартовый экран: строка миссии', () => {
   it('«МИССИЯ  1 · 2» под строкой языка, по центру рамки; выбрана 1; 2 тусклая, пока миссия 1 не пройдена', () => {
     for (const l of ['ru', 'en'] as const) {
       setLang(l);
-      const g = title(false);
+      const g = title(1);
       const row = missionRow(g);
       expect(row.map(t => t.s).join('')).toBe(`${STR[l].titleMission}  1 · 2`);
       const left = row[0].x, last = row.at(-1)!, right = last.x + last.s.length * last.step;
@@ -52,11 +52,11 @@ describe('стартовый экран: строка миссии', () => {
       expect(part(g, '2').c).toBe(LOCKED);
       for (const t of row) for (const ch of t.s) expect(CHARSET).toContain(ch);
     }
-    expect(part(title(true), '2').c).toBe(PAL.hudDim);
+    expect(part(title(2), '2').c).toBe(PAL.hudDim);
   });
 
   it('вверх/вниз двигают фокус: строка в фокусе — ярко, другая — тускло', () => {
-    const g = title(true);
+    const g = title(2);
     const frame = (y: number, s: string) => texts(g).find(t => t.y === y && t.s === s)!.c;
     expect(frame(TITLE_BOX.y0 + 1, '< ')).toBe(PAL.hud);
     expect(frame(TITLE_BOX.y0 + 2, `${STR.ru.titleMission}  `)).toBe(PAL.hudDim);
@@ -69,7 +69,7 @@ describe('стартовый экран: строка миссии', () => {
   });
 
   it('на строке миссии влево/вправо выбирают миссию, язык не трогают; на строке языка — язык, миссию не трогают', () => {
-    const g = title(true);
+    const g = title(2);
     stepGame(g, DOWN, DT);
     run(g, RIGHT, 30);
     expect(g.menu.sel).toBe(2);
@@ -89,7 +89,7 @@ describe('стартовый экран: строка миссии', () => {
   });
 
   it('миссия 2 закрыта: вправо на строке миссии ничего не выбирает, пробел — миссия 1, полёт пролога', () => {
-    const g = title(false);
+    const g = title(1);
     stepGame(g, DOWN, DT);
     run(g, RIGHT, 30);
     expect(g.menu.sel).toBe(1);
@@ -99,7 +99,7 @@ describe('стартовый экран: строка миссии', () => {
   });
 
   it('миссия 2 выбрана — пробел начинает её со сцены приезда; запись пустая, нажатие старта в неё не попало', () => {
-    const g = title(true);
+    const g = title(2);
     stepGame(g, DOWN, DT);
     stepGame(g, RIGHT, DT);
     stepGame(g, JUMP, DT);

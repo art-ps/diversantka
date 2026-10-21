@@ -11,7 +11,7 @@ import { Bloom } from './render/bloom';
 import { GlyphBatch } from './render/glyphs';
 import { PAL } from './render/palette';
 import { drawGame } from './render/scene';
-import { loadDone, loadLang, loadMuted, loadRecords, saveLang, saveMuted, saveWin, storage } from './save';
+import { loadLang, loadLevel, loadMuted, loadRecords, saveLang, saveMuted, saveWin, storage } from './save';
 import { missionResult } from './sim/mission';
 import { holdMove, packRecord, quitsReplay, replayStep, replayUrl, shareText, unpackReplay, type Replay } from './sim/record';
 import { worldOf } from './levels';
@@ -70,7 +70,7 @@ async function boot() {
   // Стартовый экран поверх первого кадра пролога; реплей — с начала своей миссии, как начиналась запись
   // (миссия 2 по ссылке — и без пройденной первой).
   const game = startMission(replay?.mission ?? 1, replay === null);
-  let unlocked = loadDone(storage()); // миссия 2 открыта на стартовом экране
+  let unlocked = loadLevel(storage()); // открытый максимум на стартовом экране
   let holdLeft = false; // выход из реплея движением: пока клавишу держат, стартовый экран её не видит
   const leaveReplay = () => {
     replay = null;
@@ -113,7 +113,7 @@ async function boot() {
       leaveReplay();
       it = missed = IDLE; // нажатие, прервавшее реплей, не стартует полёт
     }
-    game.unlocked = unlocked; // после возможного выхода из реплея: новая игра узнаёт об открытой миссии 2 до шагов
+    game.unlocked = unlocked; // новая игра узнаёт открытый максимум до шагов
     for (let i = 0; i < plan.steps; i++) {
       if (replay) {
         // Запись кончилась: итог есть — досматриваем его, нет (запись обрезана или испорчена) — обычный старт.
@@ -148,7 +148,7 @@ async function boot() {
       if (replay) game.board = { records: loadRecords(storage(), game.missionId), place: null }; // чужая игра: в таблицу и флаги не пишем
       else {
         game.board = saveWin(storage(), game.missionId, missionResult(game.mission));
-        if (game.missionId === 1) unlocked = true; // и без хранилища миссия 2 открыта до конца сессии
+        unlocked = Math.max(unlocked, game.missionId + 1); // и без хранилища следующий уровень открыт до конца сессии
         share = packRecord(game.rec, game.missionId).then(p => replayUrl(location.href, p), () => null);
       }
     }

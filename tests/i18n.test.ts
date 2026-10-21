@@ -30,6 +30,7 @@ const visible = (s: Strings): string[] => [
   s.mapTitle, s.mapLegend, s.mapHint, ...Object.values(s.mapIcons), s.goalBomb, s.goalEscape, s.plantHint, s.mapLegend2,
   s.titleName, s.titleTask, ...s.titleKeys.flat(), s.titleStart, s.titleFocus,
   s.hudBomb(false) + '12:00', s.hudBomb(true) + '12:00', s.missionName(7, 'bomb'), s.missionName(8, 'tapes'), s.goalPlant, s.goalTapes(5), s.goalComputer, s.goalSwitch, s.titleTask2, `${s.titleMission}  1 · 2`,
+  s.titleTaskGen('bomb', 0, 9), s.titleTaskGen('tapes', 4, 22), s.titleTaskGen('tapes', 5, 21), s.replayOld,
 ];
 
 const SRC = fileURLToPath(new URL('../src', import.meta.url));

@@ -2,6 +2,7 @@ import { BIKE, MISSION, ROOM_W, TITLE } from '../config';
 import type { Pose } from '../anim/clip';
 import { lang, LANG_NAMES, LANGS, str } from '../i18n';
 import type { Board, RecordRow } from '../save';
+import { missionDef } from '../levels';
 import { formatTime, marksOf, type MissionResult } from '../sim/mission';
 import { bootLines, type Screen } from '../sim/terminal';
 import { BIKE_DIR, BIKE_PIPE, bikeGlyphs, riderGlyphs } from './bike';
@@ -108,8 +109,8 @@ export const KEY_COLS = [0, 14, 27]; // начала колонок таблиц
 // Миссия 2, пока первая не пройдена, — тусклее остального.
 export const LOCKED: Color = [PAL.hudDim[0] * 0.5, PAL.hudDim[1] * 0.5, PAL.hudDim[2] * 0.5, PAL.hudDim[3]];
 
-// menu — фокус и выбранная миссия, unlocked — миссия 2 открыта.
-export function drawTitle(b: Pick<GlyphBatch, 'push' | 'text'>, time: number, menu: Menu = { row: 'lang', sel: 1 }, unlocked = false): void {
+// menu — фокус и выбранная миссия, unlocked — открытый максимум, notice — «запись другой версии» (src/main.ts).
+export function drawTitle(b: Pick<GlyphBatch, 'push' | 'text'>, time: number, menu: Menu = { row: 'lang', sel: 1 }, unlocked = 1, notice = false): void {
   const txt = str(), f = TITLE_BOX, mid = (f.x0 + f.x1 + 1) / 2, left = f.x0 + 2;
   const centered = (y: number, s: string, c: Color, step = STEP) => b.text(mid - (s.length * step) / 2, y, s, c, step);
   drawFrame(b, PAL.hudDim, f);
@@ -127,17 +128,25 @@ export function drawTitle(b: Pick<GlyphBatch, 'push' | 'text'>, time: number, me
     ...LANGS.flatMap((l, i): [string, Color][] => [...(i ? [[' · ', frame('lang')] as [string, Color]] : []), [LANG_NAMES[l], l === lang() ? PAL.item : PAL.hudDim]]),
     [' >', frame('lang')],
   ]);
-  row(f.y0 + 2, [
-    [`${txt.titleMission}  `, frame('mission')],
-    ['1', menu.sel === 1 ? PAL.item : PAL.hudDim],
-    [' · ', frame('mission')],
-    ['2', !unlocked ? LOCKED : menu.sel === 2 ? PAL.item : PAL.hudDim],
-  ]);
+  if (unlocked <= 2) {
+    row(f.y0 + 2, [
+      [`${txt.titleMission}  `, frame('mission')],
+      ['1', menu.sel === 1 ? PAL.item : PAL.hudDim],
+      [' · ', frame('mission')],
+      ['2', unlocked < 2 ? LOCKED : menu.sel === 2 ? PAL.item : PAL.hudDim],
+    ]);
+  } else {
+    row(f.y0 + 2, [[`${txt.titleMission}  `, frame('mission')], ['< ', frame('mission')], [String(menu.sel), PAL.item], [' >', frame('mission')]]);
+  }
+  const def = missionDef(menu.sel);
+  if (unlocked > 2) centered(f.y0 + 3, txt.missionName(menu.sel, def.goal), PAL.hud);
   centered(f.y0 + 4, txt.titleName, PAL.item, 1);
-  centered(f.y0 + 5, menu.sel === 2 ? txt.titleTask2 : txt.titleTask, PAL.hud);
+  const task = menu.sel === 1 ? txt.titleTask : menu.sel === 2 ? txt.titleTask2 : txt.titleTaskGen(def.goal, def.tapes, Math.ceil(def.time / 60));
+  centered(f.y0 + 5, task, PAL.hud);
   txt.titleKeys.forEach((row, i) => row.forEach((cell, j) => {
     if (cell) b.text(left + KEY_COLS[j] * STEP, f.y0 + 6 + i, cell, i === 0 || j === 0 ? PAL.hudDim : PAL.hud, STEP);
   }));
+  if (notice) centered(f.y1 - 3, txt.replayOld, PAL.danger);
   if (Math.floor(time * TITLE.blinkHz * 2) % 2 === 0) centered(f.y1 - 2, txt.titleStart, PAL.item);
   centered(f.y1 - 1, txt.titleFocus, PAL.hudDim);
 }
