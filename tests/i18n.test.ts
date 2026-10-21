@@ -37,7 +37,7 @@ const files = (dir: string): string[] =>
   readdirSync(dir).flatMap(n => (statSync(join(dir, n)).isDirectory() ? files(join(dir, n)) : n.endsWith('.ts') ? [join(dir, n)] : []));
 // Кириллица в коде вне словаря допустима только в сообщениях для разработчика: ошибки файлов комнат и клипов,
 // метки parsePoints, ошибки запуска в main.ts. Атлас перечисляет буквы, а не тексты.
-const DEV_FILES = ['i18n.ts', 'render/atlas.ts', 'anim/clip.ts', 'world/room.ts', 'world/spawns.ts', 'world/map.ts', 'world/index.ts', 'gen/templates.ts', 'main.ts'];
+const DEV_FILES = ['i18n.ts', 'render/atlas.ts', 'anim/clip.ts', 'world/room.ts', 'world/spawns.ts', 'world/map.ts', 'world/index.ts', 'gen/templates.ts', 'gen/level.ts', 'main.ts'];
 const DEV_LINE = /parsePoints\(/;
 const LITERAL = /(['"`])(?:(?!\1).)*[А-Яа-яЁё](?:(?!\1).)*\1/;
 

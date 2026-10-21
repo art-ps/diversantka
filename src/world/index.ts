@@ -18,6 +18,9 @@ const FILES: Record<MissionNo, Record<string, string>> = {
 // Старт второй миссии для тестов карты; описание миссий — src/missions.ts.
 export const BUNKER_START = MISSIONS[2].start;
 
+// Что требует цель tapes: лент и источников на карте. Ручная миссия 1 — 6 лент и источник; сгенерированные — своё.
+export interface MissionNeed { tapes: number; sources: number }
+
 const loaded: Partial<Record<MissionNo, Map<string, Room>>> = {};
 // Набор комнат миссии, загруженный один раз: переходы между миссиями и «заново» файлы не перечитывают.
 export const worldOf = (n: MissionNo): Map<string, Room> => (loaded[n] ??= loadWorld(n));
@@ -33,10 +36,7 @@ export function loadWorld(mission: MissionNo = 1): Map<string, Room> {
     rooms.set(room.id, room);
   }
   const { goal, start } = MISSIONS[mission];
-  const errors = [
-    ...validateWorld(rooms), ...validateMission(rooms, goal, start.room), ...validateLifts(rooms), ...validateAmbient(rooms), ...validateDoors(rooms),
-    ...validateCameras(rooms), ...validateGates(rooms),
-  ];
+  const errors = validateRooms(rooms, goal, start.room);
   if (errors.length) throw new Error(errors.join('\n'));
   return rooms;
 }
@@ -44,7 +44,7 @@ export function loadWorld(mission: MissionNo = 1): Map<string, Room> {
 // Миссия на карте. tapes (первая): 6 лент, одна главная ЭВМ, один щиток, один мотоцикл, один источник.
 // bomb (вторая): одна точка закладки, одна бомба, один мотоцикл — в стартовой комнате start. У обеих терминалы гасят
 // существующие комнаты.
-export function validateMission(rooms: Map<string, Room>, goal: Mission['goal'] = 'tapes', start = MISSIONS[2].start.room): string[] {
+export function validateMission(rooms: Map<string, Room>, goal: Mission['goal'] = 'tapes', start = MISSIONS[2].start.room, need: MissionNeed = { tapes: MISSION.tapes, sources: 1 }): string[] {
   if (goal === 'bomb') return validateBomb(rooms, start);
   const errors = validateControls(rooms);
   let tapes = 0, mains = 0, panels = 0, bikes = 0, sources = 0;
@@ -56,12 +56,31 @@ export function validateMission(rooms: Map<string, Room>, goal: Mission['goal'] 
     parseFence(r.meta.fence, r.id);
     for (const t of parseTerminals(r.meta.terminals, r.id)) if (t.main) mains++;
   }
-  if (tapes !== MISSION.tapes) errors.push(`лент на карте ${tapes}, нужно ${MISSION.tapes}`);
+  if (tapes !== need.tapes) errors.push(`лент на карте ${tapes}, нужно ${need.tapes}`);
   if (mains !== 1) errors.push(`главных ЭВМ на карте ${mains}, нужна одна`);
   if (panels !== 1) errors.push(`щитков на карте ${panels}, нужен один`);
   if (bikes !== 1) errors.push(`мотоциклов на карте ${bikes}, нужен один`);
-  if (sources !== 1) errors.push(`источников на карте ${sources}, нужен один`);
+  if (sources !== need.sources) errors.push(need.sources === 1 ? `источников на карте ${sources}, нужен один` : `источников на карте ${sources}, нужно ${need.sources}`);
   return errors;
+}
+
+// Все проверки набора комнат: записи шапок, выходы, цель, лифты, фон, двери, камеры, решётки.
+export function validateRooms(rooms: Map<string, Room>, goal: Mission['goal'], start: string, need?: MissionNeed): string[] {
+  const errors: string[] = [];
+  for (const r of rooms.values()) {
+    try {
+      parseItems(r.meta.items, r.id);
+      parseEnemies(r.meta.enemies, r.id);
+      parseCameras(r.meta.cameras, r.id);
+    } catch (e) {
+      errors.push((e as Error).message);
+    }
+  }
+  if (errors.length) return errors;
+  return [
+    ...validateWorld(rooms), ...validateMission(rooms, goal, start, need), ...validateLifts(rooms), ...validateAmbient(rooms), ...validateDoors(rooms),
+    ...validateCameras(rooms), ...validateGates(rooms),
+  ];
 }
 
 // Терминал гасит огнемёты и камеры только существующих комнат.

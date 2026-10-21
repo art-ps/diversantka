@@ -23,7 +23,7 @@ const fallDamage = (h: number) => Math.max(0, h - NINA.safeFall) * NINA.fallDama
 
 export interface Target { what: string; room: string; x: number; bottom: number }
 
-// Цели миссии: 6 лент, главная ЭВМ, щиток, гараж (мотоцикл), источник.
+// Цели миссии: ленты, главная ЭВМ, щиток, гараж (мотоцикл), источник, точка закладки и бомба.
 export function missionTargets(rooms: Map<string, Room>): Target[] {
   const out: Target[] = [];
   for (const r of rooms.values()) {
@@ -32,6 +32,8 @@ export function missionTargets(rooms: Map<string, Room>): Target[] {
     for (const p of parsePoints(r.meta.switch, r.id, 'щитка')) out.push({ what: 'щиток', room: r.id, ...p });
     for (const p of parsePoints(r.meta.bike, r.id, 'мотоцикла')) out.push({ what: 'гараж', room: r.id, ...p });
     for (const p of parsePoints(r.meta.source, r.id, 'источника')) out.push({ what: 'источник', room: r.id, ...p });
+    for (const p of parsePoints(r.meta.bomb, r.id, 'точки закладки')) out.push({ what: 'точка закладки', room: r.id, ...p });
+    for (const i of parseItems(r.meta.items, r.id)) if (i.kind === 'bomb') out.push({ what: 'бомба', room: r.id, x: i.x, bottom: i.bottom });
   }
   return out;
 }
@@ -197,8 +199,8 @@ export function routeDamage(rooms: Map<string, Room>, starts: Spot[], open: Read
 export const reachableNodes = (rooms: Map<string, Room>, starts: Spot[]): Set<string> => new Set(routeDamage(rooms, starts).keys());
 
 // Наименьший урон до каждой цели миссии из точек starts (x — левый край тела, как в createNina); недостижимых нет в ответе.
-export function targetDamage(rooms: Map<string, Room>, starts: Spot[]): Map<string, number> {
-  const standing = [...routeDamage(rooms, starts)].filter(([k]) => k.startsWith('S|')).map(([k, d]) => [k.split('|'), d] as const);
+export function targetDamage(rooms: Map<string, Room>, starts: Spot[], open: ReadonlySet<number> = new Set()): Map<string, number> {
+  const standing = [...routeDamage(rooms, starts, open)].filter(([k]) => k.startsWith('S|')).map(([k, d]) => [k.split('|'), d] as const);
   const out = new Map<string, number>();
   for (const t of missionTargets(rooms)) {
     for (const [[, id, c, r], d] of standing) {
@@ -232,7 +234,7 @@ export function doorRoute(rooms: Map<string, Room>, starts: Spot[]): string[] {
 }
 
 // Что из целей миссии недостижимо без гибели из точек starts.
-export function unreachable(rooms: Map<string, Room>, starts: Spot[]): string[] {
-  const got = targetDamage(rooms, starts);
+export function unreachable(rooms: Map<string, Room>, starts: Spot[], open: ReadonlySet<number> = new Set()): string[] {
+  const got = targetDamage(rooms, starts, open);
   return missionTargets(rooms).filter(t => !got.has(t.what)).map(t => t.what);
 }
