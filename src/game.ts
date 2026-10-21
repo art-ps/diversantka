@@ -128,31 +128,26 @@ export function createPrologue(rooms: Map<string, Room>, title = false): Game {
   return g;
 }
 
-// Начало миссии n: 1 — пролог (title — со стартового экрана), 2 — сцена приезда. Так стартуют запуск и реплей по ссылке.
+// Начало миссии n: 1 — пролог (title — со стартового экрана), с 2-й — сцена приезда. Так стартуют запуск и реплей по ссылке.
 export function startMission(n: MissionNo, title = false): Game {
-  return n === 1 ? createPrologue(worldOf(1), title) : createArrival(worldOf(2));
+  return n === 1 ? createPrologue(worldOf(1), title) : createArrival(worldOf(n), n);
 }
 
-// Миссия 2 со сцены приезда: мотоцикл въезжает на стоянку, героиня слезает у старта, затем пошёл таймер.
-// «Заново» в миссии 2 тоже начинается отсюда.
-export function createArrival(rooms: Map<string, Room>): Game {
-  const g = createGame(rooms, MISSIONS[2].start, 2);
+// Миссия n ≥ 2 со сцены приезда: мотоцикл въезжает на стоянку, героиня слезает у старта, затем пошёл таймер.
+// «Заново» тоже начинается отсюда.
+export function createArrival(rooms: Map<string, Room>, n: MissionNo = 2): Game {
+  const g = createGame(rooms, missionDef(n).start, n);
   g.arrival = 0;
   g.withPrologue = true;
   return g;
 }
 
-// Прыжок на итоге или провале. Победа в 1 — миссия 2 со сцены приезда; победа в 2 — стартовый экран с фокусом
-// на миссии 2. Гибель и провал — та же миссия с её начала: пролог, сцена приезда или старт.
+// Прыжок на итоге или провале. Победа в n — миссия n + 1 со сцены приезда. Гибель и провал — та же миссия с её начала:
+// пролог, сцена приезда или старт.
 function next(g: Game): Game {
-  if (g.mission.result === 'won') {
-    if (g.missionId === 1) return createArrival(worldOf(2));
-    const t = createPrologue(worldOf(1), true);
-    t.menu = { row: 'mission', sel: 2 };
-    return t;
-  }
+  if (g.mission.result === 'won') return createArrival(worldOf(g.missionId + 1), g.missionId + 1);
   if (!g.withPrologue) return createGame(g.rooms, g.start, g.missionId);
-  return g.missionId === 2 ? createArrival(g.rooms) : createPrologue(g.rooms, true);
+  return g.missionId === 1 ? createPrologue(g.rooms, true) : createArrival(g.rooms, g.missionId);
 }
 
 // Переход в новую игру на месте: открытая миссия 2 (её ставит main.ts) переходит с ней.
@@ -184,7 +179,7 @@ function stepPrologue(g: Game, p: Prologue, it: Intent, dt: number): void {
     } else if (it.moveX < 0) m.sel = 1;
     else if (it.moveX > 0 && g.unlocked) m.sel = 2;
     if (!it.jumpPressed) return;
-    if (m.sel === 2) become(g, createArrival(worldOf(2))); // миссия 2 — со сцены приезда, пролога нет
+    if (m.sel !== 1) become(g, createArrival(worldOf(m.sel), m.sel)); // миссия 2 — со сцены приезда, пролога нет
     else p.phase = 'fly'; // это нажатие не отцепляет: полёт начинается с t = 0, окно armTime
     return;
   }
@@ -315,8 +310,8 @@ function stepEnd(g: Game, it: Intent, dt: number): void {
   const shown = g.mission.result === 'won' ? MISSION.outroTime : g.mission.blown ? BOMB.blast : 0;
   if (g.endT < shown) return;
   if (t0 < shown && g.board?.place === 1) g.sfx.push('record');
-  if (g.mission.result === 'won' && g.missionId === 2) {
-    if (t0 < shown) g.fires = [resultFire()]; // итоги бункера — на фоне огня; мира больше нет, урона нет
+  if (g.mission.result === 'won' && g.mission.goal === 'bomb') {
+    if (t0 < shown) g.fires = [resultFire()]; // итоги миссии с бомбой — на фоне огня; мира больше нет, урона нет
     stepFires(g.fires, [], dt);
   }
   if (g.mission.result === 'won' && it.usePressed) g.clip = missionResult(g.mission).line;
@@ -432,6 +427,16 @@ export const plantHint = (g: Game): boolean =>
   !g.prologue && g.arrival === null && !g.paused && !g.screen && !g.transition && !g.nina.dead && !g.mission.result &&
   g.bombSite !== null && g.mission.fuse === null && g.nina.held === 'bomb' && near(g.nina, g.bombSite);
 
+// Текущий шаг задания — сцена приезда и карта. Миссия 1 — без задания; миссия 2 — «в реакторе»; сгенерированные —
+// по цели: бомба (заложи → уходи) или ленты (собери → ЭВМ → забор → уходи).
+export function goalLine(g: Game): string | null {
+  const s = str(), m = g.mission;
+  if (m.goal === 'bomb') return m.fuse !== null ? s.goalEscape : g.missionId === 2 ? s.goalBomb : s.goalPlant;
+  if (g.missionId < 3) return null;
+  if (!m.tapesIn) return m.tapes.size < m.tapesNeed ? s.goalTapes(m.tapesNeed) : s.goalComputer;
+  return m.fenceOff ? s.goalEscape : s.goalSwitch;
+}
+
 // Лифты: удержание вверх/вниз на платформе — к следующему этажу. Платформа везёт стоящую героиню и лежащие
 // предметы; поднимаясь, подхватывает падающую героиню, чьи ноги прошла.
 function stepLifts(g: Game, it: Intent, dt: number): void {
@@ -535,7 +540,14 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
     g.rec.push(code);
     if (g.arrival === 0) g.sfx.push('bike');
     g.arrival += dt;
-    if (g.arrival > MISSION.arriveTime - dt / 2) g.arrival = null; // ровно arriveTime / DT шагов, без погрешности суммы
+    if (g.arrival > MISSION.arriveTime - dt / 2) {
+      g.arrival = null; // ровно arriveTime / DT шагов, без погрешности суммы
+      // Сгенерированный уровень с лентами: забор за героиней под током — надпись и искры.
+      if (g.missionId >= 3 && g.fence && !g.mission.fenceOff) {
+        spawnFloater(g.floaters, str().fenceLive, g.fence.x + 0.5, g.fence.top - 1, 'damage');
+        for (let y = g.fence.top; y <= g.fence.bottom; y += 2) sparks(g.particles, g.fence.x + 0.5, y + 0.5, PAL.fireHot, 3);
+      }
+    }
     return;
   }
   if (g.mission.result) {

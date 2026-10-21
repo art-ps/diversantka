@@ -1,5 +1,5 @@
 import { ROOM_W } from '../config';
-import type { Game } from '../game';
+import { goalLine, type Game } from '../game';
 import { str } from '../i18n';
 import { layoutMap, mapIcons, type MapIcon } from '../world/map';
 import { parsePoints } from '../world/spawns';
@@ -24,7 +24,8 @@ export function drawMap(b: Pick<GlyphBatch, 'push' | 'text'>, g: Game, time: num
   centered(b, 2, s.mapTitle, PAL.hud);
   const { pos } = layoutMap(g.rooms, g.start.room);
   const bomb = g.mission.goal === 'bomb', planted = g.mission.fuse !== null;
-  if (bomb) centered(b, 3, planted ? s.goalEscape : s.goalBomb, PAL.hud);
+  const goal = goalLine(g);
+  if (goal) centered(b, 3, goal, PAL.hud);
   // миссия 2: комната с точкой закладки видна с начала, даже непосещённая
   const targets = bomb ? [...g.rooms.values()].filter(r => parsePoints(r.meta.bomb, r.id, 'точки закладки').length).map(r => r.id) : [];
   const shown = [...new Set([...g.seen, ...targets])].filter(id => pos.has(id));

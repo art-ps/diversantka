@@ -74,8 +74,8 @@ describe('сцена приезда', () => {
   });
 
   it('названия миссий: ru и en', () => {
-    expect(STR.en.missionName[2]).toBe('MISSION 2 · BUNKER');
-    expect(STR.ru.missionName[2]).toBe('МИССИЯ 2 · БУНКЕР');
+    expect(STR.en.missionName(2, 'bomb')).toBe('MISSION 2 · BUNKER');
+    expect(STR.ru.missionName(2, 'bomb')).toBe('МИССИЯ 2 · БУНКЕР');
   });
 
   it('запись сцены воспроизводится: та же запись — то же состояние после сцены', () => {
@@ -100,7 +100,7 @@ describe('сцена приезда', () => {
     until(g, 1.8);
     const x2 = Math.max(...wheels());
     expect(x2).toBeGreaterThan(x1);
-    expect(shot(g).texts).toContain(STR.ru.missionName[2]);
+    expect(shot(g).texts).toContain(STR.ru.missionName(2, 'bomb'));
     until(g, MISSION.arriveRide + 0.1);
     const parked = shot(g);
     expect(parked.pushes.some(p => p.ch === '<')).toBe(true); // фара вправо — рисунок не отражён: «o<», как в BIKE_ART
@@ -108,7 +108,7 @@ describe('сцена приезда', () => {
     for (const p of parked.pushes) expect(CHARSET).toContain(p.ch);
     for (const t of parked.texts) for (const ch of t) expect(CHARSET).toContain(ch);
     until(g, MISSION.arriveTime + 1);
-    expect(shot(g).texts).not.toContain(STR.ru.missionName[2]);
+    expect(shot(g).texts).not.toContain(STR.ru.missionName(2, 'bomb'));
   });
 
   it('«заново» после провала в миссии 2 — снова сцена приезда', () => {

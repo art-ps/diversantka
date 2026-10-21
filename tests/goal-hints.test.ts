@@ -99,7 +99,7 @@ describe('задание в сцене приезда', () => {
   it('миссия 2: название и задание', () => {
     const g = createArrival(loadRoomsFs('rooms2'));
     const { texts } = shot(g);
-    expect(texts).toContain(STR.ru.missionName[2]);
+    expect(texts).toContain(STR.ru.missionName(2, 'bomb'));
     expect(texts).toContain(STR.ru.goalBomb);
   });
 

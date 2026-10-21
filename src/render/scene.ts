@@ -4,7 +4,7 @@ import { J } from '../anim/clip';
 import { dogGlyphs } from '../anim/dog';
 import { simplePose } from '../anim/simple';
 import { BOMB, CAMERA, DOOR, FX, GUARD, LIFT, MISSION, NINA, ROOM_H, ROOM_W, SOURCE } from '../config';
-import { liftHint, liveRoom, plantHint, TRANSITION_TIME, type Game } from '../game';
+import { goalLine, liftHint, liveRoom, plantHint, TRANSITION_TIME, type Game } from '../game';
 import { LANGS, STR, str, type Strings } from '../i18n';
 import { fireCells, heatColor, type Fire } from '../fx/fires';
 import { HEAT_RAMP } from '../fx/heat';
@@ -158,7 +158,7 @@ export function drawArrival(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy
 export function drawFenceParts(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: number, time: number): void {
   const on = !g.mission.fenceOff;
   if (g.panel) b.push(g.panel.x - 0.5 + ox, g.panel.bottom - 2.5 + oy, '▓', on ? PAL.danger : PAL.hud);
-  if (g.bike && !riding(g)) drawBike(b, g.bike.x + ox, g.bike.bottom + oy, 0, g.missionId === 2 ? 1 : BIKE_DIR); // миссия 2 — как приехал
+  if (g.bike && !riding(g)) drawBike(b, g.bike.x + ox, g.bike.bottom + oy, 0, g.missionId >= 2 ? 1 : BIKE_DIR); // с миссии 2 — как приехал
   if (g.fence) {
     for (let y = g.fence.top; y <= g.fence.bottom; y++) {
       const flick = on && Math.floor(time * 15 + y * 7) % 3 === 0;
@@ -367,8 +367,11 @@ function drawHud(b: GlyphBatch, g: Game, time: number): void {
     b.text((ROOM_W - hudWidth(s.dead)) / 2, 12, s.dead, PAL.danger, HUD_STEP);
   }
   if (time < 8) b.text(ROOM_W - 0.5 - hudWidth(s.credit), ROOM_H - 1, s.credit, PAL.hudDim, HUD_STEP);
-  if (g.arrival !== null) b.text((ROOM_W - hudWidth(s.missionName[g.missionId])) / 2, 2, s.missionName[g.missionId], PAL.hud, HUD_STEP);
-  if (g.arrival !== null && g.mission.goal === 'bomb') b.text((ROOM_W - hudWidth(s.goalBomb)) / 2, 3, s.goalBomb, PAL.hud, HUD_STEP);
+  if (g.arrival !== null) {
+    const name = s.missionName(g.missionId, g.mission.goal), goal = goalLine(g);
+    b.text((ROOM_W - hudWidth(name)) / 2, 2, name, PAL.hud, HUD_STEP);
+    if (goal) b.text((ROOM_W - hudWidth(goal)) / 2, 3, goal, PAL.hud, HUD_STEP);
+  }
   const p = g.prologue;
   if (p) {
     const msg = s.prologue[p.phase]; // подсказка в полёте и исход пролога
@@ -480,7 +483,7 @@ export function drawGame(b: GlyphBatch, g: Game, time: number, fig: Pick<GlyphBa
   if (g.mission.result === 'won') {
     if (g.endT < MISSION.outroTime) drawOutro(b, g.endT, RIDER);
     else {
-      if (g.missionId === 2) drawFires(b, g.fires, 0, 0); // бункер горит под рамкой итогов
+      if (g.mission.goal === 'bomb') drawFires(b, g.fires, 0, 0); // база с бомбой горит под рамкой итогов
       drawResult(b, missionResult(g.mission), g.copied, g.board, g.replay);
     }
     return;

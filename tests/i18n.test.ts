@@ -29,7 +29,7 @@ const visible = (s: Strings): string[] => [
   s.copyHint, s.copiedHint, s.failed, s.failedHint,
   s.mapTitle, s.mapLegend, s.mapHint, ...Object.values(s.mapIcons), s.goalBomb, s.goalEscape, s.plantHint, s.mapLegend2,
   s.titleName, s.titleTask, ...s.titleKeys.flat(), s.titleStart, s.titleFocus,
-  s.hudBomb(false) + '12:00', s.hudBomb(true) + '12:00', ...Object.values(s.missionName), s.titleTask2, `${s.titleMission}  1 · 2`,
+  s.hudBomb(false) + '12:00', s.hudBomb(true) + '12:00', s.missionName(7, 'bomb'), s.missionName(8, 'tapes'), s.goalPlant, s.goalTapes(5), s.goalComputer, s.goalSwitch, s.titleTask2, `${s.titleMission}  1 · 2`,
 ];
 
 const SRC = fileURLToPath(new URL('../src', import.meta.url));

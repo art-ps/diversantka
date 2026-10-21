@@ -67,10 +67,9 @@ describe('сквозной путь: победа 1 → Пробел → мис�
     run(g, IDLE, Math.round(MISSION.restartDelay / DT) + 1);
     g.unlocked = true;
     stepGame(g, JUMP, DT);
-    expect(g.missionId).toBe(1);
-    expect(g.unlocked).toBe(true); // открытая миссия 2 переживает переход на стартовый экран
-    expect(g.prologue!.phase).toBe('title');
-    expect(g.menu).toEqual({ row: 'mission', sel: 2 });
+    expect(g.missionId).toBe(3);
+    expect(g.arrival).toBe(0);
+    expect(g.unlocked).toBe(true); // открытая миссия переживает переход
   });
 
   it('saveWin миссии 2 не пишет «пройдено» и секрет', () => {

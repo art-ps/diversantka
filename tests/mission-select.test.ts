@@ -124,18 +124,14 @@ describe('переходы между миссиями', () => {
     expect(g.mission.goal).toBe('bomb');
   });
 
-  it('победа в 2 → итоги 2 → прыжок → стартовый экран с фокусом на миссии 2; пробел — снова миссия 2', () => {
+  it('победа в 2 → итоги 2 → прыжок → миссия 3 со сцены приезда', () => {
     const g = createArrival(loadRoomsFs('rooms2'));
     run(g, IDLE, Math.round(MISSION.arriveTime / DT));
     g.mission.result = 'won';
     endAndJump(g, MISSION.outroTime);
-    expect(g.missionId).toBe(1);
-    expect(g.prologue!.phase).toBe('title');
-    expect(g.menu).toEqual({ row: 'mission', sel: 2 });
-    expect(texts(g).map(t => t.s)).toContain(STR.ru.titleTask2);
-    stepGame(g, JUMP, DT);
-    expect(g.missionId).toBe(2);
+    expect(g.missionId).toBe(3);
     expect(g.arrival).toBe(0);
+    expect(g.prologue).toBeNull();
   });
 
   it('провал миссии 1 → стартовый экран, выбрана миссия 1', () => {

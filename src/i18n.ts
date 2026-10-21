@@ -1,5 +1,5 @@
 import { MISSION } from './config';
-import { MISSIONS, type MissionNo } from './missions';
+import { MISSIONS } from './missions';
 
 // Языки игры. Порядок — как в строке выбора на стартовом экране.
 export type Lang = 'en' | 'ru';
@@ -20,7 +20,7 @@ export interface Strings {
   credit: string;
   liftHint: string;
   replayHud: string; // справа в HUD вместо id комнаты, пока идёт реплей по ссылке
-  missionName: Record<MissionNo, string>; // над миром в сцене приезда
+  missionName: (n: number, goal: 'tapes' | 'bomb') => string; // над миром в сцене приезда, на стартовом экране
   prologue: Record<'title' | 'fly' | 'fall' | 'splash' | 'crash', string>;
   // всплывающие надписи
   tapeFloat: (n: number, total: number) => string;
@@ -32,6 +32,10 @@ export interface Strings {
   needBomb: string; // E у точки закладки без бомбы в руках
   goalBomb: string; // задание миссии 2 до закладки: сцена приезда, карта
   goalEscape: string; // задание миссии 2 после закладки: карта
+  goalPlant: string; // задание сгенерированного уровня с бомбой до закладки: сцена приезда, карта
+  goalTapes: (n: number) => string; // задание сгенерированного уровня с лентами: собрать n
+  goalComputer: string; // ленты собраны — ввести в ЭВМ
+  goalSwitch: string; // ленты введены — выключить забор
   plantHint: string; // над героиней у точки закладки с бомбой в руках
   plantFirst: string; // E у мотоцикла, пока бомба не заложена
   hudFuse: (time: string) => string; // HUD вместо таймера миссии, пока идёт отсчёт бомбы
@@ -83,6 +87,14 @@ export interface Strings {
 const LINE_MARKS_RU: Record<Mark, string> = { noDamage: 'без урона', noFight: 'без боя', source: 'источник найден' };
 const LINE_MARKS_EN: Record<Mark, string> = { noDamage: 'no damage', noFight: 'no fight', source: 'source found' };
 
+// Русское числительное: 1, 21 — one; 2–4, 22–24 — few; 5–20, 25… — many.
+export function ruPlural(n: number, one: string, few: string, many: string): string {
+  const d = n % 10, h = n % 100;
+  if (d === 1 && h !== 11) return one;
+  if (d >= 2 && d <= 4 && (h < 12 || h > 14)) return few;
+  return many;
+}
+
 const RU: Strings = {
   energy: 'ЭНЕРГИЯ ',
   hudTapes: (n, total) => `ЛЕНТЫ ${n}/${total} · `,
@@ -91,7 +103,7 @@ const RU: Strings = {
   credit: 'движения: mocap.cs.cmu.edu',
   liftHint: 'E — ВЫЗВАТЬ ЛИФТ',
   replayHud: 'ЗАПИСЬ · ПРОБЕЛ — ИГРАТЬ',
-  missionName: { 1: 'МИССИЯ 1 · БАЗА', 2: 'МИССИЯ 2 · БУНКЕР' },
+  missionName: (n, goal) => (n === 1 ? 'МИССИЯ 1 · БАЗА' : n === 2 ? 'МИССИЯ 2 · БУНКЕР' : `МИССИЯ ${n} · ${goal === 'bomb' ? 'ПОДРЫВ' : 'ЛЕНТЫ'}`),
   prologue: { title: '', fly: 'ПРЫЖОК — ОТЦЕПИТЬСЯ', fall: '', splash: 'В МОРЕ · ЗАНОВО', crash: 'УДАР О МАЧТУ · ЗАНОВО' },
   tapeFloat: (n, total) => `ЛЕНТА ${n}/${total}`,
   sourceFound: 'ИСТОЧНИК НАЙДЕН',
@@ -102,6 +114,10 @@ const RU: Strings = {
   needBomb: 'НУЖНА ВЗРЫВЧАТКА',
   goalBomb: 'ЗАЛОЖИ БОМБУ В РЕАКТОРЕ',
   goalEscape: 'УХОДИ К МОТОЦИКЛУ',
+  goalPlant: 'ЗАЛОЖИ БОМБУ',
+  goalTapes: n => `СОБЕРИ ${n} ${ruPlural(n, 'ЛЕНТУ', 'ЛЕНТЫ', 'ЛЕНТ')}`,
+  goalComputer: 'ВВЕДИ ЛЕНТЫ В ЭВМ',
+  goalSwitch: 'ОТКЛЮЧИ ЗАБОР',
   plantHint: 'E — ЗАЛОЖИТЬ',
   plantFirst: 'ЗАЛОЖИ ВЗРЫВЧАТКУ',
   hudFuse: time => `ВЗРЫВ ${time}`,
@@ -168,7 +184,7 @@ const EN: Strings = {
   credit: 'motion: mocap.cs.cmu.edu',
   liftHint: 'E — CALL LIFT',
   replayHud: 'REPLAY · SPACE — PLAY',
-  missionName: { 1: 'MISSION 1 · BASE', 2: 'MISSION 2 · BUNKER' },
+  missionName: (n, goal) => (n === 1 ? 'MISSION 1 · BASE' : n === 2 ? 'MISSION 2 · BUNKER' : `MISSION ${n} · ${goal === 'bomb' ? 'DEMOLITION' : 'TAPES'}`),
   prologue: { title: '', fly: 'JUMP — LET GO', fall: '', splash: 'SPLASHDOWN · RETRY', crash: 'HIT THE MAST · RETRY' },
   tapeFloat: (n, total) => `TAPE ${n}/${total}`,
   sourceFound: 'SOURCE FOUND',
@@ -179,6 +195,10 @@ const EN: Strings = {
   needBomb: 'NEED EXPLOSIVES',
   goalBomb: 'PLANT THE BOMB IN THE REACTOR',
   goalEscape: 'GET BACK TO THE BIKE',
+  goalPlant: 'PLANT THE BOMB',
+  goalTapes: n => `COLLECT ${n} TAPES`,
+  goalComputer: 'LOAD THE TAPES',
+  goalSwitch: 'SHUT OFF THE FENCE',
   plantHint: 'E — PLANT',
   plantFirst: 'PLANT THE EXPLOSIVES',
   hudFuse: time => `BLAST ${time}`,
