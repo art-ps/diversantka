@@ -49,7 +49,10 @@ function tryLevel(n: number, rng: Rng, all: Template[]): Omit<Level, 'attempt'> 
   if (goal === 'bomb') {
     if (!free.length) return null;
     const half = g.dist[g.goal] / 2;
-    bomb = free.reduce((b, i) => (Math.abs(g.dist[i] - half) < Math.abs(g.dist[b] - half) ? i : b));
+    // В тупике примерно на середине пути: тупики (лист графа) в приоритете, нет их — любая свободная комната.
+    const dead = free.filter(leaf);
+    const pool = dead.length ? dead : free;
+    bomb = pool.reduce((b, i) => (Math.abs(g.dist[i] - half) < Math.abs(g.dist[b] - half) ? i : b));
     need[bomb].item++;
   } else {
     const want = tapesOf(n);

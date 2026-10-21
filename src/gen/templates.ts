@@ -66,9 +66,10 @@ function mirrorSlot(s: Slot): Slot {
   }
 }
 
-// Зеркало по горизонтали: left ↔ right, строки задом наперёд, слоты от правого края.
+// Зеркало по горизонтали: left ↔ right, строки задом наперёд, слоты от правого края; meta.slots (текст до зеркала) снят.
 export const mirror = (t: Template): Template => ({
   ...t,
+  meta: Object.fromEntries(Object.entries(t.meta).filter(([k]) => k !== 'slots')),
   id: `${t.id}~m`,
   fits: new Set([...t.fits].map(d => SWAP[d])),
   tiles: t.tiles.map(row => [...row].reverse().join('')),

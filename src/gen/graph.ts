@@ -3,7 +3,8 @@ import { shuffle, type Rng } from './rng';
 
 // Граф уровня на сетке комнат: комната 0 — старт (верхний ряд), рёбра — выходы между соседними клетками.
 export interface Cell { x: number; y: number }
-// Дверь n: тайлы — в комнате room со стороны side, за дверью (ближе к старту) — other.
+// Дверь n между room (дальше от старта) и other (ближе к старту): side — сторона room, с которой примыкает other.
+// Тайлы двери стоят в other, у её края, обращённого к room: героиня подходит к двери изнутри своей комнаты.
 export interface DoorEdge { n: 1 | 2 | 3; room: number; other: number; side: 'left' | 'right' }
 export interface Graph { cells: Cell[]; adj: number[][]; dist: number[]; goal: number; doors: DoorEdge[]; keys: number[] }
 // rooms — комнат; loops — лишних рёбер сверх дерева; doors — дверей; goalHops — цель не дальше (Infinity — без предела).
