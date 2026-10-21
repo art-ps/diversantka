@@ -6,7 +6,7 @@ import { shuffle, type Rng } from './rng';
 export interface Cell { x: number; y: number }
 // Дверь n между room (дальше от старта) и other (ближе к старту): side — сторона room, с которой примыкает other.
 // Тайлы двери стоят в other, у её края, обращённого к room: героиня подходит к двери изнутри своей комнаты.
-// Поэтому ключ никогда не лежит в other любой двери и стоит минимум в двух переходах от other своей двери.
+// Ключ не кладётся в other любой двери и стоит минимум в двух переходах от other своей двери.
 export interface DoorEdge { n: 1 | 2 | 3; room: number; other: number; side: 'left' | 'right' }
 export interface Graph { cells: Cell[]; adj: number[][]; dist: number[]; goal: number; doors: DoorEdge[]; keys: number[] }
 // rooms — комнат; loops — лишних рёбер сверх дерева не больше (петля, ломающая двери или ключи, пропускается); doors — дверей; goalHops — цель не дальше (Infinity — без предела).
@@ -112,7 +112,8 @@ export function buildGraph(rng: Rng, o: GraphOpts): Graph | null {
 
   // Ключ k — в комнате, достижимой без дверей ≥ k; не старт, не цель, не комната с тайлами любой двери,
   // минимум в двух переходах от комнаты с тайлами двери k. Сначала тупики вне пути, потом любые тупики,
-  // потом все кандидаты; из них — дальше всех от старта. Первый набор дверей, под который легли все ключи, — наш.
+  // потом все кандидаты; из них — ближайший к комнате с тайлами двери k (при равенстве — дальше от старта,
+  // затем с меньшим номером). Первый набор дверей, под который легли все ключи, — наш.
   const placeKeys = (doors: DoorEdge[]): number[] | null => {
     const keys: number[] = [];
     for (let k = 1; k <= o.doors; k++) {
@@ -125,7 +126,7 @@ export function buildGraph(rng: Rng, o: GraphOpts): Graph | null {
       const leaves = cand.filter(i => adj[i].length === 1);
       const off = leaves.filter(i => !onPath.has(i));
       const pool = off.length ? off : leaves.length ? leaves : cand;
-      keys.push(pool.reduce((best, i) => (dist[i] > dist[best] ? i : best)));
+      keys.push(pool.reduce((best, i) => (near[i] < near[best] || (near[i] === near[best] && dist[i] > dist[best]) ? i : best)));
     }
     return keys;
   };
@@ -140,8 +141,10 @@ export function buildGraph(rng: Rng, o: GraphOpts): Graph | null {
   }
   if (!keys) return null;
 
-  // Петли — после дверей и ключей: рёбра между соседями, уже стоящими на сетке, кроме старта. Петля остаётся,
-  // только если цель по-прежнему самая дальняя в пределах goalHops, каждая дверь — мост к цели и каждый ключ всё ещё в двух переходах от комнаты своей двери.
+  // Петли — после дверей и ключей: рёбра между соседями, уже стоящими на сетке, кроме старта и комнат ключей
+  // (тупик с ключом не становится проходным). Петля остаётся, только если с ней каждая дверь — по-прежнему мост
+  // к цели, каждый ключ — минимум в двух переходах от комнаты с тайлами своей двери, а цель — самая дальняя
+  // в пределах goalHops. Не прошедшая петля пропускается: петель может выйти меньше o.loops.
   const extra: [number, number][] = [];
   cells.forEach((c, a) => {
     for (const d of ['right', 'down'] as Dir[]) {
@@ -152,6 +155,7 @@ export function buildGraph(rng: Rng, o: GraphOpts): Graph | null {
   let loops = 0;
   for (const [a, b] of shuffle(rng, extra)) {
     if (loops >= o.loops) break;
+    if (keys.includes(a) || keys.includes(b)) continue;
     link(a, b);
     const d = bfs(adj, 0);
     const ok = Math.max(...d.filter(x => x <= o.goalHops)) === d[goal]

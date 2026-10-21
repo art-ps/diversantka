@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BOMB, GEN, NINA } from '../src/config';
-import { densityOf, doorCount, goalOf, roomsOf, tapesOf } from '../src/gen/difficulty';
+import { densityOf, doorCount, goalOf, loopsOf, roomsOf, tapesOf } from '../src/gen/difficulty';
 import { generateLevel, type Level } from '../src/gen/level';
 import { DOOR_COL, OPENING } from '../src/gen/templates';
 import { doorsOf, keyDoor } from '../src/sim/doors';
@@ -118,6 +118,17 @@ it('ключ не в комнате с тайлами двери и миниму
       }
     }
   }
+});
+
+it('петли: на уровнях 3…30 рёбер сверх дерева не меньше 70% от суммы loopsOf', () => {
+  let placed = 0, asked = 0;
+  for (const n of range(3, 30)) {
+    const rooms = level(n).rooms;
+    const exits = [...rooms.values()].reduce((s, r) => s + Object.values(r.exits).filter(Boolean).length, 0);
+    placed += exits / 2 - (rooms.size - 1);
+    asked += loopsOf(n);
+  }
+  expect(placed).toBeGreaterThanOrEqual(0.7 * asked);
 });
 
 it('критерий 8: таймер кратен 30 с и не короче 5 минут', () => {
