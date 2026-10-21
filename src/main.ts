@@ -14,7 +14,7 @@ import { drawGame } from './render/scene';
 import { loadDone, loadLang, loadMuted, loadRecords, saveLang, saveMuted, saveWin, storage } from './save';
 import { missionResult } from './sim/mission';
 import { holdMove, packRecord, quitsReplay, replayStep, replayUrl, shareText, unpackReplay, type Replay } from './sim/record';
-import { worldOf } from './world';
+import { worldOf } from './levels';
 
 function fail(msg: string) {
   const el = document.getElementById('error')!;

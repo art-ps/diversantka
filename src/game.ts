@@ -31,7 +31,7 @@ import { exitFor } from './sim/transition';
 import type { Dir, Room } from './world/room';
 import { setLang, str } from './i18n';
 import { MISSIONS, type MissionNo } from './missions';
-import { worldOf } from './world';
+import { missionDef, worldOf } from './levels';
 import { figureGlyphs } from './render/figure';
 import { PAL } from './render/palette';
 import { parseCameras, parseEnemies, parseFence, parseItems, parsePoints, parseTerminals, type AndroidSpawn, type DogSpawn, type Fence, type GuardSpawn, type FlamerSpawn, type Point, type TerminalSpawn } from './world/spawns';
@@ -107,10 +107,10 @@ export interface Game {
 }
 
 export function createGame(rooms: Map<string, Room>, start: Start, missionId: MissionNo = 1): Game {
-  const { goal, time } = MISSIONS[missionId];
+  const { goal, time, tapes } = missionDef(missionId);
   const g: Game = {
     rooms, roomId: start.room, nina: createNina(start.x, start.bottom), anim: createAnimator(), start, transition: null,
-    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start, goal, time), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
+    items: [], projectiles: [], taken: new Set(), androids: [], killed: new Set(), floaters: [], particles: [], flamers: [], fires: [], dogs: [], dmgAcc: 0, dmgT: 0, inWater: false, splashAcc: 0, mission: createMission(start, goal, time, tapes), tapes: [], terminals: [], screen: null, panel: null, bike: null, source: null, fence: null, endT: 0, clip: null, copied: false, prologue: null, withPrologue: false,
     lifts: createLifts(rooms), paused: false, seen: new Set(), sfx: [], stepAcc: 0, liftHum: false, jetHiss: false, replay: false, board: null, rec: [],
     doors: [], heldId: null, spent: new Set(), guards: [], cameras: [], gates: [], alarmT: 0, alarmAge: 0, gate: 0, bombSite: null, missionId, arrival: null,
     menu: { row: 'lang', sel: 1 }, unlocked: false,
@@ -165,7 +165,8 @@ function become(g: Game, n: Game): void {
 function beginMission(g: Game): void {
   const b = g.nina.body;
   g.start = { room: g.roomId, x: b.x, bottom: b.y + b.h };
-  g.mission = createMission(g.start, MISSIONS[g.missionId].goal, MISSIONS[g.missionId].time);
+  const d = missionDef(g.missionId);
+  g.mission = createMission(g.start, d.goal, d.time, d.tapes);
   g.prologue = null;
 }
 
@@ -663,7 +664,7 @@ function stepWorld(g: Game, it: Intent, code: number, dt: number): void {
     if (!overlap(itemRect(t), nr)) continue;
     g.mission.tapes.add(t.id);
     g.sfx.push('tape');
-    spawnFloater(g.floaters, str().tapeFloat(g.mission.tapes.size, MISSION.tapes), t.x, t.bottom - 1.5, 'enemy');
+    spawnFloater(g.floaters, str().tapeFloat(g.mission.tapes.size, g.mission.tapesNeed), t.x, t.bottom - 1.5, 'enemy');
   }
   g.tapes = g.tapes.filter(t => !g.mission.tapes.has(t.id));
   if (g.source) touchSource(g, g.source, nr, dt);

@@ -19,8 +19,8 @@ const START = { room: 'a', x: 4, bottom: 22 };
 describe('MISSIONS', () => {
   it('1 — база: ленты, 15 минут, старт под дельтапланом; 2 — бункер: бомба, 12 минут, въезд справа от мотоцикла', () => {
     const a = gliderAt(PROLOGUE.startD);
-    expect(MISSIONS[1]).toEqual({ rooms: 1, start: { room: ROUTE[a.screen], x: a.x - NINA.w / 2, bottom: a.bottom }, time: 15 * 60, goal: 'tapes' });
-    expect(MISSIONS[2]).toEqual({ rooms: 2, start: { room: 'gate', x: 9, bottom: 22 }, time: 12 * 60, goal: 'bomb' });
+    expect(MISSIONS[1]).toEqual({ start: { room: ROUTE[a.screen], x: a.x - NINA.w / 2, bottom: a.bottom }, time: 15 * 60, goal: 'tapes', tapes: 6 });
+    expect(MISSIONS[2]).toEqual({ start: { room: 'gate', x: 9, bottom: 22 }, time: 12 * 60, goal: 'bomb', tapes: 0 });
     expect(BUNKER_START).toBe(MISSIONS[2].start);
   });
 

@@ -357,7 +357,7 @@ function drawHud(b: GlyphBatch, g: Game, time: number): void {
   b.text(rx, 0, label, g.replay ? PAL.hud : PAL.hudDim, HUD_STEP);
   // Миссия с бомбой: вместо лент — бомба в руках или нет; заложена — вместо них и таймера её отсчёт красным.
   const fuse = g.mission.fuse;
-  const tapes = fuse !== null ? '' : g.mission.goal === 'bomb' ? s.hudBomb(g.nina.held === 'bomb') : s.hudTapes(g.mission.tapes.size, MISSION.tapes);
+  const tapes = fuse !== null ? '' : g.mission.goal === 'bomb' ? s.hudBomb(g.nina.held === 'bomb') : s.hudTapes(g.mission.tapes.size, g.mission.tapesNeed);
   const clock = fuse === null ? formatTime(g.mission.timeLeft) : s.hudFuse(formatFuse(fuse));
   // По центру; длинная подсказка реплея справа сдвигает ленты и таймер левее — между ними две буквы.
   const mx = Math.min((ROOM_W - hudWidth(tapes + clock)) / 2, rx - 2 * HUD_STEP - hudWidth(tapes + clock));

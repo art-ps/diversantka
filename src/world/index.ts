@@ -2,15 +2,15 @@ import { MISSION, NINA, ROOM_H } from '../config';
 import { isOpaque } from '../sim/camera';
 import { DOOR_TILES, doorsOf, gatesOf, keyDoor } from '../sim/doors';
 import { LIFT_W, shaftRooms } from '../sim/lift';
-import { MISSIONS, type MissionNo } from '../missions';
+import { MISSIONS, type HandMission } from '../missions';
 import type { Mission } from '../sim/mission';
 import { parseRoom, tileAt, validateWorld, type Room } from './room';
 import { parseAmbient, parseCameras, parseEnemies, parseFence, parseItems, parseLift, parsePoints, parseTerminals } from './spawns';
 
-export type { MissionNo };
+export type { MissionNo } from '../missions';
 
 // Наборы комнат: 1 — база НИИ (первая миссия), 2 — подземный бункер (вторая).
-const FILES: Record<MissionNo, Record<string, string>> = {
+const FILES: Record<HandMission, Record<string, string>> = {
   1: import.meta.glob('./rooms/*.txt', { query: '?raw', import: 'default', eager: true }) as Record<string, string>,
   2: import.meta.glob('./rooms2/*.txt', { query: '?raw', import: 'default', eager: true }) as Record<string, string>,
 };
@@ -21,11 +21,7 @@ export const BUNKER_START = MISSIONS[2].start;
 // Что требует цель tapes: лент и источников на карте. Ручная миссия 1 — 6 лент и источник; сгенерированные — своё.
 export interface MissionNeed { tapes: number; sources: number }
 
-const loaded: Partial<Record<MissionNo, Map<string, Room>>> = {};
-// Набор комнат миссии, загруженный один раз: переходы между миссиями и «заново» файлы не перечитывают.
-export const worldOf = (n: MissionNo): Map<string, Room> => (loaded[n] ??= loadWorld(n));
-
-export function loadWorld(mission: MissionNo = 1): Map<string, Room> {
+export function loadWorld(mission: HandMission = 1): Map<string, Room> {
   const rooms = new Map<string, Room>();
   for (const [path, text] of Object.entries(FILES[mission])) {
     const room = parseRoom(text, path);

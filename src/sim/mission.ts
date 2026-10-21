@@ -18,6 +18,7 @@ export interface Checkpoint extends Spot {
 export interface Mission {
   timeLeft: number; // с
   time: number; // длина таймера миссии, с
+  tapesNeed: number; // лент на карте: ЭВМ принимает только все (миссия 1 — MISSION.tapes, сгенерированные — своё)
   overtime: number; // с, прошедшие после того, как таймер упёрся в ноль (бомба заложена — часы идут дальше)
   tapes: Set<string>; // id подобранных лент
   tapesIn: boolean; // ленты введены в главную ЭВМ
@@ -39,9 +40,9 @@ export interface Mission {
 // tapes — «n/6» у миссии с лентами, null — у миссии с бомбой.
 export interface MissionResult { time: string; tapes: string | null; hits: number; secret: boolean; line: string; seconds: number; attacks: number; date: string }
 
-export function createMission(start: Spot, goal: Mission['goal'] = 'tapes', time: number = MISSION.time): Mission {
+export function createMission(start: Spot, goal: Mission['goal'] = 'tapes', time: number = MISSION.time, tapesNeed: number = MISSION.tapes): Mission {
   return {
-    fuse: null, blown: false, goal, time, overtime: 0,
+    fuse: null, blown: false, goal, time, overtime: 0, tapesNeed,
     timeLeft: time, tapes: new Set(), tapesIn: false, fenceOff: false, flamersOff: new Set(), camerasOff: new Set(), hits: 0, secret: false, attacks: 0, doorsOpen: new Set(), result: null,
     checkpoint: { ...start, timeLeft: time, overtime: 0, tapes: [], tapesIn: false, fenceOff: false, flamersOff: [], camerasOff: [], lifts: {} },
   };
@@ -95,7 +96,7 @@ export function fuseTick(f0: number, f1: number): boolean {
 
 // Главная ЭВМ: принимает только все ленты сразу.
 export function enterTapes(m: Mission): string {
-  if (m.tapes.size < MISSION.tapes) return str().notEnoughTapes(m.tapes.size, MISSION.tapes);
+  if (m.tapes.size < m.tapesNeed) return str().notEnoughTapes(m.tapes.size, m.tapesNeed);
   m.tapesIn = true;
   return str().tapesIn;
 }
@@ -139,7 +140,7 @@ export const isoDay = (d: Date): string => `${d.getFullYear()}-${pad2(d.getMonth
 export function missionResult(m: Mission, now: Date = new Date()): MissionResult {
   const seconds = elapsed(m);
   const time = formatTime(seconds);
-  const tapes = m.goal === 'bomb' ? null : `${m.tapes.size}/${MISSION.tapes}`;
+  const tapes = m.goal === 'bomb' ? null : `${m.tapes.size}/${m.tapesNeed}`;
   const line = str().resultLine(time, tapes, m.hits, marksOf(m));
   return { time, tapes, hits: m.hits, secret: m.secret, line, seconds, attacks: m.attacks, date: isoDay(now) };
 }
