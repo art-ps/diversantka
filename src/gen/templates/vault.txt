@@ -2,7 +2,7 @@ id: vault
 fits: left right up
 min: 6
 ambient: hum
-slots: terminal@6,22 ; item@9,22 ; site@20,22 ; enemy@22,22 patrol=16..27 ; camera@20,1 arc=-60..60 period=4
+slots: terminal@6,22 ; item@9,22 ; site@20,22 ; enemy@22,22 patrol=16..27 ; camera@20,1 arc=-60..60 period=4 ; enemy@32,22 patrol=29..35
 ---
 #############################.H.########
 ###...........................H......###

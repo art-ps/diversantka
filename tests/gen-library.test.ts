@@ -98,6 +98,7 @@ it('слоты библиотеки: четырёхсторонние — со �
     expect(has(t, 'item') && has(t, 'site') && has(t, 'terminal') && has(t, 'enemy'), t.id).toBe(true);
     expect(t.min, t.id).toBe(3);
   }
+  for (const t of originals) expect(has(t, 'enemy', 2), t.id).toBe(true);
   expect(originals.filter(t => has(t, 'flamer')).length).toBeGreaterThanOrEqual(4);
   expect(originals.filter(t => has(t, 'camera')).length).toBeGreaterThanOrEqual(4);
   expect(originals.filter(t => t.tiles.some(r => r.includes('A'))).length).toBeGreaterThanOrEqual(2);

@@ -1,7 +1,7 @@
 id: bend-r
 fits: right down
 ambient: hum
-slots: item@10,22 ; enemy@15,22 patrol=8..19 ; flamer@22,18.5 dir=right
+slots: item@10,22 ; enemy@15,22 patrol=8..19 ; flamer@22,18.5 dir=right ; enemy@25,22 patrol=23..27
 ---
 ########################################
 ########################################

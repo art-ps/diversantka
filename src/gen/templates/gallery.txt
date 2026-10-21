@@ -1,7 +1,7 @@
 id: gallery
 fits: left right down
 ambient: hum
-slots: site@10,22 ; enemy@15,22 patrol=10..22 ; item@20,22 ; flamer@8,18.5 dir=right
+slots: site@10,22 ; enemy@15,22 patrol=10..22 ; item@20,22 ; flamer@8,18.5 dir=right ; enemy@34,22 patrol=33..35
 ---
 ########################################
 ########################################

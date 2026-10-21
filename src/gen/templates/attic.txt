@@ -2,7 +2,7 @@ id: attic
 fits: down
 tags: deadend
 ambient: wind
-slots: item@17,22 ; site@24,22 ; enemy@22,22 patrol=19..26
+slots: item@17,22 ; site@24,22 ; enemy@22,22 patrol=19..26 ; enemy@34,22 patrol=33..35
 ---
 ########################################
 ########################################

@@ -1,7 +1,7 @@
 id: fork
 fits: left up down
 ambient: hum
-slots: item@6,22 ; enemy@14,22 patrol=8..20 ; site@24,22
+slots: item@6,22 ; enemy@14,22 patrol=8..20 ; site@24,22 ; enemy@29,13 patrol=27..31
 ---
 #############################.H.########
 ###...........................H......###

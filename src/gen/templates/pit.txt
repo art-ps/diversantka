@@ -2,7 +2,7 @@ id: pit
 fits: up
 tags: deadend
 ambient: drips
-slots: item@19,22 ; enemy@24,22 patrol=21..27
+slots: item@19,22 ; enemy@24,22 patrol=21..27 ; enemy@33,22 patrol=32..35
 ---
 #############################.H.########
 ################..............H......###

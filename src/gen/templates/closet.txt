@@ -2,7 +2,7 @@ id: closet
 fits: left
 tags: deadend
 ambient: drips
-slots: enemy@10,22 patrol=6..14 ; item@15,22 ; site@18,22 ; item@15,19
+slots: enemy@10,22 patrol=6..14 ; item@15,22 ; site@18,22 ; item@15,19 ; enemy@17,22 patrol=16..19
 ---
 ########################################
 ########################################

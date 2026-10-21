@@ -1,7 +1,7 @@
 id: well
 fits: up down
 ambient: drips
-slots: item@20,22 ; enemy@24,22 patrol=21..27
+slots: item@20,22 ; enemy@24,22 patrol=21..27 ; enemy@29,13 patrol=27..31
 ---
 #############################.H.########
 ##################............H......###

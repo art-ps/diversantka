@@ -2,7 +2,7 @@ id: tunnel
 fits: left right
 min: 5
 ambient: river
-slots: item@8,22 ; enemy@12,22 patrol=6..15 ; flamer@27,18.5 dir=left
+slots: item@8,22 ; enemy@12,22 patrol=6..15 ; flamer@27,18.5 dir=left ; enemy@32,22 patrol=24..35
 ---
 ########################################
 ########################################

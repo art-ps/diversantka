@@ -1,7 +1,7 @@
 id: stair
 fits: left up
 ambient: wind
-slots: item@8,22 ; enemy@15,22 patrol=10..24 ; terminal@22,22
+slots: item@8,22 ; enemy@15,22 patrol=10..24 ; terminal@22,22 ; enemy@31,22 patrol=27..35
 ---
 #############################.H.########
 ###...........................H......###

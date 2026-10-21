@@ -1,7 +1,7 @@
 id: loft
 fits: left right up
 ambient: wind
-slots: item@10,22 ; enemy@15,22 patrol=8..20 ; terminal@33,16 ; camera@8,2 arc=-45..45 period=6
+slots: item@10,22 ; enemy@15,22 patrol=8..20 ; terminal@33,16 ; camera@8,2 arc=-45..45 period=6 ; enemy@30,22 patrol=27..35
 ---
 #############################.H.########
 ###...........................H......###
