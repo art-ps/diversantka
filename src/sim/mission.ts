@@ -137,10 +137,10 @@ export function marksOf(r: { hits: number; attacks: number; secret: boolean }): 
 
 export const isoDay = (d: Date): string => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
-export function missionResult(m: Mission, now: Date = new Date()): MissionResult {
+export function missionResult(m: Mission, now: Date = new Date(), no: number = m.goal === 'bomb' ? 2 : 1): MissionResult {
   const seconds = elapsed(m);
   const time = formatTime(seconds);
   const tapes = m.goal === 'bomb' ? null : `${m.tapes.size}/${m.tapesNeed}`;
-  const line = str().resultLine(time, tapes, m.hits, marksOf(m));
+  const line = str().resultLine(time, tapes, m.hits, marksOf(m), no);
   return { time, tapes, hits: m.hits, secret: m.secret, line, seconds, attacks: m.attacks, date: isoDay(now) };
 }

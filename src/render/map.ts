@@ -55,6 +55,6 @@ export function drawMap(b: Pick<GlyphBatch, 'push' | 'text'>, g: Game, time: num
       }
     }
   }
-  centered(b, 22, bomb ? s.mapLegend2 : s.mapLegend, PAL.hudDim);
+  centered(b, 22, !bomb ? s.mapLegend : g.missionId === 2 ? s.mapLegend2 : s.mapLegendGen, PAL.hudDim);
   centered(b, 23, s.mapHint, PAL.hudDim);
 }

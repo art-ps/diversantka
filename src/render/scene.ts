@@ -484,7 +484,7 @@ export function drawGame(b: GlyphBatch, g: Game, time: number, fig: Pick<GlyphBa
     if (g.endT < MISSION.outroTime) drawOutro(b, g.endT, RIDER);
     else {
       if (g.mission.goal === 'bomb') drawFires(b, g.fires, 0, 0); // база с бомбой горит под рамкой итогов
-      drawResult(b, missionResult(g.mission), g.copied, g.board, g.replay);
+      drawResult(b, missionResult(g.mission, undefined, g.missionId), g.copied, g.board, g.replay);
     }
     return;
   }

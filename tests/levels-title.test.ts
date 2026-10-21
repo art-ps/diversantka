@@ -54,7 +54,7 @@ describe('открытый уровень в хранилище', () => {
     saveLevel(s, 8);
     expect(loadLevel(s)).toBe(8);
     const m = createMission({ room: 'a', x: 0, bottom: 22 }, 'bomb', 600, 0);
-    saveWin(s, 9, missionResult(m, new Date(2026, 9, 21)));
+    saveWin(s, 9, missionResult(m, new Date(2026, 9, 21), 9));
     expect(loadLevel(s)).toBe(10);
     expect(s.data.has('diversantka.records.9')).toBe(true);
     expect(() => saveLevel({ getItem: () => null, setItem: () => { throw new Error('quota'); } }, 4)).not.toThrow();

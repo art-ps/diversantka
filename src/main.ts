@@ -147,7 +147,7 @@ async function boot() {
       saved = true;
       if (replay) game.board = { records: loadRecords(storage(), game.missionId), place: null }; // чужая игра: в таблицу и флаги не пишем
       else {
-        game.board = saveWin(storage(), game.missionId, missionResult(game.mission));
+        game.board = saveWin(storage(), game.missionId, missionResult(game.mission, undefined, game.missionId));
         unlocked = Math.max(unlocked, game.missionId + 1); // и без хранилища следующий уровень открыт до конца сессии
         share = packRecord(game.rec, game.missionId).then(p => replayUrl(location.href, p), () => null);
       }

@@ -327,7 +327,7 @@ function stepEnd(g: Game, it: Intent, dt: number): void {
     if (t0 < shown) g.fires = [resultFire()]; // итоги миссии с бомбой — на фоне огня; мира больше нет, урона нет
     stepFires(g.fires, [], dt);
   }
-  if (g.mission.result === 'won' && it.usePressed) g.clip = missionResult(g.mission).line;
+  if (g.mission.result === 'won' && it.usePressed) g.clip = missionResult(g.mission, undefined, g.missionId).line;
   if (it.jumpPressed && g.endT >= shown + MISSION.restartDelay) become(g, next(g));
 }
 

@@ -44,7 +44,7 @@ export interface Strings {
   tapesIn: string;
   accessDenied: string;
   fenceOff: string;
-  resultLine: (time: string, tapes: string | null, hits: number, marks: readonly Mark[]) => string; // tapes null — бункер
+  resultLine: (time: string, tapes: string | null, hits: number, marks: readonly Mark[], no?: number) => string; // tapes null — бункер; no — номер миссии
   // экран ЭВМ
   bootLog: readonly string[];
   menuFlamer: (room: string) => string;
@@ -69,6 +69,7 @@ export interface Strings {
   mapTitle: string;
   mapLegend: string;
   mapLegend2: string; // легенда карты миссии 2
+  mapLegendGen: string; // легенда карты сгенерированного уровня с бомбой
   mapHint: string;
   mapIcons: Record<'terminal' | 'main' | 'switch' | 'bike' | 'target', string>;
   // стартовый экран
@@ -127,8 +128,8 @@ const RU: Strings = {
   tapesIn: 'ЛЕНТЫ ВВЕДЕНЫ',
   accessDenied: 'ДОСТУП ЗАКРЫТ',
   fenceOff: 'ЗАБОР ВЫКЛЮЧЕН',
-  resultLine: (time, tapes, hits, marks) =>
-    ['Диверсантка', ...(tapes === null ? ['бункер', time] : [time, `ленты ${tapes}`]), `ударов ${hits}`, ...marks.map(m => LINE_MARKS_RU[m])].join(' · '),
+  resultLine: (time, tapes, hits, marks, no = tapes === null ? 2 : 1) =>
+    ['Диверсантка', ...(no >= 3 ? [`миссия ${no}`] : no === 2 ? ['бункер'] : []), time, ...(tapes === null ? [] : [`ленты ${tapes}`]), `ударов ${hits}`, ...marks.map(m => LINE_MARKS_RU[m])].join(' · '),
   bootLog: [
     'НИИ-7 · ЭВМ СЕРИИ 2 · МОНИТОР В3.1',
     'ТЕСТ ОЗУ ............. 64К ОК',
@@ -156,6 +157,7 @@ const RU: Strings = {
   mapTitle: 'ПАУЗА · КАРТА',
   mapLegend: 'Т ТЕРМИНАЛ  Э ЭВМ  Щ ЩИТОК  Г ГАРАЖ  ▓ ЛЕНТА',
   mapLegend2: 'Т ТЕРМИНАЛ  Г ГАРАЖ  Р РЕАКТОР',
+  mapLegendGen: 'Т ТЕРМИНАЛ  Г ГАРАЖ  Р ПОДРЫВ',
   mapHint: 'ESC/START — ПРОДОЛЖИТЬ · M — ЗВУК',
   mapIcons: { terminal: 'Т', main: 'Э', switch: 'Щ', bike: 'Г', target: 'Р' },
   titleName: 'ДИВЕРСАНТКА',
@@ -211,8 +213,8 @@ const EN: Strings = {
   tapesIn: 'TAPES LOADED',
   accessDenied: 'ACCESS DENIED',
   fenceOff: 'FENCE OFF',
-  resultLine: (time, tapes, hits, marks) =>
-    ['Diversantka', ...(tapes === null ? ['bunker', time] : [time, `tapes ${tapes}`]), `hits ${hits}`, ...marks.map(m => LINE_MARKS_EN[m])].join(' · '),
+  resultLine: (time, tapes, hits, marks, no = tapes === null ? 2 : 1) =>
+    ['Diversantka', ...(no >= 3 ? [`mission ${no}`] : no === 2 ? ['bunker'] : []), time, ...(tapes === null ? [] : [`tapes ${tapes}`]), `hits ${hits}`, ...marks.map(m => LINE_MARKS_EN[m])].join(' · '),
   bootLog: [
     'NII-7 · SERIES 2 COMPUTER · MONITOR V3.1',
     'RAM TEST ............. 64K OK',
@@ -240,6 +242,7 @@ const EN: Strings = {
   mapTitle: 'PAUSED · MAP',
   mapLegend: 'T TERMINAL  C COMPUTER  S SWITCH  G GARAGE  ▓ TAPE',
   mapLegend2: 'T TERMINAL  G GARAGE  R REACTOR',
+  mapLegendGen: 'T TERMINAL  G GARAGE  R RIG',
   mapHint: 'ESC/START — RESUME · M — SOUND',
   mapIcons: { terminal: 'T', main: 'C', switch: 'S', bike: 'G', target: 'R' },
   titleName: 'DIVERSANTKA',
