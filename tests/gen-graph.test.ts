@@ -82,4 +82,13 @@ describe.each([3, 4, 8, 9, 20, 30])('уровень %i', n => {
       });
     }
   });
+
+  it('ключи: не в комнате с тайлами любой двери и минимум в двух переходах от своей', () => {
+    for (const g of all) {
+      g.keys.forEach((r, i) => {
+        for (const d of g.doors) expect(r).not.toBe(d.other);
+        expect(bfs(g.adj, g.doors[i].other)[r]).toBeGreaterThanOrEqual(2);
+      });
+    }
+  });
 });

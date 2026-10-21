@@ -105,6 +105,21 @@ it('критерий 7: каждая дверь лежит на всех пут�
   }
 });
 
+it('ключ не в комнате с тайлами двери и минимум в двух переходах от комнаты своей двери', () => {
+  for (const n of range(3, 100)) {
+    const lv = level(n), doors = doorEdges(lv.rooms);
+    for (const r of lv.rooms.values()) {
+      for (const it of parseItems(r.meta.items, r.id)) {
+        const k = keyDoor(it.kind);
+        if (!k) continue;
+        expect(doorsOf(r).length, `уровень ${n}, ключ ${k}`).toBe(0);
+        const d = doors.find(e => e.n === k)!;
+        expect(hops(lv.rooms, r.id).get(d.room)!, `уровень ${n}, ключ ${k}`).toBeGreaterThanOrEqual(2);
+      }
+    }
+  }
+});
+
 it('критерий 8: таймер кратен 30 с и не короче 5 минут', () => {
   for (const n of range(3, 30)) {
     expect(level(n).def.time % 30).toBe(0);

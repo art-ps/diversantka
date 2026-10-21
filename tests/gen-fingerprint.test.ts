@@ -18,7 +18,7 @@ it('отпечаток уровней 3…12: изменился генерат�
   expect(
     { version: GEN.version, hash: fnv(text) },
     'изменился генератор, шаблоны или числа GEN — подними GEN.version и обнови отпечаток (реплеи прошлой версии станут другими)',
-  ).toEqual({ version: 1, hash: 2032207485 });
+  ).toEqual({ version: 2, hash: 43991358 });
 });
 
 it('зеркало не оставляет meta.slots', async () => {
