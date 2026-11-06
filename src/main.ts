@@ -1,6 +1,7 @@
 import { ambientOf } from './audio/ambient';
 import { AudioGate } from './audio/gate';
 import { DT, FX, ROOM_H, ROOM_W } from './config';
+import { createStatsSeen, statsEvents } from './stats';
 import { startMission, stepGame, type Game } from './game';
 import { lang, setLang, str } from './i18n';
 import { InputDevices } from './input/devices';
@@ -112,6 +113,7 @@ async function boot() {
   let acc = 0;
   let last = performance.now();
   let missed = IDLE; // нажатия из кадров без шага симуляции (120 Гц)
+  const seen = createStatsSeen(); // что из событий статистики уже ушло
   let saved = false; // итог этой миссии уже записан в localStorage
   let share: Promise<string | null> = Promise.resolve(null); // ссылка на реплей победной попытки
   const frame = (now: number) => {
@@ -141,6 +143,7 @@ async function boot() {
       it = clearPressed(it);
     }
     game.replay = replay !== null;
+    if (!replay) for (const e of statsEvents(game, seen)) try { window.umami?.track(e.name, e.data); } catch { /* статистика не должна ронять кадр */ }
     // Звуки шагов этого кадра и фон комнаты; события забираются, даже пока звук не включён.
     try {
       gate.sound?.play(game.sfx);
