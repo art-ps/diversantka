@@ -68,16 +68,16 @@ describe('охранник: видимость', () => {
     const gd = guard(3, [2, 5]);
     expect(guardSees(gd, ninaAt(38), ROOM)).toBe(true);
     expect(guardSees(gd, ninaAt(38, 14), ROOM)).toBe(false);
-    const wall = roomOf({ 22: FLOOR, 19: '.'.repeat(20) + '#' });
+    const wall = roomOf({ 22: FLOOR, 18: '.'.repeat(20) + '#' });
     expect(guardSees(gd, ninaAt(38, 22, wall), wall)).toBe(false);
-    const door = { ...roomOf({ 22: FLOOR, 19: '.'.repeat(20) + '1' }), id: 'd' };
+    const door = { ...roomOf({ 22: FLOOR, 18: '.'.repeat(20) + '1' }), id: 'd' };
     expect(guardSees(gd, ninaAt(38, 22, door), solidRoom(door, new Set()))).toBe(false);
     expect(guardSees(gd, ninaAt(38, 22, door), solidRoom(door, new Set(['d#1'])))).toBe(true);
   });
 
   it('фальш-стена «S» непрозрачна для охранника', () => {
     const gd = guard(3, [2, 5]);
-    const fake = roomOf({ 22: FLOOR, 19: '.'.repeat(20) + 'S' });
+    const fake = roomOf({ 22: FLOOR, 18: '.'.repeat(20) + 'S' });
     expect(guardSees(gd, ninaAt(38, 22, fake), fake)).toBe(false);
   });
 });
@@ -109,6 +109,17 @@ describe('охранник: выстрел', () => {
     for (let i = 0; i < 3; i++) updateNina(low, { ...IDLE, down: true }, ROOM, DT);
     expect(low.crouching).toBe(true);
     expect(flies(untilShot(guard(10), low).p!, low)).toBe(false);
+  });
+
+  it('пуля проходит над пригнувшейся героиней и попадает в стоящую', () => {
+    const crouched = ninaAt(30);
+    for (let i = 0; i < 10; i++) updateNina(crouched, { ...IDLE, down: true }, ROOM, DT);
+    expect(crouched.crouching).toBe(true);
+    const a = untilShot(guard(20), crouched).p!;
+    expect(flies(a, crouched)).toBe(false);
+    const standing = ninaAt(30);
+    const b = untilShot(guard(20), standing).p!;
+    expect(flies(b, standing)).toBe(true);
   });
 
   it('прыжок уводит из линии: в верхней точке пуля проходит под ногами', () => {

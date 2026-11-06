@@ -256,13 +256,13 @@ function drawAndroids(b: Pick<GlyphBatch, 'push'>, g: Game, ox: number, oy: numb
 }
 
 // Охранник: скелет героини зелёным, голова «o», ружьё — GUARD.gun символов «—» от правой руки вперёд.
-// Вскинутое ружьё: правая кисть — на высоте пули, впереди плеча; локоть — посередине. Копия: клип не трогаем.
-function raiseRifle(pose: number[]): number[] {
+// Вскинутое ружьё: правая кисть — на высоте пули (плеча), впереди плеча; локоть посередине и ниже — рука согнута. Копия: клип не трогаем.
+export function raiseRifle(pose: number[]): number[] {
   const p = pose.slice();
   const sx = p[2 * J.rShoulder], sy = p[2 * J.rShoulder + 1];
   const hx = sx + GUARD.aimReach, hy = GUARD.chest;
   p[2 * J.rHand] = hx; p[2 * J.rHand + 1] = hy;
-  p[2 * J.rElbow] = (sx + hx) / 2; p[2 * J.rElbow + 1] = (sy + hy) / 2;
+  p[2 * J.rElbow] = (sx + hx) / 2; p[2 * J.rElbow + 1] = (sy + hy) / 2 - 0.3;
   return p;
 }
 

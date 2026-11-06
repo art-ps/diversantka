@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { drawGame } from '../src/render/scene';
+import { drawGame, raiseRifle } from '../src/render/scene';
+import { simplePose } from '../src/anim/simple';
+import { CLIPS } from '../src/anim/clips';
+import { J } from '../src/anim/clip';
 import { createGame } from '../src/game';
 import { GUARD } from '../src/config';
 import { createGuard, type GuardState } from '../src/sim/guard';
@@ -40,5 +43,17 @@ describe('ружьё охранника', () => {
     const { gun, bottom } = draw('patrol', 1);
     expect(gun).toHaveLength(GUARD.gun);
     for (const [, y] of gun) expect(y).toBeGreaterThan(bottom - GUARD.chest + 0.5);
+  });
+
+  it('aim: ствол на уровне правого плеча позы', () => {
+    const { gun, gd, bottom } = draw('aim', 1);
+    const shoulder = simplePose(gd.anim, CLIPS)[2 * J.rShoulder + 1];
+    for (const [, y] of gun) expect(Math.abs(bottom - y - shoulder)).toBeLessThanOrEqual(0.3);
+  });
+
+  it('aim: рука согнута — локоть ниже кисти', () => {
+    const { gd } = draw('aim', 1);
+    const p = raiseRifle(simplePose(gd.anim, CLIPS));
+    expect(p[2 * J.rHand + 1] - p[2 * J.rElbow + 1]).toBeGreaterThanOrEqual(0.2);
   });
 });
